@@ -118,12 +118,8 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
       <section className="field field--models">
         <div className="field__row">
           <span className="field__label mono-label">Models &amp; Quantity</span>
-          <button
-            className="expandbtn"
-            onClick={() => setModelsExpanded((v) => !v)}
-            title={modelsExpanded ? 'Collapse list' : 'Expand list'}
-          >
-            {modelsExpanded ? '−' : '+'}
+          <button className="expandbtn mono-label" onClick={() => setModelsExpanded((v) => !v)}>
+            {modelsExpanded ? 'Collapse −' : 'Expand +'}
           </button>
         </div>
         <div className="mtable">

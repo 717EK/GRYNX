@@ -38,7 +38,7 @@ export default function CreateJob({
               <span>📄</span> Create Job
             </button>
             <span className="jobscreen__note mono-label">
-              ⓘ A job sheet with barcode will be generated after job creation.
+              ⓘ Job sheet with barcode generated on creation.
             </span>
           </div>
         </div>

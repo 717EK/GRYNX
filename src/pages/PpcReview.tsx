@@ -40,7 +40,7 @@ export default function PpcReview({
               <span>RC</span>
             </button>
             <span className="jobscreen__note mono-label">
-              ⓘ Approving will create the job and move it to the first stage in pipeline.
+              ⓘ Approving creates the job at the first department.
             </span>
           </div>
         </div>
