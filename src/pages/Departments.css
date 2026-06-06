@@ -42,64 +42,97 @@
   padding: 14px 18px 18px;
 }
 
-/* department cards */
-.deptgrid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+/* heat-map indicator box */
+.heat {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex: none;
+  background: var(--text-tertiary);
 }
-.deptcard {
+.heat--good {
+  background: #3ecf8e;
+}
+.heat--delay {
+  background: var(--warning);
+}
+.heat--alert {
+  background: var(--danger);
+}
+.deptlegend {
+  display: flex;
+  gap: 12px;
+}
+.deptlegend__i {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.deptlegend__i .heat {
+  width: 10px;
+  height: 10px;
+}
+
+/* department single-line rows */
+.deptlist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.deptrow {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center;
+  gap: 14px;
   text-align: left;
   border: 1px solid var(--border);
   border-radius: var(--r-card);
   background: var(--surface);
-  padding: 13px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
+  padding: 11px 14px;
 }
-.deptcard:hover {
+.deptrow:hover {
   border-color: var(--border-strong);
 }
-.deptcard__top {
+.deptrow__name {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
 }
-.deptcard__name {
-  font-size: 22px;
+.deptrow__name .display {
+  font-size: 19px;
   font-weight: 800;
 }
-.deptcard__head {
-  letter-spacing: 0.12em;
+.deptrow__head {
+  letter-spacing: 0.08em;
 }
-.deptcard__metrics {
+.deptrow__metrics {
   display: flex;
-  align-items: flex-end;
-  gap: 22px;
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
+  gap: 16px;
 }
 .metric {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 6px;
 }
-.metric__v {
-  font-size: 24px;
+.metric b {
+  font-size: 18px;
   font-weight: 800;
 }
-.metric__v.is-warning {
+.metric b.is-warning {
   color: var(--warning);
 }
-.metric__k {
+.metric .mono-label {
   font-size: 9px;
 }
-.deptcard__arrow {
-  margin-left: auto;
+.deptrow__arrow {
   color: var(--text-secondary);
-  font-size: 20px;
+  font-size: 18px;
 }
 
 /* status chips (shared) */
@@ -125,13 +158,21 @@
   background: rgba(245, 166, 35, 0.08);
 }
 
-@media (min-width: 720px) {
-  .deptgrid {
-    grid-template-columns: 1fr 1fr;
+/* tighten rows on phones so they stay single-line */
+@media (max-width: 560px) {
+  .deptrow {
+    gap: 10px;
+    padding: 10px 12px;
   }
-}
-@media (min-width: 1100px) {
-  .deptgrid {
-    grid-template-columns: 1fr 1fr 1fr;
+  .deptrow__head,
+  .metric .mono-label,
+  .deptlegend {
+    display: none;
+  }
+  .deptrow__metrics {
+    gap: 10px;
+  }
+  .deptrow__name .display {
+    font-size: 16px;
   }
 }

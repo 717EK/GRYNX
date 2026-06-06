@@ -11,7 +11,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { title: 'Create Job', sub: 'New Job Initiation', badge: '02', to: 'create' },
-  { title: 'Job Status', sub: 'Track. Monitor. Update.', badge: '03', to: 'overview' },
+  { title: 'Job Status', sub: 'Track. Monitor. Update.', badge: '03', to: 'jobstatus' },
   { title: 'Departments', sub: 'Manage. Teams. Roles.', badge: '01', to: 'departments' },
   { title: 'Maintenance', sub: 'Maintain. Repair. Optimize.', badge: '01', to: 'maintenance' },
 ]

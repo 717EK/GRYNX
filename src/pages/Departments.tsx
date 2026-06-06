@@ -38,30 +38,34 @@ export default function Departments({
             <h1 className="screen__title display">Departments</h1>
             <span className="mono-label">Manage. Teams. Roles.</span>
           </div>
+          <div className="deptlegend">
+            <span className="deptlegend__i"><span className="heat heat--good" />Good</span>
+            <span className="deptlegend__i"><span className="heat heat--delay" />Delay</span>
+            <span className="deptlegend__i"><span className="heat heat--alert" />Alert</span>
+          </div>
         </header>
 
         <div className="screen__scroll">
-          <div className="deptgrid">
+          <div className="deptlist">
             {DEPARTMENTS.map((d) => (
-              <button key={d.dept} className="deptcard">
-                <span className="deptcard__top">
-                  <span className="deptcard__name display">{d.dept}</span>
-                  <span className={`chip chip--${d.status}`}>{d.status.toUpperCase()}</span>
+              <button key={d.dept} className="deptrow">
+                <span className={`heat heat--${d.status}`} title={d.status} />
+                <span className="deptrow__name">
+                  <span className="display">{d.dept}</span>
+                  <span className="deptrow__head mono-label">· {d.head}</span>
                 </span>
-                <span className="deptcard__head mono-label">Head · {d.head}</span>
-                <span className="deptcard__metrics">
+                <span className="deptrow__metrics">
                   <span className="metric">
-                    <span className="metric__v display">{String(d.active).padStart(2, '0')}</span>
-                    <span className="metric__k mono-label">Active</span>
+                    <b className="display">{String(d.active).padStart(2, '0')}</b>
+                    <span className="mono-label">Active</span>
                   </span>
                   <span className="metric">
-                    <span className={`metric__v display ${d.hold ? 'is-warning' : ''}`}>
-                      {String(d.hold).padStart(2, '0')}
-                    </span>
-                    <span className="metric__k mono-label">On Hold</span>
+                    <b className={`display ${d.hold ? 'is-warning' : ''}`}>{String(d.hold).padStart(2, '0')}</b>
+                    <span className="mono-label">Hold</span>
                   </span>
-                  <span className="deptcard__arrow">→</span>
                 </span>
+                <span className={`chip chip--${d.status}`}>{d.status.toUpperCase()}</span>
+                <span className="deptrow__arrow">→</span>
               </button>
             ))}
           </div>

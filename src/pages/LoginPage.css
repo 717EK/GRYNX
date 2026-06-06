@@ -12,22 +12,33 @@
   align-items: center;
   text-align: center;
 }
-.login__logo {
-  width: min(58%, 240px);
+.login__grynx {
+  width: min(42%, 158px);
   height: auto;
   display: block;
 }
 .login__tagline {
-  margin-top: 14px;
-  font-size: 12px;
-  letter-spacing: 0.28em;
+  margin-top: 10px;
+  font-size: 11px;
+  letter-spacing: 0.26em;
   color: var(--text);
+}
+.login__divider {
+  width: min(70%, 280px);
+  height: 1px;
+  background: var(--border-strong);
+  margin: 18px 0;
+}
+.login__logo {
+  width: min(54%, 210px);
+  height: auto;
+  display: block;
 }
 .login__accent {
   width: 34px;
   height: 3px;
   background: var(--brand);
-  margin: 18px 0 26px;
+  margin: 16px 0 22px;
 }
 .login__welcome {
   display: flex;

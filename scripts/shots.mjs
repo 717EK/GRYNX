@@ -43,6 +43,12 @@ for (const [name, vp] of Object.entries(VIEWPORTS)) {
   await shot('create-product')
   await click(page, '.csel__btn')
 
+  // add-model searchable picker
+  await click(page, '.addmodel')
+  await page.waitForTimeout(200)
+  await shot('create-addmodel')
+  await click(page, '.field--id')
+
   // pipeline editor
   await click(page, '.editpipe')
   await page.waitForTimeout(200)
@@ -63,6 +69,13 @@ for (const [name, vp] of Object.entries(VIEWPORTS)) {
   await page.waitForTimeout(250)
   await shot('overview')
   await click(page, '.overview__back')
+  await page.waitForTimeout(120)
+
+  // job status
+  await page.locator('.navrow').nth(1).click({ force: true })
+  await page.waitForTimeout(250)
+  await shot('jobstatus')
+  await click(page, '.screen__back')
   await page.waitForTimeout(120)
 
   // departments

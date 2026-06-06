@@ -12,30 +12,24 @@ const INITIAL_PRODUCTS: Option[] = [
   { value: 'SK', label: 'Stacker' },
 ]
 
+// Placeholder model catalogue per product (real list to be uploaded by owner).
+const MODELS_BY_PRODUCT: Record<string, string[]> = {
+  AT: ['AT290', 'AT400', 'AT500', 'AT600', 'AT700', 'AT800', 'AT1000'],
+  MT: ['MT290', 'MT400', 'MT500', 'MT600'],
+  SC: ['SC-1.0M', 'SC-1.5M', 'SC-2.0M'],
+  ST: ['ST-4x4', 'ST-6x4', 'ST-8x6'],
+  MJ: ['MJ-A', 'MJ-B'],
+  LF: ['LF-A', 'LF-B'],
+  SK: ['SK-S', 'SK-L'],
+}
+
 const DEPARTMENTS = [
-  'Design',
-  'Purchase',
-  'Laser/Cutting',
-  'MS Production',
-  'Alloy Production',
-  'CNC/VMC',
-  'MNTR',
-  'Powder Coat',
-  'QC',
-  'FG Stock',
-  'Maintenance',
+  'Design', 'Purchase', 'Laser/Cutting', 'MS Production', 'Alloy Production',
+  'CNC/VMC', 'MNTR', 'Powder Coat', 'QC', 'FG Stock', 'Maintenance',
 ]
 
-// Canonical default pipeline (8 departments). See ui-mockup-notes.md.
 const DEFAULT_PIPELINE = [
-  'Design',
-  'Purchase',
-  'Laser/Cutting',
-  'Alloy Production',
-  'CNC/VMC',
-  'MNTR',
-  'Powder Coat',
-  'FG Stock',
+  'Design', 'Purchase', 'Laser/Cutting', 'Alloy Production', 'CNC/VMC', 'MNTR', 'Powder Coat', 'FG Stock',
 ]
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -58,11 +52,11 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
     { id: 2, code: 'AT400', qty: 15 },
     { id: 3, code: 'AT500', qty: 10 },
   ])
+  const [modelsExpanded, setModelsExpanded] = useState(false)
   const [pipeline, setPipeline] = useState<string[]>(DEFAULT_PIPELINE)
   const [editingPipe, setEditingPipe] = useState(false)
   const [showCrumbs, setShowCrumbs] = useState(false)
 
-  // schedule (editable)
   const today = new Date()
   const [startDate, setStartDate] = useState(today.toISOString().slice(0, 10))
   const [startTime, setStartTime] = useState('09:00')
@@ -71,16 +65,21 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
 
   const total = models.reduce((s, m) => s + (Number(m.qty) || 0), 0)
   const pr = priority === 'urgent' ? 'U' : 'N'
-  const dateSeg = ddmmyy(today)
-  const jobId = `${productCode}-${pr}-${pad3(total)}-${dateSeg}-001`
-  const hintSegs = [productCode, pr, pad3(total), dateSeg, '001']
+  const jobId = `${productCode}-${pr}-${pad3(total)}-${ddmmyy(today)}-001`
+  const hintSegs = [productCode, pr, pad3(total), ddmmyy(today), '001']
 
   const setQty = (id: number, qty: number) =>
     setModels((ms) => ms.map((m) => (m.id === id ? { ...m, qty } : m)))
   const setCode = (id: number, code: string) =>
     setModels((ms) => ms.map((m) => (m.id === id ? { ...m, code: code.toUpperCase() } : m)))
-  const addModel = () => setModels((ms) => [...ms, { id: ++nextId, code: 'NEW', qty: 0 }])
   const removeModel = (id: number) => setModels((ms) => ms.filter((m) => m.id !== id))
+  const addModelByCode = (code: string) =>
+    setModels((ms) => [...ms, { id: ++nextId, code, qty: 1 }])
+
+  const modelOptions: Option[] = (MODELS_BY_PRODUCT[productCode] || []).map((c) => ({
+    value: c,
+    label: c,
+  }))
 
   const addCustomProduct = (name: string, desc: string) => {
     const code = name.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || 'XX'
@@ -90,20 +89,20 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
 
   return (
     <div className="jobform">
-      {/* JOB ID + decoded hint inline */}
+      {/* JOB ID — label + decoded hint on one line, value below, sticky */}
       <section className="field field--id">
-        <span className="field__label mono-label">{jobIdLabel}</span>
-        <div className="jobid">
-          <span className="jobid__value display">{jobId}</span>
+        <div className="jobid__head">
+          <span className="field__label mono-label">{jobIdLabel}</span>
           <span className="jobid__hint mono-label">
             {hintSegs.map((s, i) => (
               <span key={i} className="jobid__seg">[{s}]</span>
             ))}
           </span>
         </div>
+        <span className="jobid__value display">{jobId}</span>
       </section>
 
-      {/* PRODUCT — custom dropdown */}
+      {/* PRODUCT */}
       <section className="field field--product">
         <span className="field__label mono-label">Product</span>
         <CustomSelect
@@ -115,43 +114,61 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
         />
       </section>
 
-      {/* MODELS & QUANTITY */}
+      {/* MODELS & QUANTITY — scrollable 3-row window, expand, searchable add */}
       <section className="field field--models">
-        <span className="field__label mono-label">Models &amp; Quantity</span>
+        <div className="field__row">
+          <span className="field__label mono-label">Models &amp; Quantity</span>
+          <button
+            className="expandbtn"
+            onClick={() => setModelsExpanded((v) => !v)}
+            title={modelsExpanded ? 'Collapse list' : 'Expand list'}
+          >
+            {modelsExpanded ? '−' : '+'}
+          </button>
+        </div>
         <div className="mtable">
           <div className="mtable__head mono-label">
             <span>Model</span>
             <span>Quantity</span>
           </div>
-          {models.map((m) => (
-            <div className="mrow" key={m.id}>
-              <input
-                className="mrow__code display"
-                value={m.code}
-                onChange={(e) => setCode(m.id, e.target.value)}
-                aria-label="Model code"
-              />
-              <div className="mrow__right">
+          <div className={`mtable__rows ${modelsExpanded ? 'is-expanded' : ''}`}>
+            {models.map((m) => (
+              <div className="mrow" key={m.id}>
                 <input
-                  className="mrow__qty display"
-                  type="number"
-                  min={0}
-                  value={m.qty}
-                  onChange={(e) => setQty(m.id, Number(e.target.value))}
-                  aria-label="Quantity"
+                  className="mrow__code display"
+                  value={m.code}
+                  onChange={(e) => setCode(m.id, e.target.value)}
+                  aria-label="Model code"
                 />
-                {models.length > 1 && (
-                  <button className="mrow__del" onClick={() => removeModel(m.id)} aria-label="Remove model">
-                    ×
-                  </button>
-                )}
+                <div className="mrow__right">
+                  <input
+                    className="mrow__qty display"
+                    type="number"
+                    min={0}
+                    value={m.qty}
+                    onChange={(e) => setQty(m.id, Number(e.target.value))}
+                    aria-label="Quantity"
+                  />
+                  {models.length > 1 && (
+                    <button className="mrow__del" onClick={() => removeModel(m.id)} aria-label="Remove model">
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
           <div className="mtable__foot">
-            <button className="addmodel" onClick={addModel}>
-              <span className="addmodel__plus">+</span> Add Model
-            </button>
+            <CustomSelect
+              value=""
+              options={modelOptions}
+              searchable
+              triggerLabel="+ Add Model"
+              triggerClassName="addmodel"
+              onChange={addModelByCode}
+              onAddCustom={(name) => addModelByCode(name.toUpperCase())}
+              addLabel="Add Custom Model"
+            />
             <div className="mtotal">
               <span className="mono-label">Total</span>
               <span className="mtotal__v display">{total}</span>
@@ -179,7 +196,7 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
         </div>
       </section>
 
-      {/* PIPELINE (departments, collapsed) */}
+      {/* PIPELINE (departments, collapsible) */}
       <section className="field field--pipeline">
         <span className="field__label mono-label">Pipeline</span>
         <div className="pipeline">
@@ -204,9 +221,7 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
             </span>
             <span className="pipeline__toggle">{showCrumbs ? '⌃' : '⌄'}</span>
           </button>
-          {showCrumbs && (
-            <div className="pipeline__crumbs mono-label">{pipeline.join('  ›  ')}</div>
-          )}
+          {showCrumbs && <div className="pipeline__crumbs mono-label">{pipeline.join('  ›  ')}</div>}
         </div>
       </section>
 
@@ -218,28 +233,21 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
             <span className="sched__k mono-label">Start Date &amp; Time</span>
             <div className="sched__inputs">
               <input className="sched__in" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              <input className="sched__in sched__in--time" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <input className="sched__in" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
           </div>
           <div className="sched__card">
             <span className="sched__k mono-label">Target Completion</span>
             <div className="sched__inputs">
               <input className="sched__in" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
-              <input className="sched__in sched__in--time" type="time" value={targetTime} onChange={(e) => setTargetTime(e.target.value)} />
+              <input className="sched__in" type="time" value={targetTime} onChange={(e) => setTargetTime(e.target.value)} />
             </div>
           </div>
         </div>
-        <span className="sched__note mono-label">
-          ⓘ If the target date is missed, the active department is notified to submit a delay reason.
-        </span>
       </section>
 
       {editingPipe && (
-        <PipelineEditor
-          steps={pipeline}
-          onChange={setPipeline}
-          onClose={() => setEditingPipe(false)}
-        />
+        <PipelineEditor steps={pipeline} onChange={setPipeline} onClose={() => setEditingPipe(false)} />
       )}
     </div>
   )
@@ -277,56 +285,32 @@ function PipelineEditor({
       <div className="modal__card" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3 className="modal__title display">Edit Departments</h3>
-          <button className="modal__x" onClick={onClose} aria-label="Close">
-            ×
-          </button>
+          <button className="modal__x" onClick={onClose} aria-label="Close">×</button>
         </div>
-
         <ol className="pe__list">
           {draft.map((s, i) => (
             <li className="pe__row" key={`${s}-${i}`}>
               <span className="pe__n mono-label">{pad2(i + 1)}</span>
               <span className="pe__name">{s}</span>
               <span className="pe__ctl">
-                <button className="pe__btn" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">
-                  ↑
-                </button>
-                <button
-                  className="pe__btn"
-                  onClick={() => move(i, 1)}
-                  disabled={i === draft.length - 1}
-                  aria-label="Move down"
-                >
-                  ↓
-                </button>
-                <button className="pe__btn pe__btn--del" onClick={() => remove(i)} aria-label="Remove">
-                  ×
-                </button>
+                <button className="pe__btn" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
+                <button className="pe__btn" onClick={() => move(i, 1)} disabled={i === draft.length - 1} aria-label="Move down">↓</button>
+                <button className="pe__btn pe__btn--del" onClick={() => remove(i)} aria-label="Remove">×</button>
               </span>
             </li>
           ))}
         </ol>
-
         <div className="pe__add">
           <select className="pe__select" value={toAdd} onChange={(e) => setToAdd(e.target.value)}>
             {DEPARTMENTS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
+              <option key={d} value={d}>{d}</option>
             ))}
           </select>
-          <button className="pe__addbtn" onClick={add}>
-            + Add
-          </button>
+          <button className="pe__addbtn" onClick={add}>+ Add</button>
         </div>
-
         <div className="pe__actions">
-          <button className="btn btn--solid btn--block" onClick={save}>
-            Save For This Job
-          </button>
-          <button className="btn btn--primary btn--block" onClick={save}>
-            Save For Future Jobs
-          </button>
+          <button className="btn btn--solid btn--block" onClick={save}>Save For This Job</button>
+          <button className="btn btn--primary btn--block" onClick={save}>Save For Future Jobs</button>
         </div>
       </div>
     </div>

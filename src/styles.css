@@ -247,11 +247,6 @@ button {
   .userid__sub {
     display: none;
   }
-  /* hide secondary D-LYFT + divider to avoid crowding the status */
-  .logo-dlyft-sm,
-  .ubar__left .vrule {
-    display: none;
-  }
 }
 
 /* ============================================================

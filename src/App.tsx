@@ -6,6 +6,7 @@ import CreateJob from './pages/CreateJob'
 import PpcReview from './pages/PpcReview'
 import Departments from './pages/Departments'
 import Maintenance from './pages/Maintenance'
+import JobStatus from './pages/JobStatus'
 import UpdatePrompt from './components/UpdatePrompt'
 import type { SessionUser } from './components/UtilityBars'
 
@@ -21,6 +22,7 @@ export type Screen =
   | 'ppc'
   | 'departments'
   | 'maintenance'
+  | 'jobstatus'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('login')
@@ -52,6 +54,8 @@ export default function App() {
         return <Departments user={DEMO_USER} onBack={() => go('home')} onLock={() => go('login')} />
       case 'maintenance':
         return <Maintenance user={DEMO_USER} onBack={() => go('home')} onLock={() => go('login')} />
+      case 'jobstatus':
+        return <JobStatus user={DEMO_USER} onBack={() => go('home')} onLock={() => go('login')} />
       case 'home':
         return (
           <AdminHome

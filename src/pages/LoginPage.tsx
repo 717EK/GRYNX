@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
+import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark.png'
 import './LoginPage.css'
 
@@ -49,8 +50,12 @@ export default function LoginPage({
       <TopBar />
       <main className="app__body login">
         <div className="login__inner">
-          <img className="login__logo" src={dlyftWordmark} alt="D-LYFT" />
+          <img className="login__grynx" src={grynxWordmark} alt="GRYNX" />
           <span className="login__tagline mono-label">Track. Sync. Execute.</span>
+
+          <div className="login__divider" />
+
+          <img className="login__logo" src={dlyftWordmark} alt="D-LYFT" />
 
           <div className="login__accent" />
 

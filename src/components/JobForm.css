@@ -110,19 +110,32 @@
   flex-direction: column;
   gap: 7px;
 }
+.field__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
 .field__label {
   color: var(--text-secondary);
   font-size: 10px;
 }
 
-/* JOB ID */
-.jobid {
+/* JOB ID — label + hint on one line, value below, sticky */
+.field--id {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: var(--bg);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  gap: 4px;
+}
+.jobid__head {
   display: flex;
   align-items: baseline;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  padding-bottom: 11px;
-  border-bottom: 1px solid var(--border);
+  justify-content: space-between;
+  gap: 10px;
 }
 .jobid__value {
   font-size: clamp(22px, 5.5vw, 30px);
@@ -131,10 +144,12 @@
 .jobid__hint {
   display: inline-flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 2px 4px;
   color: var(--text-tertiary);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   font-size: 9px;
+  text-align: right;
 }
 .jobid__seg {
   color: var(--brand);
@@ -274,8 +289,54 @@
 .csel__expand:hover {
   color: var(--text);
 }
+.csel__search {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
+  color: var(--text);
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+  outline: none;
+}
+.csel__search:focus {
+  border-color: var(--brand);
+}
+.csel__empty {
+  display: block;
+  padding: 12px 10px;
+  color: var(--text-tertiary);
+}
+/* adder-mode panel opens upward, wider than its small trigger */
+.csel__panel--adder {
+  top: auto;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: auto;
+  width: 280px;
+  max-width: 82vw;
+}
 
-/* MODELS table */
+/* expand button next to a section label */
+.expandbtn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--brand);
+  color: var(--brand);
+  border-radius: var(--r-sm);
+  font-size: 18px;
+  line-height: 1;
+}
+.expandbtn:hover {
+  background: rgba(4, 73, 241, 0.12);
+}
+
+/* MODELS table — static head/foot, scrollable rows window */
 .mtable {
   border: 1px solid var(--border);
   border-radius: var(--r-card);
@@ -289,6 +350,13 @@
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
   font-size: 10px;
+}
+.mtable__rows {
+  max-height: 150px;
+  overflow-y: auto;
+}
+.mtable__rows.is-expanded {
+  max-height: none;
 }
 .mrow {
   display: flex;
@@ -476,37 +544,26 @@
 }
 .sched__inputs {
   display: flex;
+  flex-direction: column;
   gap: 6px;
   min-width: 0;
 }
 .sched__in {
-  flex: 1;
+  width: 100%;
   min-width: 0;
   background: var(--surface-raised);
   border: 1px solid var(--border-strong);
   border-radius: var(--r);
   color: var(--text);
-  padding: 7px 8px;
+  padding: 8px 10px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.02em;
   outline: none;
   color-scheme: dark;
 }
 .sched__in:focus {
   border-color: var(--brand);
-}
-.sched__in--time {
-  flex: 0 0 84px;
-}
-.sched__note {
-  display: flex;
-  gap: 8px;
-  color: var(--text-tertiary);
-  text-transform: none;
-  letter-spacing: 0.03em;
-  font-size: 10px;
-  line-height: 1.5;
 }
 
 /* ====== wide screens (iPad/desktop): 2-column form, no scroll ====== */
