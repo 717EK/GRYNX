@@ -1,0 +1,399 @@
+/* ============================================================
+   Job screen shell (shared by Create Job + PPC Review)
+   ============================================================ */
+.jobscreen {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0;
+  overflow: hidden;
+}
+.jobscreen__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.jobscreen__back {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.jobscreen__back:hover {
+  border-color: var(--border-strong);
+}
+.jobscreen__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.jobscreen__title {
+  font-size: clamp(26px, 6vw, 38px);
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.jobscreen__pr {
+  color: var(--brand);
+  font-size: 0.7em;
+}
+.jobscreen__pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+}
+.jobscreen__pill:hover {
+  border-color: var(--brand);
+}
+.jobscreen__pill-n {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.jobscreen__scroll {
+  overflow-y: auto;
+  padding: 18px;
+  flex: 1;
+}
+
+.jobscreen__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 22px;
+}
+.jobscreen__actions--two {
+  display: grid;
+  grid-template-columns: 1fr 0.4fr;
+  gap: 12px;
+}
+.jobscreen__actions--two .jobscreen__note {
+  grid-column: 1 / -1;
+}
+.jobscreen__note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-tertiary);
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-size: 12px;
+}
+
+/* ============================================================
+   Job form fields
+   ============================================================ */
+.jobform {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.field__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.field__label {
+  color: var(--text-secondary);
+}
+
+/* JOB ID */
+.jobid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.jobid__value {
+  font-size: clamp(26px, 6.5vw, 40px);
+  letter-spacing: 0.04em;
+}
+.jobid__hint {
+  color: var(--text-tertiary);
+  letter-spacing: 0.16em;
+}
+
+/* PRODUCT select */
+.select {
+  position: relative;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.select__el {
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: clamp(30px, 7vw, 44px);
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 18px 56px 18px 20px;
+  cursor: pointer;
+}
+.select__el option {
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 16px;
+}
+.select__chev {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-60%);
+  font-size: 26px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+/* MODELS table */
+.mtable {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.mtable__head {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.mrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.mrow__code {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 800;
+  text-transform: uppercase;
+  width: 60%;
+  padding: 6px 0;
+  border-bottom: 1px solid transparent;
+}
+.mrow__code:focus {
+  border-bottom-color: var(--brand);
+}
+.mrow__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mrow__qty {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 800;
+  text-align: right;
+  width: 90px;
+  padding: 6px 0;
+  border-bottom: 1px solid transparent;
+  -moz-appearance: textfield;
+}
+.mrow__qty::-webkit-outer-spin-button,
+.mrow__qty::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.mrow__qty:focus {
+  border-bottom-color: var(--brand);
+}
+.mrow__del {
+  color: var(--text-tertiary);
+  font-size: 22px;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+}
+.mrow__del:hover {
+  color: var(--danger);
+}
+.mtable__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+.addmodel {
+  color: var(--brand);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.addmodel__plus {
+  font-size: 18px;
+}
+.mtotal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mtotal__v {
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+/* PRIORITY toggle */
+.prio {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.prio__opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 64px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+.prio__ico {
+  font-size: 18px;
+}
+.prio__opt.is-active {
+  color: var(--brand);
+  border-color: var(--brand);
+  background: rgba(4, 73, 241, 0.08);
+}
+
+/* PIPELINE */
+.viewpipe {
+  color: var(--brand);
+  letter-spacing: 0.12em;
+}
+.pipeline {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pipeline__top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.pipeline__ico {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 1.6;
+}
+.pipeline__count {
+  font-size: 26px;
+  font-weight: 800;
+}
+.pipeline__crumbs {
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+  line-height: 1.9;
+}
+.pipeline__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.pipeline__list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 0;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+}
+.pipeline__list li:last-child {
+  border-bottom: none;
+}
+.pipeline__n {
+  color: var(--brand);
+  min-width: 26px;
+}
+
+/* SCHEDULE */
+.sched {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.sched__card {
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface);
+}
+.sched__k {
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+}
+.sched__big {
+  font-size: 26px;
+  font-weight: 800;
+}
+.sched__sub {
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+}
+
+/* phone tweaks */
+@media (max-width: 520px) {
+  .sched {
+    grid-template-columns: 1fr;
+  }
+  .mrow__code {
+    font-size: 22px;
+  }
+  .mrow__qty {
+    font-size: 22px;
+    width: 70px;
+  }
+}

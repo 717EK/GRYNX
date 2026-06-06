@@ -70,39 +70,9 @@
   margin-top: 14px;
 }
 
-/* buttons */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  height: 56px;
-  padding: 0 24px;
-  border-radius: 8px;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 15px;
-  transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
-}
-.btn--primary {
-  width: 100%;
-  background: transparent;
-  border: 1px solid var(--brand);
-  color: var(--brand);
-}
-.btn--primary:not(:disabled):hover {
-  background: rgba(4, 73, 241, 0.12);
-}
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.btn__arrow {
-  font-size: 18px;
-}
 .login__enter {
   margin-top: 30px;
+  width: 100%;
 }
 .login__forgot {
   margin-top: 24px;
