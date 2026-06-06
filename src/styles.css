@@ -22,8 +22,13 @@
   --font-mono: "Space Mono", ui-monospace, "Cascadia Mono", monospace;
 
   /* layout */
-  --ubar-h: 56px;
+  --ubar-h: 48px;
   --maxw: 1280px;
+
+  /* radii — kept subtle to match the reference mockups */
+  --r-sm: 4px;
+  --r: 6px;
+  --r-card: 8px;
 
   color-scheme: dark;
 }
@@ -78,7 +83,8 @@ button {
 .app {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
 }
 .app__body {
   flex: 1;
@@ -134,21 +140,22 @@ button {
   margin-left: 8px;
 }
 
-/* logos */
-.logo-dlyft {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 24px;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
+/* logos — crop the "INDIA" tagline off the bottom of the lockup */
+.logo-dlyft-wrap {
+  height: 17px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
 }
-.logo-dlyft .accent {
-  color: var(--brand);
+.logo-dlyft-img {
+  height: 25px;
+  width: auto;
+  display: block;
 }
 .logo-grynx {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 20px;
+  font-size: 18px;
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
@@ -156,7 +163,7 @@ button {
   width: 1px;
   align-self: stretch;
   background: var(--border);
-  margin: 12px 0;
+  margin: 11px 0;
 }
 
 /* stacked status segment */
@@ -172,17 +179,36 @@ button {
   border-left: none;
 }
 .seg__k {
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.16em;
   color: var(--text-tertiary);
 }
 .seg__v {
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 0.1em;
   color: var(--text);
 }
 .seg__v .lock {
   color: var(--brand);
+}
+
+/* compact mobile status */
+.ubar__status-mobile {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text);
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 3px rgba(4, 73, 241, 0.18);
 }
 
 /* user id block */
@@ -217,13 +243,16 @@ button {
   border-color: var(--border-strong);
 }
 
-/* hide the dense middle segments on narrow phones */
-@media (max-width: 560px) {
+/* on narrow phones swap dense segments for a single compact status */
+@media (max-width: 620px) {
   .ubar__mid {
     display: none;
   }
-  .logo-dlyft {
-    font-size: 20px;
+  .ubar__status-mobile {
+    display: flex;
+  }
+  .userid__sub {
+    display: none;
   }
 }
 

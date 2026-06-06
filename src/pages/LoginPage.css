@@ -1,61 +1,64 @@
 .login {
   align-items: center;
   justify-content: center;
-  padding: 24px 20px 40px;
+  padding: 20px 20px 28px;
+  overflow: hidden;
 }
 .login__inner {
   width: 100%;
-  max-width: 460px;
+  max-width: 360px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
 }
 .login__logo {
-  width: min(78%, 360px);
+  width: min(68%, 300px);
   height: auto;
   display: block;
 }
 .login__accent {
-  width: 38px;
+  width: 34px;
   height: 3px;
   background: var(--brand);
-  margin: 28px 0 36px;
+  margin: 16px 0 26px;
 }
 .login__welcome {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 .login__name {
-  font-size: clamp(40px, 9vw, 56px);
+  font-size: clamp(32px, 8vw, 46px);
   font-weight: 800;
   letter-spacing: 0.06em;
 }
 .login__hint {
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   color: var(--text-secondary);
 }
 
-/* PIN */
+/* PIN — compact boxes per reference */
 .pin {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  margin-top: 26px;
+  max-width: 296px;
+  margin: 20px auto 0;
 }
 .pin__box {
-  aspect-ratio: 1 / 1.05;
+  aspect-ratio: 1 / 1;
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   color: var(--text);
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 22px;
+  font-size: 18px;
   outline: none;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
@@ -67,30 +70,26 @@
   border-color: var(--text-secondary);
 }
 .pin__caption {
-  margin-top: 14px;
+  margin-top: 12px;
+  font-size: 10px;
 }
 
+/* buttons (base/variants live in styles.css) */
 .login__enter {
-  margin-top: 30px;
+  margin-top: 22px;
   width: 100%;
+  max-width: 320px;
+  height: 50px;
 }
 .login__forgot {
-  margin-top: 24px;
-  padding-top: 22px;
+  margin-top: 18px;
+  padding-top: 18px;
   border-top: 1px solid var(--border);
   width: 100%;
+  max-width: 320px;
   color: var(--text-secondary);
+  font-size: 11px;
 }
 .login__forgot:hover {
   color: var(--text);
-}
-
-/* iPad / desktop give it a touch more presence */
-@media (min-width: 768px) {
-  .login__inner {
-    max-width: 480px;
-  }
-  .pin__box {
-    font-size: 26px;
-  }
 }
