@@ -19,7 +19,7 @@
   height: 8px;
   border-radius: 50%;
   background: var(--brand);
-  box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.18);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent);
   flex: none;
 }
 .update-toast__text {

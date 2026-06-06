@@ -1,4 +1,5 @@
 import { useClock, useUptime } from '../lib/useClock'
+import ThemePicker from './ThemePicker'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark.png'
 
@@ -68,15 +69,16 @@ export function TopBar({
 
       <div className="ubar__right">
         {user && (
-          <>
-            <div className="userid">
-              <span className="userid__name">{user.name}</span>
-              <span className="userid__sub">{user.role} · ID {user.id}</span>
-            </div>
-            <button className="iconbtn" title="Lock / sign out" onClick={onLock}>
-              ⏻
-            </button>
-          </>
+          <div className="userid">
+            <span className="userid__name">{user.name}</span>
+            <span className="userid__sub">{user.role} · ID {user.id}</span>
+          </div>
+        )}
+        <ThemePicker />
+        {user && (
+          <button className="iconbtn" title="Lock / sign out" onClick={onLock}>
+            ⏻
+          </button>
         )}
       </div>
     </header>

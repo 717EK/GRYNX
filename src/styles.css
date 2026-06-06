@@ -202,7 +202,7 @@ button {
   height: 7px;
   border-radius: 50%;
   background: var(--brand);
-  box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.18);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
 }
 
 /* user id block */
@@ -285,7 +285,7 @@ button {
   color: var(--brand);
 }
 .btn--primary:not(:disabled):hover {
-  background: rgba(245, 166, 35, 0.12);
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
 .btn--solid {
   background: var(--brand);

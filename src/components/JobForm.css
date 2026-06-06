@@ -260,7 +260,7 @@
   background: var(--surface);
 }
 .csel__opt.is-sel {
-  background: rgba(245, 166, 35, 0.12);
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
 .csel__opt-label {
   font-family: var(--font-display);
@@ -467,7 +467,7 @@
 .prio__opt.is-active {
   color: var(--brand);
   border-color: var(--brand);
-  background: rgba(245, 166, 35, 0.08);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
 }
 
 /* PIPELINE (departments, collapsible) */

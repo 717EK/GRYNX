@@ -55,7 +55,6 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
   const [modelsExpanded, setModelsExpanded] = useState(false)
   const [pipeline, setPipeline] = useState<string[]>(DEFAULT_PIPELINE)
   const [editingPipe, setEditingPipe] = useState(false)
-  const [showCrumbs, setShowCrumbs] = useState(false)
 
   const today = new Date()
   const [startDate, setStartDate] = useState(today.toISOString().slice(0, 10))
@@ -196,7 +195,7 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
       <section className="field field--pipeline">
         <span className="field__label mono-label">Pipeline</span>
         <div className="pipeline">
-          <button className="pipeline__bar" onClick={() => setShowCrumbs((v) => !v)}>
+          <button className="pipeline__bar" onClick={() => setEditingPipe(true)}>
             <svg className="pipeline__ico" viewBox="0 0 24 24" width="18" height="18" aria-hidden>
               <circle cx="5" cy="6" r="2.4" />
               <circle cx="5" cy="18" r="2.4" />
@@ -205,19 +204,8 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
               <line x1="7" y1="17" x2="17" y2="13" />
             </svg>
             <span className="pipeline__count display">{pipeline.length} Departments</span>
-            <span
-              className="editpipe mono-label"
-              role="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                setEditingPipe(true)
-              }}
-            >
-              Edit ›
-            </span>
-            <span className="pipeline__toggle">{showCrumbs ? '⌃' : '⌄'}</span>
+            <span className="editpipe mono-label">Edit ›</span>
           </button>
-          {showCrumbs && <div className="pipeline__crumbs mono-label">{pipeline.join('  ›  ')}</div>}
         </div>
       </section>
 
