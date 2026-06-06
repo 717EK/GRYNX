@@ -73,10 +73,26 @@
 
 /* ---- footer stat strip ---- */
 .admin__stats {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   border-top: 1px solid var(--border);
   margin-top: 8px;
+  width: 100%;
+  text-align: left;
+}
+.admin__stats::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--brand);
+  transition: width 0.18s ease;
+}
+.admin__stats:hover::after {
+  width: 120px;
 }
 .stat {
   display: flex;

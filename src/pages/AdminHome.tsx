@@ -30,9 +30,11 @@ const STATS: Stat[] = [
 export default function AdminHome({
   user,
   onLock,
+  onOpenOverview,
 }: {
   user: SessionUser
   onLock: () => void
+  onOpenOverview: () => void
 }) {
   return (
     <div className="app">
@@ -52,16 +54,20 @@ export default function AdminHome({
           ))}
         </nav>
 
-        <div className="admin__stats">
+        <button
+          className="admin__stats"
+          onClick={onOpenOverview}
+          title="Open Admin Overview"
+        >
           {STATS.map((s) => (
-            <div key={s.k} className="stat">
+            <span key={s.k} className="stat">
               <span className="stat__k mono-label">{s.k}</span>
               <span className={`stat__v display ${s.tone === 'warning' ? 'is-warning' : ''}`}>
                 {s.v}
               </span>
-            </div>
+            </span>
           ))}
-        </div>
+        </button>
       </main>
       <BottomBar />
     </div>
