@@ -15,14 +15,15 @@
 | `--text` | `#FFFFFF` | primary text, big numbers |
 | `--text-secondary` | `#9AA0A6` | labels, captions |
 | `--text-tertiary` | `#6B7177` | footnotes, hints |
-| `--brand-blue` | **`#0449F1`** *(sampled from D-LYFT logo)* | primary actions, accents, active state, underlines, totals |
+| `--brand` (accent) | **`#F5A623`** (amber) | primary actions, accents, active state, underlines, totals, anything clickable. Solid buttons use black text (`--on-brand #0A0A0A`). |
+| `--brand-blue` (logo only) | `#0449F1` *(sampled from D-LYFT logo)* | reserved for the **D-LYFT logo only** — not used in UI |
 | `--danger` | `#E5392E` | RC / alerts / destructive |
-| `--success` | white / `--brand-blue` | "GOOD" status (monochrome) |
-| `--warning` | **`#F5A623`** (amber) | **DELAY / ALERT** — the metric number itself renders in amber |
+| `--success` | `#3ECF8E` | "GOOD" status / completed |
+| `--warning` | `#F5A623` (amber) | DELAY / ALERT |
 
-> Status rule (confirmed): GOOD = monochrome; **DELAY / ALERT render the number in
-> amber `#F5A623`**. Brand blue stays reserved for primary action + neutral accents so
-> amber reads unambiguously as "attention".
+> **Accent changed from blue → amber** (2026-06-06): blue was hard to read on black.
+> Amber `#F5A623` is now the single interactive accent. Blue survives only inside the
+> D-LYFT logo. Status: GOOD = green, DELAY = amber, ALERT = red.
 
 ## 2. Typography
 The system runs on **two type families** (the GRYNX wordmark is a bespoke logotype, used as an image — not a system font).
