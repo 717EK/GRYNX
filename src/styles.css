@@ -1,0 +1,228 @@
+/* ============================================================
+   GRYNX design tokens + global base
+   Source of truth: reference/design-language.md
+   ============================================================ */
+:root {
+  /* color */
+  --bg: #000000;
+  --surface: #0b0d10;
+  --surface-raised: #121519;
+  --border: #23282f;
+  --border-strong: #2e343c;
+  --text: #ffffff;
+  --text-secondary: #9aa0a6;
+  --text-tertiary: #6b7177;
+  --brand: #0449f1; /* sampled from D-LYFT logo */
+  --brand-dim: #0a2a8a;
+  --danger: #e5392e;
+  --warning: #f5a623; /* DELAY / ALERT */
+
+  /* type */
+  --font-display: "Saira Condensed", system-ui, "Segoe UI", sans-serif;
+  --font-mono: "Space Mono", ui-monospace, "Cascadia Mono", monospace;
+
+  /* layout */
+  --ubar-h: 56px;
+  --maxw: 1280px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* shared display helpers */
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+}
+.mono-label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+/* ============================================================
+   App shell
+   ============================================================ */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.app__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ============================================================
+   Utility bars (top + bottom)
+   ============================================================ */
+.ubar {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+  min-height: var(--ubar-h);
+  padding: 0 14px;
+  gap: 0;
+}
+.ubar--bottom {
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.ubar--bottom__mid {
+  text-align: center;
+}
+@media (max-width: 560px) {
+  .ubar--bottom__mid {
+    display: none;
+  }
+}
+
+.ubar__left,
+.ubar__right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ubar__right {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+.ubar__mid {
+  display: flex;
+  align-items: stretch;
+  margin-left: 8px;
+}
+
+/* logos */
+.logo-dlyft {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.logo-dlyft .accent {
+  color: var(--brand);
+}
+.logo-grynx {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.vrule {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  margin: 12px 0;
+}
+
+/* stacked status segment */
+.seg {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 14px;
+  border-left: 1px solid var(--border);
+  white-space: nowrap;
+}
+.seg:first-child {
+  border-left: none;
+}
+.seg__k {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
+}
+.seg__v {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text);
+}
+.seg__v .lock {
+  color: var(--brand);
+}
+
+/* user id block */
+.userid {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+.userid__name {
+  font-size: 13px;
+  letter-spacing: 0.12em;
+}
+.userid__sub {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.iconbtn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: var(--text);
+  font-size: 18px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+.iconbtn:hover {
+  border-color: var(--border-strong);
+}
+
+/* hide the dense middle segments on narrow phones */
+@media (max-width: 560px) {
+  .ubar__mid {
+    display: none;
+  }
+  .logo-dlyft {
+    font-size: 20px;
+  }
+}

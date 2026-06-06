@@ -1,0 +1,69 @@
+import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
+import './AdminHome.css'
+
+interface NavItem {
+  title: string
+  sub: string
+  badge: string
+}
+
+const NAV: NavItem[] = [
+  { title: 'Create Job', sub: 'New Job Initiation', badge: '02' },
+  { title: 'Job Status', sub: 'Track. Monitor. Update.', badge: '03' },
+  { title: 'Departments', sub: 'Manage. Teams. Roles.', badge: '01' },
+  { title: 'Maintenance', sub: 'Maintain. Repair. Optimize.', badge: '01' },
+]
+
+interface Stat {
+  k: string
+  v: string
+  tone?: 'default' | 'warning'
+}
+
+const STATS: Stat[] = [
+  { k: 'Total Jobs', v: '1287' },
+  { k: 'In Progress', v: '342' },
+  { k: 'Completed', v: '945' },
+  { k: 'Alerts', v: '07', tone: 'warning' },
+]
+
+export default function AdminHome({
+  user,
+  onLock,
+}: {
+  user: SessionUser
+  onLock: () => void
+}) {
+  return (
+    <div className="app">
+      <TopBar user={user} onLock={onLock} />
+      <main className="app__body admin">
+        <nav className="admin__nav">
+          {NAV.map((item) => (
+            <button key={item.title} className="navrow">
+              <span className="navrow__tick" />
+              <span className="navrow__body">
+                <span className="navrow__title display">{item.title}</span>
+                <span className="navrow__sub mono-label">{item.sub}</span>
+              </span>
+              <span className="navrow__badge">[{item.badge}]</span>
+              <span className="navrow__arrow">→</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="admin__stats">
+          {STATS.map((s) => (
+            <div key={s.k} className="stat">
+              <span className="stat__k mono-label">{s.k}</span>
+              <span className={`stat__v display ${s.tone === 'warning' ? 'is-warning' : ''}`}>
+                {s.v}
+              </span>
+            </div>
+          ))}
+        </div>
+      </main>
+      <BottomBar />
+    </div>
+  )
+}
