@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import grynxLogo from '../assets/grynx-logo.png'
+import dlyftWordmark from '../assets/dlyft-wordmark.png'
 import './LoginPage.css'
 
 const PIN_LENGTH = 6
@@ -49,7 +49,8 @@ export default function LoginPage({
       <TopBar />
       <main className="app__body login">
         <div className="login__inner">
-          <img className="login__logo" src={grynxLogo} alt="GRYNX — Track. Sync. Execute." />
+          <img className="login__logo" src={dlyftWordmark} alt="D-LYFT" />
+          <span className="login__tagline mono-label">Track. Sync. Execute.</span>
 
           <div className="login__accent" />
 

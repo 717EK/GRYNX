@@ -1,5 +1,6 @@
 import { useClock, useUptime } from '../lib/useClock'
-import dlyftLogo from '../assets/dlyft-logo.png'
+import grynxWordmark from '../assets/grynx-wordmark.png'
+import dlyftWordmark from '../assets/dlyft-wordmark.png'
 
 export interface SessionUser {
   name: string
@@ -9,16 +10,14 @@ export interface SessionUser {
 
 const APP_VERSION = 'v0.1.0'
 
-function Brand({ showGrynx }: { showGrynx?: boolean }) {
+function Brand({ inApp }: { inApp?: boolean }) {
   return (
     <div className="ubar__left">
-      <span className="logo-dlyft-wrap">
-        <img className="logo-dlyft-img" src={dlyftLogo} alt="D-LYFT" />
-      </span>
-      {showGrynx && (
+      <img className="logo-grynx-img" src={grynxWordmark} alt="GRYNX" />
+      {inApp && (
         <>
           <span className="vrule" />
-          <span className="logo-grynx">GRYNX</span>
+          <img className="logo-dlyft-sm" src={dlyftWordmark} alt="D-LYFT" />
         </>
       )}
     </div>
@@ -44,7 +43,7 @@ export function TopBar({
   const time = useClock()
   return (
     <header className="ubar ubar--top">
-      <Brand showGrynx={!!user} />
+      <Brand inApp={!!user} />
 
       {/* full segments (tablet/desktop) */}
       <div className="ubar__mid">

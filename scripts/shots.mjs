@@ -1,7 +1,7 @@
 import { chromium } from 'playwright'
 import { mkdirSync } from 'node:fs'
 
-const BASE = 'http://localhost:5173'
+const BASE = process.env.BASE || 'http://localhost:5174'
 const OUT = './_shots'
 mkdirSync(OUT, { recursive: true })
 
@@ -12,62 +12,74 @@ const VIEWPORTS = {
 }
 
 const browser = await chromium.launch()
-
-async function pinAndEnter(page) {
-  for (let i = 0; i < 6; i++) {
-    await page.locator('.pin__box').nth(i).fill(String(i + 1))
-  }
-  await page.click('.login__enter',{force:true})
-  await page.waitForTimeout(250)
-}
-
-async function overflow(page, sel) {
-  return page.$eval(sel, (el) => el.scrollHeight - el.clientHeight).catch(() => null)
-}
+const click = (page, sel) => page.click(sel, { force: true })
 
 for (const [name, vp] of Object.entries(VIEWPORTS)) {
   const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 2 })
   const page = await ctx.newPage()
+  const shot = (n) => page.screenshot({ path: `${OUT}/${n}-${name}.png` })
 
   await page.goto(BASE, { waitUntil: 'networkidle' })
   await page.addStyleTag({
     content: '*,*::before,*::after{transition:none!important;animation:none!important}',
   })
-  await page.waitForTimeout(700) // font swap
-  await page.screenshot({ path: `${OUT}/login-${name}.png` })
+  await page.waitForTimeout(700)
+  await shot('login')
 
-  await pinAndEnter(page)
-  await page.screenshot({ path: `${OUT}/home-${name}.png` })
-
-  // Create Job
-  await page.locator('.navrow').first().click({ force: true })
-  await page.waitForTimeout(300)
-  await page.screenshot({ path: `${OUT}/create-${name}.png` })
-  const createOf = await overflow(page, '.jobscreen__scroll')
-
-  // Pipeline editor modal
-  await page.click('.editpipe',{force:true})
+  // login
+  for (let i = 0; i < 6; i++) await page.locator('.pin__box').nth(i).fill(String(i + 1))
+  await click(page, '.login__enter')
   await page.waitForTimeout(250)
-  await page.screenshot({ path: `${OUT}/create-pipe-${name}.png` })
-  await page.click('.modal__x',{force:true})
+  await shot('home')
 
-  // PPC review
-  await page.click('.jobscreen__pill',{force:true})
+  // create job
+  await page.locator('.navrow').nth(0).click({ force: true })
   await page.waitForTimeout(300)
-  await page.screenshot({ path: `${OUT}/ppc-${name}.png` })
+  await shot('create')
 
-  // back to home -> overview
-  await page.click('.jobscreen__back',{force:true}) // -> create
-  await page.waitForTimeout(150)
-  await page.click('.jobscreen__back',{force:true}) // -> home
-  await page.waitForTimeout(150)
-  await page.click('.admin__stats',{force:true})
-  await page.waitForTimeout(300)
-  await page.screenshot({ path: `${OUT}/overview-${name}.png` })
+  // product dropdown open
+  await click(page, '.csel__btn')
+  await page.waitForTimeout(200)
+  await shot('create-product')
+  await click(page, '.csel__btn')
 
-  console.log(`${name}: create-scroll-overflow=${createOf}px`)
+  // pipeline editor
+  await click(page, '.editpipe')
+  await page.waitForTimeout(200)
+  await shot('create-pipe')
+  await click(page, '.modal__x')
+
+  // ppc
+  await click(page, '.jobscreen__pill')
+  await page.waitForTimeout(250)
+  await shot('ppc')
+  await click(page, '.jobscreen__back') // -> create
+  await page.waitForTimeout(120)
+  await click(page, '.jobscreen__back') // -> home
+  await page.waitForTimeout(120)
+
+  // overview
+  await click(page, '.admin__stats')
+  await page.waitForTimeout(250)
+  await shot('overview')
+  await click(page, '.overview__back')
+  await page.waitForTimeout(120)
+
+  // departments
+  await page.locator('.navrow').nth(2).click({ force: true })
+  await page.waitForTimeout(250)
+  await shot('departments')
+  await click(page, '.screen__back')
+  await page.waitForTimeout(120)
+
+  // maintenance
+  await page.locator('.navrow').nth(3).click({ force: true })
+  await page.waitForTimeout(250)
+  await shot('maintenance')
+
+  console.log(`${name}: done`)
   await ctx.close()
 }
 
 await browser.close()
-console.log('done')
+console.log('all done')

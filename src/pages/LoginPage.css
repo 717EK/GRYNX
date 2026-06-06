@@ -13,15 +13,21 @@
   text-align: center;
 }
 .login__logo {
-  width: min(68%, 300px);
+  width: min(58%, 240px);
   height: auto;
   display: block;
+}
+.login__tagline {
+  margin-top: 14px;
+  font-size: 12px;
+  letter-spacing: 0.28em;
+  color: var(--text);
 }
 .login__accent {
   width: 34px;
   height: 3px;
   background: var(--brand);
-  margin: 16px 0 26px;
+  margin: 18px 0 26px;
 }
 .login__welcome {
   display: flex;

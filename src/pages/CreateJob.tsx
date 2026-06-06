@@ -31,7 +31,7 @@ export default function CreateJob({
         </header>
 
         <div className="jobscreen__scroll">
-          <JobForm jobIdLabel="Job ID" jobIdHint="[ PRODUCT ][ PRIORITY ][ QTY ][ DATE ][ SEQ ]" />
+          <JobForm jobIdLabel="Job ID" />
 
           <div className="jobscreen__actions">
             <button className="btn btn--solid btn--block">

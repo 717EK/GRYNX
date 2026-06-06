@@ -30,10 +30,7 @@ export default function PpcReview({
         </header>
 
         <div className="jobscreen__scroll">
-          <JobForm
-            jobIdLabel="Job ID (Auto Generated)"
-            jobIdHint="[ PRODUCT ][ PRIORITY ][ QTY ][ DATE ][ SEQ ]"
-          />
+          <JobForm jobIdLabel="Job ID (Auto Generated)" />
 
           <div className="jobscreen__actions jobscreen__actions--two">
             <button className="btn btn--solid btn--block" onClick={onApprove}>

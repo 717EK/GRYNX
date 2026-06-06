@@ -72,9 +72,9 @@ button {
 .mono-label {
   font-family: var(--font-mono);
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 /* ============================================================
@@ -140,24 +140,17 @@ button {
   margin-left: 8px;
 }
 
-/* logos — crop the "INDIA" tagline off the bottom of the lockup */
-.logo-dlyft-wrap {
+/* logos — GRYNX wordmark primary, D-LYFT secondary */
+.logo-grynx-img {
   height: 17px;
-  overflow: hidden;
-  display: flex;
-  align-items: flex-start;
-}
-.logo-dlyft-img {
-  height: 25px;
   width: auto;
   display: block;
 }
-.logo-grynx {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 18px;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
+.logo-dlyft-sm {
+  height: 13px;
+  width: auto;
+  display: block;
+  opacity: 0.92;
 }
 .vrule {
   width: 1px;
@@ -252,6 +245,11 @@ button {
     display: flex;
   }
   .userid__sub {
+    display: none;
+  }
+  /* hide secondary D-LYFT + divider to avoid crowding the status */
+  .logo-dlyft-sm,
+  .ubar__left .vrule {
     display: none;
   }
 }

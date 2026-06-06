@@ -12,8 +12,8 @@ interface NavItem {
 const NAV: NavItem[] = [
   { title: 'Create Job', sub: 'New Job Initiation', badge: '02', to: 'create' },
   { title: 'Job Status', sub: 'Track. Monitor. Update.', badge: '03', to: 'overview' },
-  { title: 'Departments', sub: 'Manage. Teams. Roles.', badge: '01' },
-  { title: 'Maintenance', sub: 'Maintain. Repair. Optimize.', badge: '01' },
+  { title: 'Departments', sub: 'Manage. Teams. Roles.', badge: '01', to: 'departments' },
+  { title: 'Maintenance', sub: 'Maintain. Repair. Optimize.', badge: '01', to: 'maintenance' },
 ]
 
 interface Stat {
@@ -51,8 +51,8 @@ export default function AdminHome({
               className="navrow"
               onClick={() => item.to && onNavigate(item.to)}
             >
-              <span className="navrow__tick" />
               <span className="navrow__body">
+                <span className="navrow__tick" />
                 <span className="navrow__title display">{item.title}</span>
                 <span className="navrow__sub mono-label">{item.sub}</span>
               </span>
