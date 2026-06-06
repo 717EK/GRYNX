@@ -15,23 +15,29 @@
 | `--text` | `#FFFFFF` | primary text, big numbers |
 | `--text-secondary` | `#9AA0A6` | labels, captions |
 | `--text-tertiary` | `#6B7177` | footnotes, hints |
-| `--brand-blue` | `#1E5BFF` *(sample from logo)* | primary actions, accents, active state, underlines, totals |
+| `--brand-blue` | **`#0449F1`** *(sampled from D-LYFT logo)* | primary actions, accents, active state, underlines, totals |
 | `--danger` | `#E5392E` | RC / alerts / destructive |
-| `--success` | reuse white/`--brand-blue` | "GOOD" status (currently monochrome) |
-| `--warning` | TBD (amber?) | "DELAY"/"ALERT" — confirm if a distinct color is wanted |
+| `--success` | white / `--brand-blue` | "GOOD" status (monochrome) |
+| `--warning` | **`#F5A623`** (amber) | **DELAY / ALERT** — the metric number itself renders in amber |
 
-> Status chips in the dashboard (GOOD / DELAY / ALERT) currently read as monochrome
-> text. Decide whether DELAY/ALERT get color (e.g. amber/red) or stay mono.
+> Status rule (confirmed): GOOD = monochrome; **DELAY / ALERT render the number in
+> amber `#F5A623`**. Brand blue stays reserved for primary action + neutral accents so
+> amber reads unambiguously as "attention".
 
 ## 2. Typography
-Three roles. Exact families to confirm from assets; stacks below are the intended look + safe fallbacks.
+The system runs on **two type families** (the GRYNX wordmark is a bespoke logotype, used as an image — not a system font).
 
-| Role | Look | Candidate / fallback |
-|------|------|----------------------|
-| **Display** (CREATE JOB, big titles, KPI numbers) | very heavy **condensed** grotesque, ALL CAPS, tight tracking | "Saira Condensed" / "Khand" / "Anton" → `system-ui` |
-| **Mono / data labels** (SYSTEM ONLINE, SYNC 10:42:31, `[02]`, IDs, footer) | monospace, ALL CAPS, **wide tracking 0.1–0.28em** | "Space Mono" / "JetBrains Mono" / "IBM Plex Mono" → `ui-monospace` |
-| **Body / UI** (descriptions, table cells) | clean neutral grotesque | "Inter" → `system-ui` |
-| **GRYNX wordmark** | custom geometric (notched Y) | **image asset**, not a system font |
+| Role | Look in mockups | My top pick (review) | Alternates |
+|------|-----------------|----------------------|------------|
+| **Display** — CREATE JOB, titles, KPI numbers (23, 1287) | very heavy **condensed** grotesque, ALL CAPS, tight tracking, squared terminals | **Saira Condensed** (Black/ExtraBold) | Anton · Oswald · Khand |
+| **Mono** — labels, body, captions, IDs, footer (SYSTEM ONLINE, `[02]`, "Create a new production job") | monospace, ALL CAPS for labels, **wide tracking 0.1–0.28em**; also used for supporting body text | **Space Mono** | JetBrains Mono · IBM Plex Mono · Martian Mono |
+
+> Note: supporting/body text in the mockups is **monospace too** (not a separate grotesque) —
+> that's core to the HUD feel. So only two fonts to lock.
+> If you want a system font echoing the GRYNX logo's squared style for headers, closest are
+> **Chakra Petch / Oxanium / Quantico** — but the logo itself stays an image.
+
+Fallback stacks: display → `"Saira Condensed", system-ui, sans-serif`; mono → `"Space Mono", ui-monospace, monospace`.
 
 Type scale (px): display 96/72/48/32 · title 28/22 · body 16/14 · label/mono 13/11. Uppercase tracking on mono ~0.2em.
 
