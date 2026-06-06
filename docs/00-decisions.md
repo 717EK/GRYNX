@@ -36,8 +36,15 @@ source of truth for "why" — update it whenever a decision changes.
 | D18 | Long hold escalation | Notify head @24h, Admin @72h, dashboard flag @7d (configurable). |
 | D19 | Serial traceability | Schema hooks reserved now; no V1 build. |
 
+## Design direction received (2026-06-06)
+
+- V1 UI mockups provided → see [reference/design-language.md](../reference/design-language.md) and [reference/ui-mockup-notes.md](../reference/ui-mockup-notes.md). Aesthetic: industrial command-center, true-black, heavy condensed display + monospace labels, single electric-blue accent. **Not final** (minor logo changes pending).
+- Clarification: **MNTR = Marking / Drilling etc** (not "monitor").
+
 ## Pending owner input (non-blocking for architecture)
 
-- Branding assets (D-LYFT + GRYNX logos, fonts, colors, UI screenshots) — **source of truth for all UI work**, needed before UI build begins.
-- Final per-product default pipelines (department order per product).
+- Final logo/asset files dropped into `reference/logos` + `reference/screenshots` (to lock exact hex + fonts).
+- Confirm display + monospace font families; DELAY/ALERT status colors.
+- Real dept-head names to seed (mockup shows sample names).
+- Real model-code scheme + canonical default pipeline per product (esp. Laser vs Laser+Cutting, CNC vs CNC+VMC granularity).
 - Confirm maintenance category list (proposed: Electrical, Mechanical, Utility, Facility, IT/Network, Safety, Other).
