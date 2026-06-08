@@ -40,15 +40,39 @@ function mkProduct(code: string, name: string, modelCodes: string[], steps: stri
     ],
   }
 }
-const PRODUCTS: ProductDTO[] = [
-  mkProduct('AT', 'Alloy Truss', ['AT290', 'AT400', 'AT500', 'AT600', 'AT700', 'AT800', 'AT1000'], ALLOY_STEPS, 'Aluminium truss systems'),
-  mkProduct('MT', 'MS Truss', ['MT290', 'MT400', 'MT500', 'MT600'], MS_STEPS, 'Mild-steel truss systems'),
-  mkProduct('SC', 'Scaffolding', ['SC-1.0M', 'SC-1.5M', 'SC-2.0M'], MS_STEPS),
-  mkProduct('ST', 'Stage', ['ST-4x4', 'ST-6x4', 'ST-8x6'], MS_STEPS),
-  mkProduct('MJ', 'Mojo', ['MJ-A', 'MJ-B'], MS_STEPS, 'Mojo barriers (alloy/MS)'),
-  mkProduct('LF', 'Lifter', ['LF-1T', 'LF-2T', 'LF-3T'], MS_STEPS, 'Lifters (alloy/MS)'),
-  mkProduct('SK', 'Stacker', ['SK-S', 'SK-L'], MS_STEPS),
+// Real Alloy Truss catalogue (mirrors api/prisma/seed.ts). One SKU per length.
+const ALLOY_TRUSS: [string, string[]][] = [
+  ['LD30', ['3M', '2M', '1M', '0.5M', '0.25M']],
+  ['LD38', ['3M', '2M', '1M', '0.5M', '0.25M']],
+  ['LD40', ['3M', '2M', '1M', '0.5M']],
+  ['HD38R', ['3M', '2M', '1M']],
+  ['HD40R', ['3M', '2M', '1M', '0.5M']],
+  ['HD48', ['3M', '2M', '1M', '1800MM', '1200MM', '0.5M']],
+  ['HD-48LP', ['1873MM']],
+  ['HD48R', ['3M', '1800MM', '1200MM']],
+  ['JTH2', ['3M', '2M', '1M', '0.5M']],
+  ['JTX', ['3M', '2M', '1.5M', '1M', '0.5M']],
+  ['JTEX', ['3M', '2M', '1M', '0.5M']],
+  ['MT', ['3M', '2M', '1M', '0.5M']],
+  ['MTX', ['3M', '2M', '1M', '0.5M']],
+  ['MTEX', ['3M', '2M', '1M', '0.5M']],
+  ['DT', ['3M', '2M', '1M']],
+  ['DT-XR', ['3M', '2M', '1M', '0.5M']],
+  ['LD30R', ['3M', '2M', '1M', '0.5M']],
+  ['ROUND TRUSS 380x380', ['5M', '6M']],
+  ['RT65', ['3M', '2M', '1M']],
+  ['ET50', ['3M', '2M', '1M']],
+  ['ST-30', ['3M', '2M']],
+  ['ST-35', ['3M', '2M', '1M', '0.5M', '0.25M']],
+  ['ST52', ['3M', '2M', '1.5M', '1M']],
+  ['ST40', ['3M', '2M', '1M']],
+  ['RT77', ['3M', '2M', '1M']],
+  ['RT1010', ['3M', '2M', '1M']],
+  ['DUBAI 387x387', ['3M', '1M']],
+  ['ST520V', ['3M', '2M', '1.5M', '1M']],
 ]
+const alloyModelCodes = ALLOY_TRUSS.flatMap(([t, sizes]) => sizes.map((s) => `${t} ${s}`))
+const PRODUCTS: ProductDTO[] = [mkProduct('AT', 'Alloy Truss', alloyModelCodes, ALLOY_STEPS, 'Aluminium truss systems')]
 
 type Role = ApiUser['roles'][number]
 type SeedUser = { username: string; fullName: string; roles: Role[] }

@@ -38,13 +38,44 @@ const SETTINGS: { key: string; value: unknown }[] = [
   { key: 'escalation.unacceptedHours', value: 2 }, // unaccepted past this -> backup -> admin
 ]
 
-// Catalogue — starter set covering D-LYFT's product lines. Names/models are
-// sensible defaults; the owner can refine (real catalogue is owner-managed).
-// Two default routings: ALLOY (via Alloy Production) and MS (via MS Production).
-// Pipelines are per-job editable in the UI, so these are just starting points.
-const m = (codes: string[]) => codes.map((c) => ({ code: c, name: c }))
 const ALLOY_STEPS = ['DESIGN', 'LASER', 'ALLOY_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
-const MS_STEPS = ['DESIGN', 'LASER', 'MS_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
+
+// Real Alloy Truss catalogue (owner-provided stock sheets, GT + UTT lines).
+// Each entry is [truss type, [available lengths]]; one model SKU per length,
+// coded "TYPE LENGTH" (e.g. "LD38 3M") to match the stock sheet exactly.
+const ALLOY_TRUSS: [string, string[]][] = [
+  ['LD30', ['3M', '2M', '1M', '0.5M', '0.25M']],
+  ['LD38', ['3M', '2M', '1M', '0.5M', '0.25M']],
+  ['LD40', ['3M', '2M', '1M', '0.5M']],
+  ['HD38R', ['3M', '2M', '1M']],
+  ['HD40R', ['3M', '2M', '1M', '0.5M']],
+  ['HD48', ['3M', '2M', '1M', '1800MM', '1200MM', '0.5M']],
+  ['HD-48LP', ['1873MM']],
+  ['HD48R', ['3M', '1800MM', '1200MM']],
+  ['JTH2', ['3M', '2M', '1M', '0.5M']],
+  ['JTX', ['3M', '2M', '1.5M', '1M', '0.5M']],
+  ['JTEX', ['3M', '2M', '1M', '0.5M']],
+  ['MT', ['3M', '2M', '1M', '0.5M']],
+  ['MTX', ['3M', '2M', '1M', '0.5M']],
+  ['MTEX', ['3M', '2M', '1M', '0.5M']],
+  ['DT', ['3M', '2M', '1M']],
+  ['DT-XR', ['3M', '2M', '1M', '0.5M']],
+  ['LD30R', ['3M', '2M', '1M', '0.5M']],
+  ['ROUND TRUSS 380x380', ['5M', '6M']],
+  ['RT65', ['3M', '2M', '1M']],
+  ['ET50', ['3M', '2M', '1M']],
+  ['ST-30', ['3M', '2M']],
+  ['ST-35', ['3M', '2M', '1M', '0.5M', '0.25M']],
+  ['ST52', ['3M', '2M', '1.5M', '1M']],
+  ['ST40', ['3M', '2M', '1M']],
+  ['RT77', ['3M', '2M', '1M']],
+  ['RT1010', ['3M', '2M', '1M']],
+  ['DUBAI 387x387', ['3M', '1M']],
+  ['ST520V', ['3M', '2M', '1.5M', '1M']],
+]
+const alloyModels = ALLOY_TRUSS.flatMap(([type, sizes]) =>
+  sizes.map((s) => ({ code: `${type} ${s}`, name: `${type} ${s}` })),
+)
 
 const PRODUCTS: {
   code: string
@@ -53,13 +84,7 @@ const PRODUCTS: {
   models: { code: string; name: string }[]
   pipeline: { name: string; steps: string[] }
 }[] = [
-  { code: 'AT', name: 'Alloy Truss', description: 'Aluminium truss systems', models: m(['AT290', 'AT400', 'AT500', 'AT600', 'AT700', 'AT800', 'AT1000']), pipeline: { name: 'Alloy Truss Default', steps: ALLOY_STEPS } },
-  { code: 'MT', name: 'MS Truss', description: 'Mild-steel truss systems', models: m(['MT290', 'MT400', 'MT500', 'MT600']), pipeline: { name: 'MS Truss Default', steps: MS_STEPS } },
-  { code: 'SC', name: 'Scaffolding', models: m(['SC-1.0M', 'SC-1.5M', 'SC-2.0M']), pipeline: { name: 'Scaffolding Default', steps: MS_STEPS } },
-  { code: 'ST', name: 'Stage', models: m(['ST-4x4', 'ST-6x4', 'ST-8x6']), pipeline: { name: 'Stage Default', steps: MS_STEPS } },
-  { code: 'MJ', name: 'Mojo', description: 'Mojo barriers (alloy/MS)', models: m(['MJ-A', 'MJ-B']), pipeline: { name: 'Mojo Default', steps: MS_STEPS } },
-  { code: 'LF', name: 'Lifter', description: 'Lifters (alloy/MS)', models: m(['LF-1T', 'LF-2T', 'LF-3T']), pipeline: { name: 'Lifter Default', steps: MS_STEPS } },
-  { code: 'SK', name: 'Stacker', models: m(['SK-S', 'SK-L']), pipeline: { name: 'Stacker Default', steps: MS_STEPS } },
+  { code: 'AT', name: 'Alloy Truss', description: 'Aluminium truss systems', models: alloyModels, pipeline: { name: 'Alloy Truss Default', steps: ALLOY_STEPS } },
 ]
 
 const DEMO_PIN = '123456'
@@ -98,20 +123,30 @@ async function main() {
   }
 
   // ── catalogue + pipelines ────────────────────────────────────────────────
+  // hide any product not in the current list (e.g. earlier placeholder lines)
+  await prisma.product.updateMany({
+    where: { code: { notIn: PRODUCTS.map((p) => p.code) } },
+    data: { active: false },
+  })
   for (const p of PRODUCTS) {
     const product = await prisma.product.upsert({
       where: { code: p.code },
-      update: { name: p.name, description: p.description },
+      update: { name: p.name, description: p.description, active: true },
       create: { code: p.code, name: p.name, description: p.description },
     })
 
     for (const m of p.models) {
       await prisma.model.upsert({
         where: { productId_code: { productId: product.id, code: m.code } },
-        update: { name: m.name },
+        update: { name: m.name, active: true },
         create: { productId: product.id, code: m.code, name: m.name },
       })
     }
+    // retire models no longer in the list (old placeholder SKUs)
+    await prisma.model.updateMany({
+      where: { productId: product.id, code: { notIn: p.models.map((m) => m.code) } },
+      data: { active: false },
+    })
 
     // pipeline template (+ steps). Rebuild steps to match the declared order.
     let template = await prisma.pipelineTemplate.findFirst({
