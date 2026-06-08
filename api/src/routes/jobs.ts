@@ -8,6 +8,7 @@ import { notifyDepartment } from '../lib/notify.js'
 import { nextDailySequence } from '../lib/sequence.js'
 import { buildDisplayLabel, dailyScope, opaqueJobNo } from '../lib/label.js'
 import { acceptanceDueAt } from '../lib/sla.js'
+import { renderJobCard } from '../lib/jobcard.js'
 
 const createSchema = z.object({
   productId: z.string().uuid(),
@@ -188,5 +189,31 @@ export async function jobRoutes(app: FastifyInstance) {
     })
     if (!job) return reply.code(404).send({ error: 'not_found' })
     return { job }
+  })
+
+  // ── printable job card (QR + Code128 encode the opaque jobNo) ───────────────
+  app.get('/:id/card', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const job = await prisma.job.findUnique({
+      where: { id },
+      include: {
+        product: { select: { name: true } },
+        models: { include: { model: { select: { code: true, name: true } } } },
+        steps: { orderBy: { sequence: 'asc' }, include: { department: { select: { name: true } } } },
+      },
+    })
+    if (!job) return reply.code(404).send({ error: 'not_found' })
+    const html = await renderJobCard({
+      jobNo: job.jobNo,
+      displayLabel: job.displayLabel,
+      productName: job.product.name,
+      priority: job.priority,
+      totalQty: job.totalQty,
+      createdAt: job.createdAt,
+      startDate: job.startDate,
+      models: job.models.map((m) => ({ code: m.model.code, name: m.model.name, quantity: m.quantity })),
+      steps: job.steps.map((s) => ({ sequence: s.sequence, name: s.department.name })),
+    })
+    return reply.type('text/html; charset=utf-8').send(html)
   })
 }
