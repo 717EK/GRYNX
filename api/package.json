@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "description": "GRYNX backend — Fastify + Prisma (Postgres). Single write authority for the job state machine + scan engine.",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",

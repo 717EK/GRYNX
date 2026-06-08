@@ -1,0 +1,27 @@
+# Render Blueprint for the GRYNX API (https://render.com).
+# In Render: New + → Blueprint → connect the 717EK/GRYNX repo → it reads this.
+# DB stays on Neon; set DATABASE_URL + CORS_ORIGINS in the dashboard (sync:false).
+services:
+  - type: web
+    name: grynx-api
+    runtime: node
+    rootDir: api
+    plan: free
+    # devDeps (prisma, typescript) are needed to generate the client + compile.
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    # migrate is idempotent (Neon already migrated) then launch the compiled server.
+    startCommand: npx prisma migrate deploy && node dist/server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Paste your Neon connection string (the same one in api/.env).
+      - key: DATABASE_URL
+        sync: false
+      # Real signing secret for production — Render generates a strong random one.
+      - key: JWT_SECRET
+        generateValue: true
+      # Must include your Vercel URL, e.g. https://grynx.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
