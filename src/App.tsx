@@ -16,6 +16,8 @@ import PpcRequest from './pages/PpcRequest'
 import QcInspection from './pages/QcInspection'
 import FgClosure from './pages/FgClosure'
 import ScanPage from './pages/ScanPage'
+import SignupPage from './pages/SignupPage'
+import Approvals from './pages/Approvals'
 import UpdatePrompt from './components/UpdatePrompt'
 import { registerNav } from './lib/nav'
 import type { SessionUser } from './components/UtilityBars'
@@ -39,6 +41,8 @@ export type Screen =
   | 'qc'
   | 'fgclosure'
   | 'scan'
+  | 'signup'
+  | 'approvals'
 
 const FLOOR_ROLES = ['dept_head', 'qc', 'fg_stock', 'maintenance']
 
@@ -106,10 +110,14 @@ export default function App() {
     setScreen('login')
   }
 
-  if (screen === 'login' || !user) {
+  if (!user) {
     return (
       <>
-        <LoginPage onLogin={handleLogin} />
+        {screen === 'signup' ? (
+          <SignupPage onBack={() => go('login')} />
+        ) : (
+          <LoginPage onLogin={handleLogin} onSignup={() => go('signup')} />
+        )}
         <UpdatePrompt />
       </>
     )
@@ -119,6 +127,8 @@ export default function App() {
     switch (screen) {
       case 'scan':
         return <ScanPage user={user} onLock={handleLock} />
+      case 'approvals':
+        return <Approvals user={user} onBack={() => go('home')} onLock={handleLock} />
       case 'overview':
         return <AdminOverview user={user} onBack={() => go('home')} onLock={handleLock} onOpenInsights={() => go('insights')} />
       case 'insights':

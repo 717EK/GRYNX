@@ -9,7 +9,7 @@ import './LoginPage.css'
 const PIN_LENGTH = 6
 const LAST_USER_KEY = 'grynx-last-username'
 
-export default function LoginPage({ onLogin }: { onLogin: (user: ApiUser) => void }) {
+export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUser) => void; onSignup: () => void }) {
   const [username, setUsername] = useState<string>(() => localStorage.getItem(LAST_USER_KEY) ?? '')
   const [digits, setDigits] = useState<string[]>(Array(PIN_LENGTH).fill(''))
   const [error, setError] = useState<string | null>(null)
@@ -27,10 +27,12 @@ export default function LoginPage({ onLogin }: { onLogin: (user: ApiUser) => voi
       localStorage.setItem(LAST_USER_KEY, u.username)
       onLogin(u)
     } catch (e) {
-      const msg =
-        e instanceof ApiError && e.status === 429
-          ? 'Too many attempts — wait a minute'
-          : 'Incorrect username or PIN'
+      let msg = 'Incorrect username or PIN'
+      if (e instanceof ApiError) {
+        if (e.status === 429) msg = 'Too many attempts — wait a minute'
+        else if (e.message === 'account_pending') msg = 'Account awaiting admin approval'
+        else if (e.message === 'account_suspended') msg = 'Account suspended — contact admin'
+      }
       setError(msg)
       setDigits(Array(PIN_LENGTH).fill(''))
       inputs.current[0]?.focus()
@@ -128,6 +130,9 @@ export default function LoginPage({ onLogin }: { onLogin: (user: ApiUser) => voi
             <span className="btn__arrow">→</span>
           </button>
 
+          <button className="login__signup mono-label" onClick={onSignup}>
+            New here? <b>Create an account</b>
+          </button>
           <button className="login__forgot mono-label">Forgot PIN?</button>
         </div>
       </main>

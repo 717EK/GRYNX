@@ -72,7 +72,9 @@ async function req<T>(method: string, path: string, body?: unknown, _retry = tru
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
-      'Content-Type': 'application/json',
+      // only set JSON content-type when there's a body — Fastify 400s on an
+      // empty body with application/json (e.g. bodyless POST /approve)
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...(access ? { Authorization: `Bearer ${access}` } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -110,6 +112,37 @@ export function logout() {
 }
 
 export const me = () => req<{ user: ApiUser }>('GET', '/api/v1/auth/me')
+
+// ── signup + approval ────────────────────────────────────────────────────────
+export interface DeptLite {
+  id: string
+  code: string
+  name: string
+}
+export const publicDepartments = () =>
+  req<{ departments: DeptLite[] }>('GET', '/api/v1/auth/departments')
+
+export interface SignupInput {
+  phone: string
+  fullName: string
+  departmentId: string
+  pin: string
+}
+export const signup = (input: SignupInput) =>
+  req<{ user: { id: string; username: string; status: string }; message: string }>('POST', '/api/v1/auth/signup', input)
+
+export interface PendingUser {
+  id: string
+  username: string
+  fullName: string
+  status: string
+  createdAt: string
+  roles: { role: string; department: { code: string; name: string } | null }[]
+}
+export const listUsers = (status?: 'pending' | 'active' | 'suspended') =>
+  req<{ users: PendingUser[] }>('GET', `/api/v1/users${status ? `?status=${status}` : ''}`)
+export const approveUser = (id: string) => req<{ ok: boolean }>('POST', `/api/v1/users/${id}/approve`)
+export const rejectUser = (id: string) => req<{ ok: boolean }>('POST', `/api/v1/users/${id}/reject`)
 
 // ── catalogue ───────────────────────────────────────────────────────────────
 export interface ProductDTO {
