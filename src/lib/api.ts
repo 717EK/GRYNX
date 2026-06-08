@@ -260,3 +260,14 @@ export async function scan(input: ScanInput): Promise<{ status: number; data: Sc
 
 export const newIdempotencyKey = () =>
   (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`)
+
+/** Is the real API reachable? Always false in demo mode (no server configured). */
+export async function ping(): Promise<boolean> {
+  if (DEMO) return false
+  try {
+    const r = await fetch(`${BASE}/health`, { cache: 'no-store' })
+    return r.ok
+  } catch {
+    return false
+  }
+}

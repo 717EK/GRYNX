@@ -158,13 +158,67 @@ button {
 .ubar--bottom__mid {
   text-align: center;
 }
+.ubar--bottom {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  padding-left: max(18px, env(safe-area-inset-left));
+  padding-right: max(18px, env(safe-area-inset-right));
+}
 .ubar__version {
   color: var(--brand);
   font-weight: 700;
+  white-space: nowrap;
+  justify-self: start;
+}
+.conn {
+  justify-self: center;
+}
+.ubar__secure {
+  white-space: nowrap;
+  justify-self: end;
+}
+/* live link-to-server status pill (footer middle) */
+.conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.conn__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+}
+.conn--online {
+  background: #2e9e5b;
+}
+.conn--offline {
+  background: var(--danger, #e5392e);
+}
+.conn--demo {
+  background: var(--brand);
+  color: var(--on-brand, #0a0a0a);
+}
+.conn--demo .conn__dot {
+  background: rgba(10, 10, 10, 0.7);
 }
 @media (max-width: 560px) {
-  .ubar--bottom__mid {
-    display: none;
+  .ubar--bottom {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+  .conn {
+    font-size: 9px;
+    padding: 3px 10px;
+    letter-spacing: 0.1em;
   }
 }
 

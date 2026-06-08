@@ -1,4 +1,5 @@
-import { useClock, useUptime } from '../lib/useClock'
+import { useClock } from '../lib/useClock'
+import { useConnection, type Conn } from '../lib/useConnection'
 import { navTo } from '../lib/nav'
 import ThemePicker from './ThemePicker'
 import grynxWordmark from '../assets/grynx-wordmark.png'
@@ -52,25 +53,9 @@ export function TopBar({
     <header className="ubar ubar--top">
       <Brand inApp={!!user} />
 
-      {/* full segments (tablet/desktop) */}
+      {/* full segments (tablet/desktop) — live link status now lives in the footer */}
       <div className="ubar__mid">
-        <Seg k="SYSTEM" v="ONLINE" />
         <Seg k="SYNC" v={time} />
-        <Seg k="STATUS" v="OK" />
-        <Seg
-          k="NET"
-          v={
-            <>
-              SECURE <span className="lock">🔒</span>
-            </>
-          }
-        />
-      </div>
-
-      {/* compact status (mobile) */}
-      <div className="ubar__status-mobile">
-        <span className="status-dot" />
-        OK
       </div>
 
       <div className="ubar__right">
@@ -100,13 +85,23 @@ export function TopBar({
   )
 }
 
+const CONN: Record<Conn, { label: string; cls: string }> = {
+  online: { label: 'ONLINE', cls: 'conn--online' },
+  offline: { label: 'OFFLINE', cls: 'conn--offline' },
+  demo: { label: 'DEMO', cls: 'conn--demo' },
+}
+
 export function BottomBar() {
-  const uptime = useUptime()
+  const conn = useConnection()
+  const { label, cls } = CONN[conn]
   return (
     <footer className="ubar ubar--bottom">
       <span className="ubar__version">GRYNX {APP_VERSION}</span>
-      <span className="ubar--bottom__mid">UPTIME {uptime}</span>
-      <span>DATA ENCRYPTED AES-256</span>
+      <span className={`conn ${cls}`}>
+        <span className="conn__dot" />
+        {label}
+      </span>
+      <span className="ubar__secure">{conn === 'demo' ? 'LOCAL DATA' : 'ENCRYPTED · TLS'}</span>
     </footer>
   )
 }
