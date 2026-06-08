@@ -1,7 +1,13 @@
 // GRYNX API client — typed, with token storage + transparent refresh.
-// Base URL from VITE_API_BASE (defaults to local dev).
+// Base URL from VITE_API_BASE; when unset, routes to the in-browser demo backend.
+import * as demo from './demo'
 
-const BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:4000'
+const RAW_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
+// No API URL configured → run the in-browser DEMO backend (src/lib/demo.ts).
+// This is what makes the Vercel build work with no server. Set VITE_API_BASE
+// (Render / Mac Mini) to switch to the real API with zero code change.
+export const DEMO = !RAW_BASE
+const BASE = (RAW_BASE ?? '').replace(/\/$/, '')
 
 export type RoleName = 'admin' | 'ppc' | 'dept_head' | 'qc' | 'fg_stock' | 'maintenance'
 export interface Role {
@@ -90,6 +96,14 @@ async function req<T>(method: string, path: string, body?: unknown, _retry = tru
 
 // ── auth ──────────────────────────────────────────────────────────────────
 export async function login(username: string, pin: string): Promise<ApiUser> {
+  if (DEMO) {
+    const data = demo.demoLogin(username, pin) // throws ApiError on bad creds
+    access = data.accessToken
+    refresh = data.refreshToken
+    user = data.user
+    persist()
+    return user!
+  }
   const res = await fetch(`${BASE}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -111,7 +125,7 @@ export function logout() {
   persist()
 }
 
-export const me = () => req<{ user: ApiUser }>('GET', '/api/v1/auth/me')
+export const me = () => (DEMO ? Promise.resolve({ user: getUser()! }) : req<{ user: ApiUser }>('GET', '/api/v1/auth/me'))
 
 // ── signup + approval ────────────────────────────────────────────────────────
 export interface DeptLite {
@@ -120,7 +134,7 @@ export interface DeptLite {
   name: string
 }
 export const publicDepartments = () =>
-  req<{ departments: DeptLite[] }>('GET', '/api/v1/auth/departments')
+  DEMO ? demo.demoDepartments() : req<{ departments: DeptLite[] }>('GET', '/api/v1/auth/departments')
 
 export interface SignupInput {
   phone: string
@@ -129,7 +143,9 @@ export interface SignupInput {
   pin: string
 }
 export const signup = (input: SignupInput) =>
-  req<{ user: { id: string; username: string; status: string }; message: string }>('POST', '/api/v1/auth/signup', input)
+  DEMO
+    ? demo.demoSignup(input)
+    : req<{ user: { id: string; username: string; status: string }; message: string }>('POST', '/api/v1/auth/signup', input)
 
 export interface PendingUser {
   id: string
@@ -140,9 +156,11 @@ export interface PendingUser {
   roles: { role: string; department: { code: string; name: string } | null }[]
 }
 export const listUsers = (status?: 'pending' | 'active' | 'suspended') =>
-  req<{ users: PendingUser[] }>('GET', `/api/v1/users${status ? `?status=${status}` : ''}`)
-export const approveUser = (id: string) => req<{ ok: boolean }>('POST', `/api/v1/users/${id}/approve`)
-export const rejectUser = (id: string) => req<{ ok: boolean }>('POST', `/api/v1/users/${id}/reject`)
+  DEMO ? demo.demoListUsers(status) : req<{ users: PendingUser[] }>('GET', `/api/v1/users${status ? `?status=${status}` : ''}`)
+export const approveUser = (id: string) =>
+  DEMO ? demo.demoSetStatus(id, 'active') : req<{ ok: boolean }>('POST', `/api/v1/users/${id}/approve`)
+export const rejectUser = (id: string) =>
+  DEMO ? demo.demoSetStatus(id, 'suspended') : req<{ ok: boolean }>('POST', `/api/v1/users/${id}/reject`)
 
 // ── catalogue ───────────────────────────────────────────────────────────────
 export interface ProductDTO {
@@ -153,9 +171,11 @@ export interface ProductDTO {
   models: { id: string; code: string; name: string }[]
   pipelines: { id: string; name: string; isDefault: boolean; steps: { sequence: number; department: { id: string; code: string; name: string } }[] }[]
 }
-export const getProducts = () => req<{ products: ProductDTO[] }>('GET', '/api/v1/products')
+export const getProducts = () => (DEMO ? demo.demoProducts() : req<{ products: ProductDTO[] }>('GET', '/api/v1/products'))
 export const getDepartments = () =>
-  req<{ departments: { id: string; code: string; name: string; sortOrder: number }[] }>('GET', '/api/v1/departments')
+  DEMO
+    ? demo.demoDepartments().then((d) => ({ departments: d.departments.map((x, i) => ({ ...x, sortOrder: (i + 1) * 10 })) }))
+    : req<{ departments: { id: string; code: string; name: string; sortOrder: number }[] }>('GET', '/api/v1/departments')
 
 // ── jobs ──────────────────────────────────────────────────────────────────
 export interface JobStepDTO {
@@ -179,8 +199,8 @@ export interface JobDTO {
 }
 
 export const getJobs = (status?: string) =>
-  req<{ jobs: JobDTO[] }>('GET', `/api/v1/jobs${status ? `?status=${status}` : ''}`)
-export const getJob = (id: string) => req<{ job: JobDTO }>('GET', `/api/v1/jobs/${id}`)
+  DEMO ? demo.demoGetJobs() : req<{ jobs: JobDTO[] }>('GET', `/api/v1/jobs${status ? `?status=${status}` : ''}`)
+export const getJob = (id: string) => (DEMO ? demo.demoGetJob(id) : req<{ job: JobDTO }>('GET', `/api/v1/jobs/${id}`))
 
 export interface CreateJobInput {
   productId: string
@@ -190,10 +210,11 @@ export interface CreateJobInput {
   models: { modelId: string; quantity: number }[]
 }
 export const createJob = (input: CreateJobInput) =>
-  req<{ job: JobDTO }>('POST', '/api/v1/jobs', input)
+  DEMO ? demo.demoCreateJob(input) : req<{ job: JobDTO }>('POST', '/api/v1/jobs', input)
 
 /** Fetch the printable job-card HTML with the auth header (keeps token out of URLs). */
 export async function getJobCardHtml(id: string): Promise<string> {
+  if (DEMO) return demo.demoJobCardHtml(id)
   const res = await fetch(`${BASE}/api/v1/jobs/${id}/card`, {
     headers: access ? { Authorization: `Bearer ${access}` } : {},
   })
@@ -226,6 +247,7 @@ export interface ScanInput {
   stationDepartmentId?: string
 }
 export async function scan(input: ScanInput): Promise<{ status: number; data: ScanResult }> {
+  if (DEMO) return demo.demoScanForUser(getUser()?.roles ?? [], input.jobNo, input.preview ?? false)
   // scan never auto-throws on 409/403 — the caller renders the result/exception
   const res = await fetch(`${BASE}/api/v1/scan`, {
     method: 'POST',

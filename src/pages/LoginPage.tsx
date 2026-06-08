@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { TopBar, BottomBar } from '../components/UtilityBars'
-import { login as apiLogin, ApiError, type ApiUser } from '../lib/api'
+import { login as apiLogin, ApiError, DEMO, type ApiUser } from '../lib/api'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark.png'
 import dlyftWordmarkLight from '../assets/dlyft-wordmark-light.png'
@@ -89,6 +89,7 @@ export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUs
         <div className="login__inner">
           <img className="login__grynx" src={grynxWordmark} alt="GRYNX" />
           <span className="login__tagline mono-label">Track. Sync. Execute.</span>
+          {DEMO && <span className="login__demo mono-label">DEMO MODE · no server · data saved on this device</span>}
 
           <div className="login__divider" />
 

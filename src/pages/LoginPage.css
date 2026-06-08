@@ -153,3 +153,13 @@
 .login__signup b {
   color: var(--brand);
 }
+
+.login__demo {
+  margin-top: 10px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--on-brand, #0a0a0a);
+  background: var(--brand);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
