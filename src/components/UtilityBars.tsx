@@ -2,6 +2,7 @@ import { useClock, useUptime } from '../lib/useClock'
 import ThemePicker from './ThemePicker'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark.png'
+import dlyftWordmarkLight from '../assets/dlyft-wordmark-light.png'
 
 export interface SessionUser {
   name: string
@@ -18,7 +19,8 @@ function Brand({ inApp }: { inApp?: boolean }) {
       {inApp && (
         <>
           <span className="vrule" />
-          <img className="logo-dlyft-sm" src={dlyftWordmark} alt="D-LYFT" />
+          <img className="logo-dlyft-sm logo--dark" src={dlyftWordmark} alt="D-LYFT" />
+          <img className="logo-dlyft-sm logo--light" src={dlyftWordmarkLight} alt="D-LYFT" />
         </>
       )}
     </div>

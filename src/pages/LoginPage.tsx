@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark.png'
+import dlyftWordmarkLight from '../assets/dlyft-wordmark-light.png'
 import './LoginPage.css'
 
 const PIN_LENGTH = 6
@@ -55,7 +56,8 @@ export default function LoginPage({
 
           <div className="login__divider" />
 
-          <img className="login__logo" src={dlyftWordmark} alt="D-LYFT" />
+          <img className="login__logo logo--dark" src={dlyftWordmark} alt="D-LYFT" />
+          <img className="login__logo logo--light" src={dlyftWordmarkLight} alt="D-LYFT" />
 
           <div className="login__accent" />
 

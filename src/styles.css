@@ -34,6 +34,24 @@
   color-scheme: dark;
 }
 
+/* ---- Day (light) mode ---- */
+[data-mode='light'] {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-raised: #eceef2;
+  --border: #e1e4e9;
+  --border-strong: #c8cdd5;
+  --text: #0e1116;
+  --text-secondary: #5b626c;
+  --text-tertiary: #8a9099;
+  color-scheme: light;
+}
+/* white wordmarks need inverting on a light canvas */
+[data-mode='light'] .logo-grynx-img,
+[data-mode='light'] .login__grynx {
+  filter: invert(1);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -152,6 +170,16 @@ button {
   width: auto;
   display: block;
   opacity: 0.92;
+}
+/* day/night logo variant swap */
+.logo--light {
+  display: none;
+}
+[data-mode='light'] .logo--dark {
+  display: none;
+}
+[data-mode='light'] .logo--light {
+  display: block;
 }
 .vrule {
   width: 1px;

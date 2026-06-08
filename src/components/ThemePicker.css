@@ -35,6 +35,26 @@
   display: block;
   margin-bottom: 8px;
 }
+.theme__modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.theme__mode {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.theme__mode.is-active {
+  border-color: var(--brand);
+  color: var(--text);
+}
 .theme__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

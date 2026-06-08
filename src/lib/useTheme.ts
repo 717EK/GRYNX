@@ -18,7 +18,10 @@ export const THEMES: Theme[] = [
   { id: 'rose', name: 'Rose', brand: '#fb7185', on: '#1a0508' },
 ]
 
+export type Mode = 'dark' | 'light'
+
 const KEY = 'grynx-theme'
+const MODE_KEY = 'grynx-mode'
 
 export function applyTheme(id: string) {
   const t = THEMES.find((x) => x.id === id) || THEMES[0]
@@ -27,11 +30,23 @@ export function applyTheme(id: string) {
   root.style.setProperty('--on-brand', t.on)
 }
 
+export function applyMode(mode: Mode) {
+  document.documentElement.dataset.mode = mode
+}
+
 export function useTheme() {
   const [id, setId] = useState(() => localStorage.getItem(KEY) || 'amber')
+  const [mode, setMode] = useState<Mode>(() => (localStorage.getItem(MODE_KEY) as Mode) || 'dark')
+
   useEffect(() => {
     applyTheme(id)
     localStorage.setItem(KEY, id)
   }, [id])
-  return { id, setId }
+
+  useEffect(() => {
+    applyMode(mode)
+    localStorage.setItem(MODE_KEY, mode)
+  }, [mode])
+
+  return { id, setId, mode, setMode }
 }

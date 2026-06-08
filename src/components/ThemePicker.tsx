@@ -3,7 +3,7 @@ import { THEMES, useTheme } from '../lib/useTheme'
 import './ThemePicker.css'
 
 export default function ThemePicker() {
-  const { id, setId } = useTheme()
+  const { id, setId, mode, setMode } = useTheme()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -27,6 +27,21 @@ export default function ThemePicker() {
       </button>
       {open && (
         <div className="theme__menu">
+          <span className="theme__label mono-label">Mode</span>
+          <div className="theme__modes">
+            <button
+              className={`theme__mode ${mode === 'dark' ? 'is-active' : ''}`}
+              onClick={() => setMode('dark')}
+            >
+              ☾ Night
+            </button>
+            <button
+              className={`theme__mode ${mode === 'light' ? 'is-active' : ''}`}
+              onClick={() => setMode('light')}
+            >
+              ☀ Day
+            </button>
+          </div>
           <span className="theme__label mono-label">Accent</span>
           <div className="theme__grid">
             {THEMES.map((t) => (
