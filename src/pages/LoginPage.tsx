@@ -10,28 +10,35 @@ const PIN_LENGTH = 6
 const LAST_USER_KEY = 'grynx-last-username'
 
 export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUser) => void; onSignup: () => void }) {
-  const [username, setUsername] = useState<string>(() => localStorage.getItem(LAST_USER_KEY) ?? '')
+  const remembered = localStorage.getItem(LAST_USER_KEY) ?? ''
+  // returning users go straight to PIN entry; first-timers get the ID field
+  const [editingUser, setEditingUser] = useState(remembered === '')
+  const [username, setUsername] = useState(remembered.toUpperCase())
   const [digits, setDigits] = useState<string[]>(Array(PIN_LENGTH).fill(''))
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const inputs = useRef<Array<HTMLInputElement | null>>([])
 
-  const complete = username.trim() !== '' && digits.every((d) => d !== '')
+  const loginId = (editingUser ? username : remembered).trim()
+  const complete = loginId !== '' && digits.every((d) => d !== '')
 
   async function submit() {
     if (!complete || busy) return
     setBusy(true)
     setError(null)
     try {
-      const u = await apiLogin(username.trim().toLowerCase(), digits.join(''))
-      localStorage.setItem(LAST_USER_KEY, u.username)
+      const u = await apiLogin(loginId.toUpperCase(), digits.join(''))
+      localStorage.setItem(LAST_USER_KEY, u.username) // remember for next time
       onLogin(u)
     } catch (e) {
-      let msg = 'Incorrect username or PIN'
+      let msg = 'Incorrect login ID or PIN'
       if (e instanceof ApiError) {
         if (e.status === 429) msg = 'Too many attempts — wait a minute'
         else if (e.message === 'account_pending') msg = 'Account awaiting admin approval'
         else if (e.message === 'account_suspended') msg = 'Account suspended — contact admin'
+      } else {
+        // fetch threw (server down / wrong API URL / no network) — not a bad PIN
+        msg = 'Can’t reach the server — check your connection'
       }
       setError(msg)
       setDigits(Array(PIN_LENGTH).fill(''))
@@ -39,6 +46,14 @@ export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUs
     } finally {
       setBusy(false)
     }
+  }
+
+  function switchUser() {
+    localStorage.removeItem(LAST_USER_KEY)
+    setUsername('')
+    setEditingUser(true)
+    setError(null)
+    setDigits(Array(PIN_LENGTH).fill(''))
   }
 
   function setDigit(i: number, val: string) {
@@ -83,24 +98,26 @@ export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUs
           <div className="login__accent" />
 
           <div className="login__welcome">
-            <span className="mono-label">Welcome</span>
-            <h1 className="login__name display">Sign in</h1>
-            <span className="login__hint">Enter your username &amp; PIN</span>
+            <span className="mono-label">{editingUser ? 'Welcome' : 'Welcome back'}</span>
+            <h1 className="login__name display">{editingUser ? 'Sign in' : remembered.toUpperCase()}</h1>
+            <span className="login__hint">{editingUser ? 'Enter your login ID & PIN' : 'Enter your PIN to continue'}</span>
           </div>
 
-          <input
-            className="login__user"
-            placeholder="username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            value={username}
-            onChange={(e) => {
-              if (error) setError(null)
-              setUsername(e.target.value)
-            }}
-            aria-label="Username"
-          />
+          {editingUser && (
+            <input
+              className="login__user"
+              placeholder="LOGIN ID"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              value={username}
+              onChange={(e) => {
+                if (error) setError(null)
+                setUsername(e.target.value.toUpperCase())
+              }}
+              aria-label="Login ID"
+            />
+          )}
 
           <div className={`pin ${error ? 'is-wrong' : ''}`} onPaste={onPaste}>
             {digits.map((d, i) => (
@@ -130,9 +147,15 @@ export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUs
             <span className="btn__arrow">→</span>
           </button>
 
-          <button className="login__signup mono-label" onClick={onSignup}>
-            New here? <b>Create an account</b>
-          </button>
+          {!editingUser ? (
+            <button className="login__signup mono-label" onClick={switchUser}>
+              Not {remembered.toUpperCase()}? <b>Switch account</b>
+            </button>
+          ) : (
+            <button className="login__signup mono-label" onClick={onSignup}>
+              New here? <b>Create an account</b>
+            </button>
+          )}
           <button className="login__forgot mono-label">Forgot PIN?</button>
         </div>
       </main>

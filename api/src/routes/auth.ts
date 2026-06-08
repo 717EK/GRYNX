@@ -65,14 +65,18 @@ export async function authRoutes(app: FastifyInstance) {
   app.post('/login', async (req, reply) => {
     const parsed = loginSchema.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: 'bad_request', detail: parsed.error.issues })
-    const { username, pin, password } = parsed.data
+    const { pin, password } = parsed.data
+    // Username is case-insensitive: 'aashish' / 'AASHISH' / 'Aashish' all match.
+    // Throttle on the normalised key so case can't be used to dodge the limit.
+    const username = parsed.data.username.trim()
+    const throttleKey = username.toUpperCase()
 
-    const waitMs = lockState(username)
+    const waitMs = lockState(throttleKey)
     if (waitMs > 0) {
       return reply.code(429).send({ error: 'too_many_attempts', retryAfterMs: waitMs })
     }
 
-    const user = await prisma.user.findUnique({ where: { username } })
+    const user = await prisma.user.findFirst({ where: { username: { equals: username, mode: 'insensitive' } } })
     // Always run a verify to keep timing roughly constant whether or not the
     // user exists (avoids username enumeration via response time).
     const hash = pin ? user?.pinHash : user?.passwordHash
@@ -85,10 +89,10 @@ export async function authRoutes(app: FastifyInstance) {
         : await verifySecret('$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'x').then(() => false)
 
     if (!ok || !user) {
-      recordFail(username)
+      recordFail(throttleKey)
       return reply.code(401).send({ error: 'invalid_credentials' })
     }
-    clearFails(username)
+    clearFails(throttleKey)
 
     if (user.status !== 'active') {
       return reply.code(403).send({ error: user.status === 'pending' ? 'account_pending' : 'account_suspended' })
