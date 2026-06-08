@@ -187,8 +187,14 @@
   text-transform: uppercase;
 }
 .csel__chev {
-  font-size: 22px;
+  display: grid;
+  place-items: center;
   color: var(--text-secondary);
+  flex: none;
+  transition: transform 0.15s ease;
+}
+.csel__chev.is-open {
+  transform: rotate(180deg);
 }
 .csel__panel {
   position: absolute;
@@ -204,14 +210,23 @@
 }
 .csel__addrow {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   text-align: left;
   color: var(--brand);
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-size: 11px;
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--brand);
+  border-radius: var(--r);
+  margin-bottom: 6px;
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+.csel__addrow:hover {
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
 }
 .csel__plus {
   font-size: 14px;
@@ -319,14 +334,22 @@
   padding: 12px 10px;
   color: var(--text-tertiary);
 }
-/* adder-mode panel opens upward, wider than its small trigger */
+/* adder-mode panel opens upward, larger, search-first */
 .csel__panel--adder {
   top: auto;
   bottom: calc(100% + 6px);
   left: 0;
   right: auto;
-  width: 280px;
-  max-width: 82vw;
+  width: 340px;
+  max-width: 90vw;
+  padding: 8px;
+}
+.csel__panel--adder .csel__list {
+  max-height: 240px;
+}
+.csel__panel--adder .csel__search {
+  font-size: 13px;
+  padding: 10px 12px;
 }
 
 /* "Expand +" text control next to a section label (same size as the label) */
@@ -338,11 +361,12 @@
   filter: brightness(1.15);
 }
 
-/* MODELS table — static head/foot, scrollable rows window */
+/* MODELS table — static head/foot, scrollable rows window.
+   overflow:visible so the Add Model popup can escape the table box. */
 .mtable {
   border: 1px solid var(--border);
   border-radius: var(--r-card);
-  overflow: hidden;
+  overflow: visible;
 }
 .mtable__head {
   display: flex;
@@ -351,11 +375,13 @@
   background: var(--surface-raised);
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
+  border-radius: var(--r-card) var(--r-card) 0 0;
   font-size: 10px;
 }
 .mtable__rows {
-  max-height: 126px;
+  max-height: 140px; /* VISIBLE_MODEL_ROWS × 28px row */
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .mtable__rows.is-expanded {
   max-height: none;
@@ -365,7 +391,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 2px 16px;
+  padding: 0 16px;
+  min-height: 28px;
   border-bottom: 1px solid var(--border);
 }
 .mrow__code {
@@ -373,11 +400,12 @@
   border: none;
   outline: none;
   color: var(--text);
-  font-size: 20px;
+  font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
   width: 60%;
-  padding: 4px 0;
+  padding: 3px 0;
   border-bottom: 1px solid transparent;
 }
 .mrow__code:focus {
@@ -393,11 +421,11 @@
   border: none;
   outline: none;
   color: var(--text);
-  font-size: 20px;
+  font-size: 13px;
   font-weight: 800;
   text-align: right;
-  width: 64px;
-  padding: 4px 0;
+  width: 56px;
+  padding: 3px 0;
   border-bottom: 1px solid transparent;
   -moz-appearance: textfield;
 }
@@ -423,17 +451,15 @@
 .mrow--ph {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 2px 16px;
+  padding: 0 16px;
+  min-height: 28px;
   border-bottom: 1px solid var(--border);
 }
-.mrow__ph {
-  font-size: 20px;
-  font-weight: 800;
-  text-transform: uppercase;
+.mrow__hint {
   color: var(--text-tertiary);
-  opacity: 0.4;
-  padding: 4px 0;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-size: 10px;
 }
 .mtable__foot {
   display: flex;

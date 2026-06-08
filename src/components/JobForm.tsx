@@ -43,6 +43,10 @@ interface Model {
 }
 let nextId = 100
 
+// Default visible rows — kept constant so the table never changes height
+// (deleting a model just swaps a row for a blank placeholder). Scrolls past this.
+const VISIBLE_MODEL_ROWS = 5
+
 export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
   const [products, setProducts] = useState<Option[]>(INITIAL_PRODUCTS)
   const [productCode, setProductCode] = useState('AT')
@@ -150,11 +154,15 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
                 </div>
               </div>
             ))}
-            {/* always keep at least 3 visible rows — fill with greyed placeholders */}
-            {Array.from({ length: Math.max(0, 3 - models.length) }).map((_, i) => (
+            {/* pad to a constant number of rows so the table height never shifts.
+                only ONE hint shows, and only when there are no models at all. */}
+            {Array.from({ length: Math.max(0, VISIBLE_MODEL_ROWS - models.length) }).map((_, i) => (
               <div className="mrow mrow--ph" key={`ph-${i}`} aria-hidden>
-                <span className="mrow__ph display">add model</span>
-                <span className="mrow__ph display">—</span>
+                {models.length === 0 && i === 0 && (
+                  <span className="mrow__hint mono-label">
+                    No models yet — search the catalogue or create a custom one
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -167,7 +175,7 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
               triggerClassName="addmodel"
               onChange={addModelByCode}
               onAddCustom={(name) => addModelByCode(name.toUpperCase())}
-              addLabel="Add Custom Model"
+              addLabel="Create Custom Product"
             />
             <div className="mtotal">
               <span className="mono-label">Total</span>

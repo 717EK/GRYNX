@@ -63,6 +63,20 @@ body,
 #root {
   height: 100%;
 }
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none; /* no rubber-band bounce on the page itself */
+}
+/* inner scrollers don't chain their scroll to the page */
+.jobscreen__scroll,
+.screen__scroll,
+.overview,
+.jd__scroll,
+.mtable__rows,
+.csel__list {
+  overscroll-behavior: contain;
+}
 
 body {
   background: var(--bg);
