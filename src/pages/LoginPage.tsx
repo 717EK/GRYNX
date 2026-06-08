@@ -1,38 +1,46 @@
 import { useRef, useState } from 'react'
-import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
+import { TopBar, BottomBar } from '../components/UtilityBars'
+import { login as apiLogin, ApiError, type ApiUser } from '../lib/api'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark.png'
 import dlyftWordmarkLight from '../assets/dlyft-wordmark-light.png'
 import './LoginPage.css'
 
 const PIN_LENGTH = 6
-const DEMO_PIN = '123456'
+const LAST_USER_KEY = 'grynx-last-username'
 
-export default function LoginPage({
-  user,
-  onLogin,
-}: {
-  user: SessionUser
-  onLogin: () => void
-}) {
+export default function LoginPage({ onLogin }: { onLogin: (user: ApiUser) => void }) {
+  const [username, setUsername] = useState<string>(() => localStorage.getItem(LAST_USER_KEY) ?? '')
   const [digits, setDigits] = useState<string[]>(Array(PIN_LENGTH).fill(''))
-  const [wrong, setWrong] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const inputs = useRef<Array<HTMLInputElement | null>>([])
 
-  const complete = digits.every((d) => d !== '')
+  const complete = username.trim() !== '' && digits.every((d) => d !== '')
 
-  function submit() {
-    if (digits.join('') === DEMO_PIN) {
-      onLogin()
-    } else {
-      setWrong(true)
+  async function submit() {
+    if (!complete || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const u = await apiLogin(username.trim().toLowerCase(), digits.join(''))
+      localStorage.setItem(LAST_USER_KEY, u.username)
+      onLogin(u)
+    } catch (e) {
+      const msg =
+        e instanceof ApiError && e.status === 429
+          ? 'Too many attempts — wait a minute'
+          : 'Incorrect username or PIN'
+      setError(msg)
       setDigits(Array(PIN_LENGTH).fill(''))
       inputs.current[0]?.focus()
+    } finally {
+      setBusy(false)
     }
   }
 
   function setDigit(i: number, val: string) {
-    if (wrong) setWrong(false)
+    if (error) setError(null)
     const v = val.replace(/\D/g, '').slice(-1)
     setDigits((prev) => {
       const next = [...prev]
@@ -43,9 +51,7 @@ export default function LoginPage({
   }
 
   function onKeyDown(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Backspace' && !digits[i] && i > 0) {
-      inputs.current[i - 1]?.focus()
-    }
+    if (e.key === 'Backspace' && !digits[i] && i > 0) inputs.current[i - 1]?.focus()
     if (e.key === 'Enter' && complete) submit()
   }
 
@@ -76,11 +82,25 @@ export default function LoginPage({
 
           <div className="login__welcome">
             <span className="mono-label">Welcome</span>
-            <h1 className="login__name display">{user.name}</h1>
-            <span className="login__hint">Enter your PIN to continue</span>
+            <h1 className="login__name display">Sign in</h1>
+            <span className="login__hint">Enter your username &amp; PIN</span>
           </div>
 
-          <div className={`pin ${wrong ? 'is-wrong' : ''}`} onPaste={onPaste}>
+          <input
+            className="login__user"
+            placeholder="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            value={username}
+            onChange={(e) => {
+              if (error) setError(null)
+              setUsername(e.target.value)
+            }}
+            aria-label="Username"
+          />
+
+          <div className={`pin ${error ? 'is-wrong' : ''}`} onPaste={onPaste}>
             {digits.map((d, i) => (
               <input
                 key={i}
@@ -99,16 +119,12 @@ export default function LoginPage({
               />
             ))}
           </div>
-          <span className={`pin__caption mono-label ${wrong ? 'is-wrong' : ''}`}>
-            {wrong ? 'Incorrect PIN — try again' : `${PIN_LENGTH}-digit PIN`}
+          <span className={`pin__caption mono-label ${error ? 'is-wrong' : ''}`}>
+            {error ?? `${PIN_LENGTH}-digit PIN`}
           </span>
 
-          <button
-            className="btn btn--primary login__enter"
-            disabled={!complete}
-            onClick={submit}
-          >
-            <span>Enter</span>
+          <button className="btn btn--primary login__enter" disabled={!complete || busy} onClick={submit}>
+            <span>{busy ? 'Signing in…' : 'Enter'}</span>
             <span className="btn__arrow">→</span>
           </button>
 

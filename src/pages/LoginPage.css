@@ -58,13 +58,38 @@
 }
 
 /* PIN — compact boxes per reference */
+.login__user {
+  width: 100%;
+  max-width: 296px;
+  margin: 18px auto 0;
+  height: 46px;
+  padding: 0 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  text-align: center;
+  letter-spacing: 0.04em;
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.login__user:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand);
+}
+.login__user::placeholder {
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+}
 .pin {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 8px;
   width: 100%;
   max-width: 296px;
-  margin: 20px auto 0;
+  margin: 14px auto 0;
 }
 .pin__box {
   aspect-ratio: 1 / 1;

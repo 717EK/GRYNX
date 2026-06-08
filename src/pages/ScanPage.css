@@ -1,0 +1,161 @@
+.scan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 16px 24px;
+  overflow-y: auto;
+}
+.scan__head {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.scan__title {
+  font-size: 30px;
+}
+.scan__station {
+  color: var(--brand);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.scan__panel {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.scan__lead {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0 0 4px;
+  text-align: center;
+}
+.scan__cambtn {
+  height: 54px;
+  font-size: 16px;
+}
+.scan__cam {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scan__reader {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  min-height: 240px;
+  background: #000;
+}
+.scan__or {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 10px;
+  margin: 4px 0;
+}
+.scan__manual {
+  display: flex;
+  gap: 8px;
+}
+.scan__input {
+  flex: 1;
+  min-width: 0;
+  height: 50px;
+  padding: 0 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 17px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  outline: none;
+}
+.scan__input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand);
+}
+.scan__manual .btn {
+  width: 84px;
+  flex: 0 0 auto;
+}
+.scan__err {
+  color: var(--danger);
+  text-align: center;
+  font-size: 11px;
+}
+
+/* confirm */
+.scan__confirm {
+  align-items: center;
+  text-align: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 22px 18px;
+  background: var(--surface);
+}
+.scan__label {
+  font-size: 26px;
+  letter-spacing: 0.02em;
+}
+.scan__move {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0 14px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.scan__move b {
+  color: var(--text);
+}
+.scan__arrow {
+  color: var(--brand);
+  font-size: 22px;
+  line-height: 1;
+}
+.scan__to b {
+  color: var(--brand);
+}
+
+/* result */
+.scan__result {
+  align-items: center;
+  text-align: center;
+  border-radius: var(--r-md);
+  padding: 26px 18px;
+  border: 1px solid var(--border-strong);
+}
+.scan__badge {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+}
+.scan__rlabel {
+  font-size: 24px;
+  margin: 10px 0 2px;
+}
+.scan__rmsg {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0 0 8px;
+  max-width: 320px;
+}
+.scan__result.is-applied { border-color: var(--ok, #2e7d32); }
+.scan__result.is-applied .scan__badge { background: color-mix(in srgb, var(--ok, #2e7d32) 18%, transparent); color: var(--ok, #2e7d32); }
+.scan__result.is-forced .scan__badge,
+.scan__result.is-superseded .scan__badge { background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); }
+.scan__result.is-duplicate .scan__badge { background: var(--surface-2, #eee); color: var(--text-secondary); }
+.scan__result.is-rejected_out_of_seq { border-color: var(--danger); }
+.scan__result.is-rejected_out_of_seq .scan__badge { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+
+.btn--block { width: 100%; }
