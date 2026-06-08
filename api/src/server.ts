@@ -11,8 +11,22 @@ import { userRoutes } from './routes/users.js'
 
 const app = Fastify({ logger: true })
 
+// CORS_ORIGINS is a comma list; entries may use a wildcard, e.g.
+// "https://grynx.vercel.app,https://*.vercel.app" so Vercel preview deploys work.
+const allowedOrigins = (process.env.CORS_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+function originAllowed(origin?: string) {
+  if (!origin) return true // same-origin / curl / native app (no Origin header)
+  return allowedOrigins.some((a) => {
+    if (a === origin) return true
+    if (a.includes('*')) {
+      const re = new RegExp('^' + a.replace(/[.]/g, '\\.').replace(/\*/g, '.*') + '$')
+      return re.test(origin)
+    }
+    return false
+  })
+}
 await app.register(cors, {
-  origin: (process.env.CORS_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+  origin: (origin, cb) => cb(null, originAllowed(origin)),
   credentials: true,
 })
 
