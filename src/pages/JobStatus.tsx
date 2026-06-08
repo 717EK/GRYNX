@@ -1,4 +1,5 @@
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
+import { navTo } from '../lib/nav'
 import './JobStatus.css'
 
 type Pri = 'urgent' | 'normal'
@@ -58,6 +59,13 @@ export default function JobStatus({
         </header>
 
         <div className="screen__scroll">
+          {/* stage shortcuts */}
+          <div className="js__stages">
+            <button className="js__stage" onClick={() => navTo('ppcrequest')}>PPC Request</button>
+            <button className="js__stage" onClick={() => navTo('qc')}>QC</button>
+            <button className="js__stage" onClick={() => navTo('fgclosure')}>FG Stock</button>
+          </div>
+
           {/* NEEDS ATTENTION */}
           <section className="jsec">
             <h2 className="jsec__title mono-label">

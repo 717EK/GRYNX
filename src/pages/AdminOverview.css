@@ -34,6 +34,28 @@
 .overview__title {
   font-size: clamp(28px, 6vw, 40px);
 }
+.overview__insights {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--brand);
+  border-radius: var(--r);
+  padding: 7px 12px;
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+.overview__insights:hover {
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
+}
+.overview__insights-ico {
+  color: var(--brand);
+  font-size: 16px;
+}
+.overview__insights-txt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
 .overview__updated {
   display: flex;
   flex-direction: column;

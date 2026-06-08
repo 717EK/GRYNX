@@ -1,3 +1,24 @@
+.js__stages {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.js__stage {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
+  padding: 11px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.js__stage:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
 .jsec {
   margin-bottom: 18px;
 }

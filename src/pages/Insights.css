@@ -1,0 +1,170 @@
+.ins__badge {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  color: var(--brand);
+}
+
+.ins__summary {
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.ins__headline {
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  margin: 8px 0 12px;
+}
+.ins__kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.ins__kpi {
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.ins__kpi b {
+  font-size: 24px;
+  color: var(--text);
+}
+.ins__kpi b.is-warn {
+  color: var(--warning);
+}
+
+.ins__section {
+  display: block;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.ins__section::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 30px;
+  height: 2px;
+  background: var(--brand);
+}
+
+.ins__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sugg {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  padding: 12px 13px;
+  overflow: hidden;
+}
+.sugg--alert {
+  border-left-color: var(--danger);
+}
+.sugg--warn {
+  border-left-color: var(--warning);
+}
+.sugg--info {
+  border-left-color: var(--brand);
+}
+.sugg__icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  font-size: 15px;
+}
+.sugg--alert .sugg__icon {
+  color: var(--danger);
+}
+.sugg--warn .sugg__icon {
+  color: var(--warning);
+}
+.sugg--info .sugg__icon {
+  color: var(--brand);
+}
+.sugg__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.sugg__title {
+  font-size: 14px;
+}
+.sugg__detail {
+  letter-spacing: 0.03em;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+.sugg__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sugg__view {
+  color: var(--text-secondary);
+}
+.sugg__view:hover {
+  color: var(--text);
+}
+.sugg__do {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.ins__foot {
+  display: block;
+  margin-top: 16px;
+  color: var(--text-tertiary);
+  text-transform: none;
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+  font-size: 10px;
+}
+
+@media (max-width: 560px) {
+  .sugg {
+    grid-template-columns: auto 1fr;
+  }
+  .sugg__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border);
+    padding-top: 9px;
+  }
+  .sugg__do {
+    height: 32px;
+    font-size: 10px;
+  }
+  .ins__kpi b {
+    font-size: 20px;
+  }
+}

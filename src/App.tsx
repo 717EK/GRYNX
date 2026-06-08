@@ -11,6 +11,10 @@ import JobDetail from './pages/JobDetail'
 import Notifications from './pages/Notifications'
 import DepartmentDetail from './pages/DepartmentDetail'
 import MaintenanceDetail from './pages/MaintenanceDetail'
+import Insights from './pages/Insights'
+import PpcRequest from './pages/PpcRequest'
+import QcInspection from './pages/QcInspection'
+import FgClosure from './pages/FgClosure'
 import UpdatePrompt from './components/UpdatePrompt'
 import { registerNav } from './lib/nav'
 import type { SessionUser } from './components/UtilityBars'
@@ -32,6 +36,10 @@ export type Screen =
   | 'notifications'
   | 'departmentdetail'
   | 'maintenancedetail'
+  | 'insights'
+  | 'ppcrequest'
+  | 'qc'
+  | 'fgclosure'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('login')
@@ -43,7 +51,29 @@ export default function App() {
   const renderScreen = () => {
     switch (screen) {
       case 'overview':
-        return <AdminOverview user={DEMO_USER} onBack={() => go('home')} onLock={() => go('login')} />
+        return (
+          <AdminOverview
+            user={DEMO_USER}
+            onBack={() => go('home')}
+            onLock={() => go('login')}
+            onOpenInsights={() => go('insights')}
+          />
+        )
+      case 'insights':
+        return (
+          <Insights
+            user={DEMO_USER}
+            onBack={() => go('overview')}
+            onLock={() => go('login')}
+            onOpenJob={() => go('jobdetail')}
+          />
+        )
+      case 'ppcrequest':
+        return <PpcRequest user={DEMO_USER} onBack={() => go('jobstatus')} onLock={() => go('login')} />
+      case 'qc':
+        return <QcInspection user={DEMO_USER} onBack={() => go('jobstatus')} onLock={() => go('login')} onOpenJob={() => go('jobdetail')} />
+      case 'fgclosure':
+        return <FgClosure user={DEMO_USER} onBack={() => go('jobstatus')} onLock={() => go('login')} onOpenJob={() => go('jobdetail')} />
       case 'create':
         return (
           <CreateJob

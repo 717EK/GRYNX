@@ -100,10 +100,12 @@ export default function AdminOverview({
   user,
   onBack,
   onLock,
+  onOpenInsights,
 }: {
   user: SessionUser
   onBack: () => void
   onLock: () => void
+  onOpenInsights: () => void
 }) {
   const time = useClock()
   return (
@@ -118,10 +120,13 @@ export default function AdminOverview({
             <h1 className="overview__title display">Admin Overview</h1>
             <span className="mono-label">Real-time glance over all operations</span>
           </div>
-          <div className="overview__updated">
-            <span className="mono-label">Last Updated</span>
-            <span className="overview__time">{time}</span>
-          </div>
+          <button className="overview__insights" onClick={onOpenInsights}>
+            <span className="overview__insights-ico">✦</span>
+            <span className="overview__insights-txt">
+              <span className="mono-label">Intelligence</span>
+              <span className="overview__time">{time}</span>
+            </span>
+          </button>
         </header>
 
         {/* KPI row */}
