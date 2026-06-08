@@ -1,6 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import CustomSelect, { type Option } from './CustomSelect'
 import './JobForm.css'
+
+export interface JobFormSelection {
+  productCode: string
+  models: { code: string; qty: number }[]
+  priority: 'urgent' | 'normal'
+  startDate: string
+  startTime: string
+}
 
 const INITIAL_PRODUCTS: Option[] = [
   { value: 'AT', label: 'Alloy Truss', desc: 'Aluminium truss systems' },
@@ -51,15 +59,33 @@ const VISIBLE_MODEL_ROWS = 5
 // (seeded so the demo's pre-filled models sort to the top).
 const usageCount: Record<string, number> = { AT290: 3, AT400: 2, AT500: 1 }
 
-export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
-  const [products, setProducts] = useState<Option[]>(INITIAL_PRODUCTS)
-  const [productCode, setProductCode] = useState('AT')
+export default function JobForm({
+  jobIdLabel,
+  products: productsProp,
+  modelsByProduct,
+  onChange,
+}: {
+  jobIdLabel: string
+  /** Real catalogue from the API. When omitted, falls back to mock data. */
+  products?: Option[]
+  modelsByProduct?: Record<string, string[]>
+  /** Emits the current selection so the parent can submit it. */
+  onChange?: (sel: JobFormSelection) => void
+}) {
+  const live = !!productsProp
+  const modelCatalogue = modelsByProduct ?? MODELS_BY_PRODUCT
+  const [products, setProducts] = useState<Option[]>(productsProp ?? INITIAL_PRODUCTS)
+  const [productCode, setProductCode] = useState(productsProp?.[0]?.value ?? 'AT')
   const [priority, setPriority] = useState<'urgent' | 'normal'>('urgent')
-  const [models, setModels] = useState<Model[]>([
-    { id: 1, code: 'AT290', qty: 20 },
-    { id: 2, code: 'AT400', qty: 15 },
-    { id: 3, code: 'AT500', qty: 10 },
-  ])
+  const [models, setModels] = useState<Model[]>(
+    live
+      ? []
+      : [
+          { id: 1, code: 'AT290', qty: 20 },
+          { id: 2, code: 'AT400', qty: 15 },
+          { id: 3, code: 'AT500', qty: 10 },
+        ],
+  )
   const [modelsExpanded, setModelsExpanded] = useState(false)
   const [pipeline, setPipeline] = useState<string[]>(DEFAULT_PIPELINE)
   const [editingPipe, setEditingPipe] = useState(false)
@@ -91,8 +117,20 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
     })
   }
 
+  // emit the live selection to the parent (real-catalogue mode)
+  useEffect(() => {
+    onChange?.({
+      productCode,
+      models: models.map((m) => ({ code: m.code, qty: Number(m.qty) || 0 })),
+      priority,
+      startDate,
+      startTime,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productCode, models, priority, startDate, startTime])
+
   // most-added first, then alphabetical
-  const modelOptions: Option[] = (MODELS_BY_PRODUCT[productCode] || [])
+  const modelOptions: Option[] = (modelCatalogue[productCode] || [])
     .map((c) => ({ value: c, label: c }))
     .sort(
       (a, b) =>

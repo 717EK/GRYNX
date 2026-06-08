@@ -835,3 +835,40 @@
   font-size: 12px;
   letter-spacing: 0.1em;
 }
+
+/* ---- Create-job success state ---- */
+.jobdone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 28px 18px 8px;
+}
+.jobdone__badge {
+  color: var(--ok, #2e7d32);
+  background: color-mix(in srgb, var(--ok, #2e7d32) 16%, transparent);
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+.jobdone__label {
+  font-size: 26px;
+  margin-top: 8px;
+}
+.jobdone__id {
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.jobdone__hint {
+  color: var(--text-secondary);
+  font-size: 13px;
+  max-width: 320px;
+  margin: 8px 0 14px;
+}
+.jobdone .jobscreen__actions {
+  width: 100%;
+  max-width: 360px;
+}
