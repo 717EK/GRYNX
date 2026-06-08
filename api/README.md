@@ -27,19 +27,25 @@ Needs a Postgres 15+ reachable at `DATABASE_URL` (local Docker or the cloud VM).
 
 ## Build order (matches docs/09 §6 and docs/10)
 - [x] Data model (`prisma/schema.prisma`) — the crown jewel; everything builds on it
-- [ ] Seed (departments, products/models, default pipelines, admin user, hold reasons, SLA settings)
-- [ ] Auth: PIN (floor) + password (office) → JWT + refresh; argon2; device registration (station binding)
-- [ ] RBAC guard (enforces `docs/04` permissions matrix) + audit-log hook on every mutation
-- [ ] Job creation: opaque id + daily sequence, pipeline snapshot → job_steps, job-card PDF (barcode+QR)
-- [ ] **Scan engine** (`/scan`): the transactional state machine from `docs/10`
-      (idempotency key + optimistic lock, arrival-scan advance, exception/force-advance)
-- [ ] Department queue + notes/images (signed-URL uploads to MinIO/S3)
-- [ ] Notifications (dept heads + escalation) + WebSocket live updates
-- [ ] QC / FG-closure / PPC / maintenance
+- [x] Seed (11 departments, AT + models, default pipeline, users PIN 123456, hold reasons, SLA settings)
+- [x] Auth: PIN/password → JWT + refresh; argon2; constant-time verify + brute-force throttle
+- [x] RBAC guard (`requireRole`) + audit-log hook on every mutation
+- [x] Job creation: opaque id + daily sequence, pipeline snapshot → job_steps, first-dept notify
+- [x] **Scan engine** (`/scan`): transactional state machine — idempotency key + optimistic
+      lock, arrival-scan advance, out-of-seq/force, preview, job-status transitions
+- [ ] Job-card PDF/printable (barcode/QR encoding the opaque jobNo) — *needed for floor scanning*
+- [ ] QC result (approve→FG / rework→linked job) + FG closure (request→admin approve)
+- [ ] Department queue read views + notes/images (signed-URL uploads)
+- [ ] Notifications surfacing (read/ack) + escalation timer (unaccepted→backup→admin) + WebSocket
+- [ ] Wire the React PWA to this API (replace mock data; login→token→live job/scan)
 - [ ] Insights persistence (`suggestions` table) wired to `src/lib/insights.ts`
 
 > Pilot gate (owner starts floor testing): auth + admin job-create + job card +
 > department scan-to-advance + audit + exception alerts working end-to-end.
+> **Status:** the scan-to-advance core (auth → create → scan → audit → out-of-seq)
+> is live and tested against the DB (`scripts/smoke.mjs`, `scripts/scan-smoke.mjs`,
+> 35 assertions). Remaining for the gate: **job card** (so there's a barcode to
+> scan) + **wiring the PWA** to the API.
 
 ## Hard rules (do not violate)
 - **One write authority.** Offline scans queue on the client and replay here; never
