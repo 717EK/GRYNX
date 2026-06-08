@@ -47,6 +47,10 @@ let nextId = 100
 // (deleting a model just swaps a row for a blank placeholder). Scrolls past this.
 const VISIBLE_MODEL_ROWS = 5
 
+// how many times each model has been added — drives most-added-first ordering
+// (seeded so the demo's pre-filled models sort to the top).
+const usageCount: Record<string, number> = { AT290: 3, AT400: 2, AT500: 1 }
+
 export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
   const [products, setProducts] = useState<Option[]>(INITIAL_PRODUCTS)
   const [productCode, setProductCode] = useState('AT')
@@ -76,13 +80,24 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
   const setCode = (id: number, code: string) =>
     setModels((ms) => ms.map((m) => (m.id === id ? { ...m, code: code.toUpperCase() } : m)))
   const removeModel = (id: number) => setModels((ms) => ms.filter((m) => m.id !== id))
-  const addModelByCode = (code: string) =>
-    setModels((ms) => [...ms, { id: ++nextId, code, qty: 1 }])
+  // adding an existing model bumps its quantity instead of duplicating the row
+  const addModelByCode = (code: string) => {
+    usageCount[code] = (usageCount[code] || 0) + 1
+    setModels((ms) => {
+      if (ms.some((m) => m.code === code)) {
+        return ms.map((m) => (m.code === code ? { ...m, qty: m.qty + 1 } : m))
+      }
+      return [...ms, { id: ++nextId, code, qty: 1 }]
+    })
+  }
 
-  const modelOptions: Option[] = (MODELS_BY_PRODUCT[productCode] || []).map((c) => ({
-    value: c,
-    label: c,
-  }))
+  // most-added first, then alphabetical
+  const modelOptions: Option[] = (MODELS_BY_PRODUCT[productCode] || [])
+    .map((c) => ({ value: c, label: c }))
+    .sort(
+      (a, b) =>
+        (usageCount[b.value] || 0) - (usageCount[a.value] || 0) || a.label.localeCompare(b.label),
+    )
 
   const addCustomProduct = (name: string, desc: string) => {
     const code = name.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || 'XX'
@@ -122,7 +137,7 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
         <div className="field__row">
           <span className="field__label mono-label">Models &amp; Quantity</span>
           <button className="expandbtn mono-label" onClick={() => setModelsExpanded((v) => !v)}>
-            {modelsExpanded ? 'Collapse −' : 'Expand +'}
+            {modelsExpanded ? 'Collapse [−]' : 'Expand [+]'}
           </button>
         </div>
         <div className="mtable">
@@ -166,6 +181,11 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
               </div>
             ))}
           </div>
+          {models.length > VISIBLE_MODEL_ROWS && !modelsExpanded && (
+            <div className="mtable__more mono-label">
+              ↓ {models.length - VISIBLE_MODEL_ROWS} more — scroll
+            </div>
+          )}
           <div className="mtable__foot">
             <CustomSelect
               value=""

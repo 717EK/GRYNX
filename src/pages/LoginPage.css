@@ -90,6 +90,12 @@
   margin-top: 12px;
   font-size: 10px;
 }
+.pin__caption.is-wrong {
+  color: var(--danger);
+}
+.pin.is-wrong .pin__box {
+  border-color: var(--danger);
+}
 
 /* buttons (base/variants live in styles.css) */
 .login__enter {

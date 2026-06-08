@@ -63,10 +63,17 @@ body,
 #root {
   height: 100%;
 }
-html,
-body {
+html {
   overflow: hidden;
-  overscroll-behavior: none; /* no rubber-band bounce on the page itself */
+}
+/* fully lock the viewport so the page can't rubber-band/scroll on touch */
+body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 /* inner scrollers don't chain their scroll to the page */
 .jobscreen__scroll,

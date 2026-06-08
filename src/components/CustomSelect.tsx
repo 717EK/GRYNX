@@ -24,7 +24,7 @@ export default function CustomSelect({
   placeholder?: string
   addLabel?: string
   searchable?: boolean
-  /** When set, the trigger shows this label (adder mode) instead of the selected value. */
+  /** When set, the trigger shows this label (adder mode) and opens a full overlay sheet. */
   triggerLabel?: string
   triggerClassName?: string
 }) {
@@ -50,19 +50,71 @@ export default function CustomSelect({
       ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
       : options
 
-  const pick = (v: string) => {
-    onChange(v)
+  const close = () => {
     setOpen(false)
     setQuery('')
+    setAdding(false)
+  }
+  const pick = (v: string) => {
+    onChange(v)
+    close()
   }
   const submitCustom = () => {
     if (!name.trim() || !onAddCustom) return
     onAddCustom(name.trim(), desc.trim())
     setName('')
     setDesc('')
-    setAdding(false)
-    setOpen(false)
+    close()
   }
+
+  const Search = searchable ? (
+    <input
+      className="csel__search"
+      placeholder="SEARCH…"
+      autoFocus
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+    />
+  ) : null
+
+  const AddCustom = onAddCustom ? (
+    <>
+      <button className="csel__addrow" type="button" onClick={() => setAdding((a) => !a)}>
+        <span className="csel__plus">+</span> {addLabel}
+      </button>
+      {adding && (
+        <div className="csel__addform">
+          <input className="csel__in" placeholder="NAME" value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            className="csel__in"
+            placeholder="SHORT DESCRIPTION (OPTIONAL)"
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+          />
+          <button className="csel__addbtn" type="button" onClick={submitCustom}>
+            Add
+          </button>
+        </div>
+      )}
+    </>
+  ) : null
+
+  const List = (
+    <>
+      {filtered.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          className={`csel__opt ${o.value === value ? 'is-sel' : ''}`}
+          onClick={() => pick(o.value)}
+        >
+          <span className="csel__opt-label">{o.label}</span>
+          {o.desc && <span className="csel__opt-desc">{o.desc}</span>}
+        </button>
+      ))}
+      {filtered.length === 0 && <span className="csel__empty mono-label">No matches</span>}
+    </>
+  )
 
   return (
     <div className="csel" ref={ref}>
@@ -81,55 +133,27 @@ export default function CustomSelect({
         </button>
       )}
 
-      {open && (
-        <div className={`csel__panel ${expanded ? 'is-expanded' : ''} ${triggerLabel ? 'csel__panel--adder' : ''}`}>
-          {searchable && (
-            <input
-              className="csel__search"
-              placeholder="SEARCH…"
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          )}
-
-          {onAddCustom && (
-            <>
-              <button className="csel__addrow" type="button" onClick={() => setAdding((a) => !a)}>
-                <span className="csel__plus">+</span> {addLabel}
-              </button>
-              {adding && (
-                <div className="csel__addform">
-                  <input className="csel__in" placeholder="NAME" value={name} onChange={(e) => setName(e.target.value)} />
-                  <input
-                    className="csel__in"
-                    placeholder="SHORT DESCRIPTION (OPTIONAL)"
-                    value={desc}
-                    onChange={(e) => setDesc(e.target.value)}
-                  />
-                  <button className="csel__addbtn" type="button" onClick={submitCustom}>
-                    Add
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-
-          <div className="csel__list">
-            {filtered.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                className={`csel__opt ${o.value === value ? 'is-sel' : ''}`}
-                onClick={() => pick(o.value)}
-              >
-                <span className="csel__opt-label">{o.label}</span>
-                {o.desc && <span className="csel__opt-desc">{o.desc}</span>}
-              </button>
-            ))}
-            {filtered.length === 0 && <span className="csel__empty mono-label">No matches</span>}
+      {/* adder mode → full overlay sheet (keyboard-safe, never clipped) */}
+      {open && triggerLabel && (
+        <div className="csel__overlay" onMouseDown={close}>
+          <div className="csel__sheet" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="csel__sheet-head">
+              <span className="mono-label">{triggerLabel.replace(/^\+\s*/, '')}</span>
+              <button className="csel__sheet-x" type="button" onClick={close} aria-label="Close">×</button>
+            </div>
+            {Search}
+            {AddCustom}
+            <div className="csel__sheet-list">{List}</div>
           </div>
+        </div>
+      )}
 
+      {/* inline dropdown (product select) */}
+      {open && !triggerLabel && (
+        <div className={`csel__panel ${expanded ? 'is-expanded' : ''}`}>
+          {Search}
+          {AddCustom}
+          <div className="csel__list">{List}</div>
           {!searchable && (
             <button className="csel__expand" type="button" onClick={() => setExpanded((e) => !e)}>
               {expanded ? 'Collapse ⌃' : 'Expand ⌄'}

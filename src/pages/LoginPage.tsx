@@ -6,6 +6,7 @@ import dlyftWordmarkLight from '../assets/dlyft-wordmark-light.png'
 import './LoginPage.css'
 
 const PIN_LENGTH = 6
+const DEMO_PIN = '123456'
 
 export default function LoginPage({
   user,
@@ -15,11 +16,23 @@ export default function LoginPage({
   onLogin: () => void
 }) {
   const [digits, setDigits] = useState<string[]>(Array(PIN_LENGTH).fill(''))
+  const [wrong, setWrong] = useState(false)
   const inputs = useRef<Array<HTMLInputElement | null>>([])
 
   const complete = digits.every((d) => d !== '')
 
+  function submit() {
+    if (digits.join('') === DEMO_PIN) {
+      onLogin()
+    } else {
+      setWrong(true)
+      setDigits(Array(PIN_LENGTH).fill(''))
+      inputs.current[0]?.focus()
+    }
+  }
+
   function setDigit(i: number, val: string) {
+    if (wrong) setWrong(false)
     const v = val.replace(/\D/g, '').slice(-1)
     setDigits((prev) => {
       const next = [...prev]
@@ -33,7 +46,7 @@ export default function LoginPage({
     if (e.key === 'Backspace' && !digits[i] && i > 0) {
       inputs.current[i - 1]?.focus()
     }
-    if (e.key === 'Enter' && complete) onLogin()
+    if (e.key === 'Enter' && complete) submit()
   }
 
   function onPaste(e: React.ClipboardEvent) {
@@ -67,7 +80,7 @@ export default function LoginPage({
             <span className="login__hint">Enter your PIN to continue</span>
           </div>
 
-          <div className="pin" onPaste={onPaste}>
+          <div className={`pin ${wrong ? 'is-wrong' : ''}`} onPaste={onPaste}>
             {digits.map((d, i) => (
               <input
                 key={i}
@@ -86,12 +99,14 @@ export default function LoginPage({
               />
             ))}
           </div>
-          <span className="pin__caption mono-label">{PIN_LENGTH}-digit PIN</span>
+          <span className={`pin__caption mono-label ${wrong ? 'is-wrong' : ''}`}>
+            {wrong ? 'Incorrect PIN — try again' : `${PIN_LENGTH}-digit PIN`}
+          </span>
 
           <button
             className="btn btn--primary login__enter"
             disabled={!complete}
-            onClick={onLogin}
+            onClick={submit}
           >
             <span>Enter</span>
             <span className="btn__arrow">→</span>
