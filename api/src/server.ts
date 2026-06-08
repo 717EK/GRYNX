@@ -6,6 +6,7 @@ import { prisma } from './lib/prisma.js'
 import { authRoutes } from './routes/auth.js'
 import { catalogueRoutes } from './routes/catalogue.js'
 import { jobRoutes } from './routes/jobs.js'
+import { scanRoutes } from './routes/scan.js'
 
 const app = Fastify({ logger: true })
 
@@ -28,7 +29,7 @@ app.get('/health', async () => {
 await app.register(authRoutes, { prefix: '/api/v1/auth' })
 await app.register(catalogueRoutes, { prefix: '/api/v1' })
 await app.register(jobRoutes, { prefix: '/api/v1/jobs' })
-// await app.register(scanRoutes,  { prefix: '/api/v1/scan' })   // state-machine engine (docs/10)
+await app.register(scanRoutes, { prefix: '/api/v1/scan' }) // state-machine engine (docs/10)
 
 const port = Number(process.env.PORT ?? 4000)
 app
