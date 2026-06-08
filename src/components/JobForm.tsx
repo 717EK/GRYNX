@@ -144,12 +144,17 @@ export default function JobForm({ jobIdLabel }: { jobIdLabel: string }) {
                     onChange={(e) => setQty(m.id, Number(e.target.value))}
                     aria-label="Quantity"
                   />
-                  {models.length > 1 && (
-                    <button className="mrow__del" onClick={() => removeModel(m.id)} aria-label="Remove model">
-                      ×
-                    </button>
-                  )}
+                  <button className="mrow__del" onClick={() => removeModel(m.id)} aria-label="Remove model">
+                    ×
+                  </button>
                 </div>
+              </div>
+            ))}
+            {/* always keep at least 3 visible rows — fill with greyed placeholders */}
+            {Array.from({ length: Math.max(0, 3 - models.length) }).map((_, i) => (
+              <div className="mrow mrow--ph" key={`ph-${i}`} aria-hidden>
+                <span className="mrow__ph display">add model</span>
+                <span className="mrow__ph display">—</span>
               </div>
             ))}
           </div>

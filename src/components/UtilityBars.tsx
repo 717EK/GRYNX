@@ -11,7 +11,7 @@ export interface SessionUser {
   id: string
 }
 
-const APP_VERSION = 'v0.1.0'
+const APP_VERSION = 'v0.2.0'
 
 function Brand({ inApp }: { inApp?: boolean }) {
   return (
@@ -40,9 +40,12 @@ function Seg({ k, v }: { k: string; v: React.ReactNode }) {
 export function TopBar({
   user,
   onLock,
+  theme,
 }: {
   user?: SessionUser
   onLock?: () => void
+  /** Show the accent/mode picker — login screen only. */
+  theme?: boolean
 }) {
   const time = useClock()
   return (
@@ -53,7 +56,7 @@ export function TopBar({
       <div className="ubar__mid">
         <Seg k="SYSTEM" v="ONLINE" />
         <Seg k="SYNC" v={time} />
-        <Seg k="STATUS" v="OPERATIONAL" />
+        <Seg k="STATUS" v="OK" />
         <Seg
           k="NET"
           v={
@@ -67,7 +70,7 @@ export function TopBar({
       {/* compact status (mobile) */}
       <div className="ubar__status-mobile">
         <span className="status-dot" />
-        OPERATIONAL
+        OK
       </div>
 
       <div className="ubar__right">
@@ -86,12 +89,12 @@ export function TopBar({
             </svg>
           </button>
         )}
-        <ThemePicker />
         {user && (
           <button className="iconbtn" title="Lock / sign out" onClick={onLock}>
             ⏻
           </button>
         )}
+        {theme && <ThemePicker />}
       </div>
     </header>
   )
@@ -101,7 +104,7 @@ export function BottomBar() {
   const uptime = useUptime()
   return (
     <footer className="ubar ubar--bottom">
-      <span>GRYNX {APP_VERSION}</span>
+      <span className="ubar__version">GRYNX {APP_VERSION}</span>
       <span className="ubar--bottom__mid">UPTIME {uptime}</span>
       <span>DATA ENCRYPTED AES-256</span>
     </footer>

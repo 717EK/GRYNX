@@ -18,8 +18,6 @@ interface Event {
   note?: string
 }
 
-const HOLD_REASONS = ['Material Not Received', 'Machine Breakdown', 'Awaiting Approval', 'Resource Unavailable', 'Other']
-
 function nowStamp() {
   const d = new Date()
   const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -39,7 +37,7 @@ export default function JobDetail({
   onBack: () => void
   onLock: () => void
 }) {
-  const [steps, setSteps] = useState<Step[]>([
+  const [steps] = useState<Step[]>([
     { dept: 'Design', state: 'done', by: 'Aashish', at: '06 Jun 09:12 AM' },
     { dept: 'Purchase', state: 'done', by: 'Vikram', at: '07 Jun 11:40 AM' },
     { dept: 'Laser / Cutting', state: 'done', by: 'Javed', at: '07 Jun 04:05 PM' },
@@ -57,38 +55,12 @@ export default function JobDetail({
     { type: 'Design completed', by: 'Aashish', at: '06 Jun 02:15 PM' },
     { type: 'Job created', by: 'Aashish', at: '06 Jun 09:00 AM' },
   ])
-  const [holding, setHolding] = useState(false)
-
   const current = steps.find((s) => s.state === 'current' || s.state === 'hold')
   const onHold = current?.state === 'hold'
   const doneCount = steps.filter((s) => s.state === 'done').length
 
-  const addEvent = (type: string, note?: string) =>
-    setEvents((e) => [{ type, by: user.name, at: nowStamp(), note }, ...e])
-
-  const completeStep = () => {
-    setSteps((ss) => {
-      const i = ss.findIndex((s) => s.state === 'current' || s.state === 'hold')
-      if (i < 0) return ss
-      const next = ss.map((s, idx) =>
-        idx === i ? { ...s, state: 'done' as StepState, by: user.name, at: nowStamp() } : s,
-      )
-      if (i + 1 < next.length) next[i + 1] = { ...next[i + 1], state: 'current', at: nowStamp() }
-      return next
-    })
-    if (current) addEvent(`${current.dept} completed`)
-  }
-
-  const resume = () => {
-    setSteps((ss) => ss.map((s) => (s.state === 'hold' ? { ...s, state: 'current' } : s)))
-    addEvent(`${current?.dept} resumed`)
-  }
-
-  const applyHold = (reason: string) => {
-    setSteps((ss) => ss.map((s) => (s.state === 'current' ? { ...s, state: 'hold' } : s)))
-    addEvent(`${current?.dept} on hold`, reason)
-    setHolding(false)
-  }
+  const addEvent = (type: string) =>
+    setEvents((e) => [{ type, by: user.name, at: nowStamp() }, ...e])
 
   return (
     <div className="app">
@@ -144,23 +116,16 @@ export default function JobDetail({
             </div>
           </div>
 
-          {/* actions */}
+          {/* actions — admin view: request updates & reprint the job card.
+              Stations advance the job by SCANNING the card, not by buttons. */}
           <div className="jd__actions">
-            {onHold ? (
-              <button className="btn btn--solid btn--block" onClick={resume}>Resume</button>
-            ) : (
-              <>
-                <button className="btn btn--solid btn--block" onClick={completeStep}>
-                  ✓ Complete {current?.dept}
-                </button>
-                <button className="btn btn--primary btn--block" onClick={() => setHolding(true)}>
-                  Hold
-                </button>
-              </>
-            )}
-            <button className="btn btn--ghost btn--block" onClick={() => addEvent('Update requested')}>
-              Request Update
+            <button className="btn btn--solid btn--block" onClick={() => addEvent('Update requested')}>
+              ↻ Request Update
             </button>
+            <button className="btn btn--ghost btn--block">▦ Print Job Card</button>
+            <span className="jd__scannote mono-label">
+              ⓘ Stations advance this job by scanning its barcode — admins don’t complete steps.
+            </span>
           </div>
 
           {/* timeline */}
@@ -184,24 +149,6 @@ export default function JobDetail({
         </div>
       </main>
       <BottomBar />
-
-      {holding && (
-        <div className="modal" role="dialog" aria-modal="true" onClick={() => setHolding(false)}>
-          <div className="modal__card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal__head">
-              <h3 className="modal__title display">Hold Reason</h3>
-              <button className="modal__x" onClick={() => setHolding(false)} aria-label="Close">×</button>
-            </div>
-            <div className="holdlist">
-              {HOLD_REASONS.map((r) => (
-                <button key={r} className="holdlist__item" onClick={() => applyHold(r)}>
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

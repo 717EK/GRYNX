@@ -138,6 +138,17 @@
 .jd__actions .btn--ghost {
   grid-column: 1 / -1;
 }
+.jd__scannote {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  color: var(--text-tertiary);
+  text-transform: none;
+  letter-spacing: 0.03em;
+  font-size: 10px;
+  line-height: 1.5;
+  margin-top: 2px;
+}
 
 /* timeline */
 .jd__section-title {

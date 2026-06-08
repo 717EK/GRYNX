@@ -137,6 +137,10 @@ button {
 .ubar--bottom__mid {
   text-align: center;
 }
+.ubar__version {
+  color: var(--brand);
+  font-weight: 700;
+}
 @media (max-width: 560px) {
   .ubar--bottom__mid {
     display: none;
@@ -166,10 +170,9 @@ button {
   display: block;
 }
 .logo-dlyft-sm {
-  height: 13px;
+  height: 16px;
   width: auto;
   display: block;
-  opacity: 0.92;
 }
 /* day/night logo variant swap */
 .logo--light {

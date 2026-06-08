@@ -15,6 +15,19 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Apply saved theme/mode before first paint to avoid a flash.
+      (function () {
+        try {
+          var mode = localStorage.getItem('grynx-mode') || 'light';
+          document.documentElement.dataset.mode = mode;
+          var themes = { amber: ['#f5a623', '#0a0a0a'], azure: ['#3b82f6', '#fff'], cyan: ['#22d3ee', '#04181c'], lime: ['#84cc16', '#0a1404'], violet: ['#8b7cf6', '#0b0820'], rose: ['#fb7185', '#1a0508'] };
+          var t = themes[localStorage.getItem('grynx-theme') || 'amber'] || themes.amber;
+          document.documentElement.style.setProperty('--brand', t[0]);
+          document.documentElement.style.setProperty('--on-brand', t[1]);
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

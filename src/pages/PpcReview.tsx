@@ -40,7 +40,7 @@ export default function PpcReview({
               <span>RC</span>
             </button>
             <span className="jobscreen__note mono-label">
-              ⓘ Approving creates the job at the first department.
+              ⓘ Approving creates and starts the job.
             </span>
           </div>
         </div>

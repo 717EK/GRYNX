@@ -48,7 +48,7 @@ export default function LoginPage({
 
   return (
     <div className="app">
-      <TopBar />
+      <TopBar theme />
       <main className="app__body login">
         <div className="login__inner">
           <img className="login__grynx" src={grynxWordmark} alt="GRYNX" />
