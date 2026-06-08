@@ -1,0 +1,554 @@
+// GRYNX backend data model — single source of truth.
+// Maps docs/02 (schema) + docs/06 (state machine) + docs/10 (scan engine).
+// Conventions: uuid PKs, createdAt/updatedAt, soft-status (never hard delete),
+// optimistic-lock `version` where concurrency matters (jobs, jobSteps).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── enums ─────────────────────────
+enum UserStatus {
+  active
+  suspended
+}
+
+enum Role {
+  admin
+  ppc
+  dept_head
+  qc
+  fg_stock
+  maintenance
+}
+
+enum Platform {
+  web
+  ios
+  android
+  windows
+}
+
+enum Priority {
+  normal
+  urgent
+}
+
+enum JobType {
+  production
+  rework
+}
+
+enum JobSource {
+  admin
+  ppc
+}
+
+enum JobStatus {
+  draft
+  pending_approval
+  approved
+  in_production
+  in_qc
+  in_fg
+  close_requested
+  closed
+  cancelled
+}
+
+enum StepStatus {
+  pending
+  waiting_acceptance
+  in_progress
+  on_hold
+  completed
+  skipped
+}
+
+enum PpcStatus {
+  draft
+  submitted
+  clarification
+  approved
+  rejected
+  cancelled
+}
+
+enum EventType {
+  created
+  accepted
+  completed
+  hold
+  resume
+  note
+  update_request
+  update_reply
+  qc_result
+  scan
+  split
+  merge
+  cancelled
+  closure_requested
+  closed
+  forced_advance
+}
+
+enum AttachmentKind {
+  image
+  pdf
+  video
+}
+
+enum HoldCode {
+  material
+  breakdown
+  approval
+  resource
+  other
+}
+
+enum QcResult {
+  approved
+  rework
+}
+
+enum ClosureStatus {
+  requested
+  approved
+  rejected
+}
+
+enum MaintCategory {
+  electrical
+  mechanical
+  utility
+  facility
+  it_network
+  safety
+  other
+}
+
+enum MaintPriority {
+  critical
+  high
+  normal
+  low
+}
+
+enum MaintStatus {
+  open
+  assigned
+  in_progress
+  completed
+  verified
+  closed
+}
+
+enum NotificationType {
+  new_job
+  update_request
+  hold_alert
+  ppc_approval
+  maintenance_alert
+  closure_request
+  escalation
+}
+
+enum ScanResult {
+  applied
+  duplicate
+  rejected_out_of_seq
+  forced
+  superseded
+}
+
+enum SuggestionKind {
+  update_request
+  escalation
+  bottleneck
+  hold_review
+  approval
+}
+
+enum Severity {
+  info
+  warn
+  alert
+}
+
+enum SuggestionStatus {
+  open
+  accepted
+  dismissed
+}
+
+// ───────────────────────── identity & org ─────────────────────────
+model User {
+  id            String   @id @default(uuid())
+  username      String   @unique
+  fullName      String
+  passwordHash  String? // office users
+  pinHash       String? // floor users (argon2)
+  status        UserStatus @default(active)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  roles         RoleAssignment[]
+  devices       DeviceToken[]
+  scans         ScanEvent[]
+}
+
+model Department {
+  id        String  @id @default(uuid())
+  code      String  @unique
+  name      String
+  sortOrder Int     @default(0)
+
+  roles         RoleAssignment[]
+  templateSteps PipelineTemplateStep[]
+  jobSteps      JobStep[]
+  scans         ScanEvent[]
+  floorDevices  DeviceToken[]
+}
+
+model RoleAssignment {
+  id           String      @id @default(uuid())
+  userId       String
+  role         Role
+  departmentId String? // null for global roles (admin, ppc)
+  isBackup     Boolean     @default(false)
+  user         User        @relation(fields: [userId], references: [id])
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  @@index([userId])
+}
+
+model DeviceToken {
+  id            String     @id @default(uuid())
+  userId        String
+  platform      Platform
+  token         String
+  isFloorDevice Boolean    @default(false)
+  departmentId  String? // station binding for floor scanners (docs/10)
+  user          User       @relation(fields: [userId], references: [id])
+  department    Department? @relation(fields: [departmentId], references: [id])
+}
+
+// ───────────────────────── catalogue (Product Master) ─────────────────────────
+model Product {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. AT
+  name        String
+  description String?
+  active      Boolean  @default(true)
+
+  models    Model[]
+  pipelines PipelineTemplate[]
+  jobs      Job[]
+  ppc       PpcRequest[]
+}
+
+model Model {
+  id        String  @id @default(uuid())
+  productId String
+  code      String
+  name      String
+  active    Boolean @default(true)
+  product   Product @relation(fields: [productId], references: [id])
+
+  jobModels JobModel[]
+  ppcModels PpcRequestModel[]
+  @@unique([productId, code])
+}
+
+model PipelineTemplate {
+  id        String                 @id @default(uuid())
+  productId String
+  name      String
+  isDefault Boolean                @default(false)
+  product   Product                @relation(fields: [productId], references: [id])
+  steps     PipelineTemplateStep[]
+  jobs      Job[]
+  ppc       PpcRequest[]
+}
+
+model PipelineTemplateStep {
+  id           String           @id @default(uuid())
+  templateId   String
+  departmentId String
+  sequence     Int
+  template     PipelineTemplate @relation(fields: [templateId], references: [id])
+  department   Department       @relation(fields: [departmentId], references: [id])
+
+  @@unique([templateId, sequence])
+}
+
+// admin-editable config (hold reasons, SLA thresholds, etc.)
+model HoldReason {
+  id     String  @id @default(uuid())
+  code   String  @unique
+  label  String
+  active Boolean @default(true)
+}
+
+model Setting {
+  key   String @id
+  value Json
+}
+
+// ───────────────────────── PPC requests ─────────────────────────
+model PpcRequest {
+  id                 String            @id @default(uuid())
+  requestNo          String            @unique // PR-0001
+  productId          String
+  priority           Priority          @default(normal)
+  pipelineTemplateId String?
+  startDate          DateTime?
+  targetDate         DateTime?
+  status             PpcStatus         @default(draft)
+  createdById        String
+  clarificationNote  String?
+  approvedJobId      String?
+  createdAt          DateTime          @default(now())
+  product            Product           @relation(fields: [productId], references: [id])
+  pipeline           PipelineTemplate? @relation(fields: [pipelineTemplateId], references: [id])
+  models             PpcRequestModel[]
+}
+
+model PpcRequestModel {
+  id        String     @id @default(uuid())
+  requestId String
+  modelId   String
+  quantity  Int
+  request   PpcRequest @relation(fields: [requestId], references: [id])
+  model     Model      @relation(fields: [modelId], references: [id])
+}
+
+// ───────────────────────── jobs (core) ─────────────────────────
+model Job {
+  id                     String            @id @default(uuid())
+  jobNo                  String            @unique // opaque immutable key
+  displayLabel           String // AT-U-045-060626-001 (regenerable)
+  jobType                JobType           @default(production)
+  productId              String
+  priority               Priority          @default(normal)
+  totalQty               Int
+  status                 JobStatus         @default(draft)
+  pipelineTemplateId     String
+  parentJobId            String? // split (V2)
+  source                 JobSource         @default(admin)
+  ppcRequestId           String?
+  startDate              DateTime?
+  completionDate         DateTime?
+  reworkIssue            String?
+  reworkEntryDepartmentId String?
+  createdById            String
+  cancelledReason        String?
+  version                Int               @default(0) // optimistic lock
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  product  Product          @relation(fields: [productId], references: [id])
+  pipeline PipelineTemplate @relation(fields: [pipelineTemplateId], references: [id])
+  models   JobModel[]
+  steps    JobStep[]
+  events   JobEvent[]
+  scans    ScanEvent[]
+  holds    Hold[]
+  qc       QcInspection[]
+  closure  Closure?
+}
+
+model JobModel {
+  id       String @id @default(uuid())
+  jobId    String
+  modelId  String
+  quantity Int
+  job      Job    @relation(fields: [jobId], references: [id])
+  model    Model  @relation(fields: [modelId], references: [id])
+}
+
+// the workflow state machine — one row per pipeline department, snapshotted at creation
+model JobStep {
+  id            String     @id @default(uuid())
+  jobId         String
+  departmentId  String
+  sequence      Int
+  status        StepStatus @default(pending)
+  acceptedById  String?
+  acceptedAt    DateTime?
+  completedById String?
+  completedAt   DateTime?
+  slaDueAt      DateTime? // size-scaled SLA (docs/10 exception detection)
+  version       Int        @default(0) // optimistic lock for concurrent scans
+  job           Job        @relation(fields: [jobId], references: [id])
+  department    Department @relation(fields: [departmentId], references: [id])
+  holds         Hold[]
+
+  @@unique([jobId, sequence])
+}
+
+// immutable timeline
+model JobEvent {
+  id        String       @id @default(uuid())
+  jobId     String
+  jobStepId String?
+  type      EventType
+  actorId   String?
+  body      String?
+  meta      Json         @default("{}")
+  createdAt DateTime     @default(now())
+  job       Job          @relation(fields: [jobId], references: [id])
+  attachments Attachment[]
+
+  @@index([jobId])
+}
+
+model Attachment {
+  id         String         @id @default(uuid())
+  jobEventId String
+  kind       AttachmentKind
+  objectKey  String // S3/MinIO key
+  mime       String
+  sizeBytes  Int
+  width      Int?
+  height     Int?
+  event      JobEvent       @relation(fields: [jobEventId], references: [id])
+}
+
+model Hold {
+  id              String    @id @default(uuid())
+  jobId           String
+  jobStepId       String
+  reasonCode      HoldCode
+  reasonText      String?
+  createdById     String
+  createdAt       DateTime  @default(now())
+  resolvedAt      DateTime?
+  escalationLevel Int       @default(0)
+  job             Job       @relation(fields: [jobId], references: [id])
+  step            JobStep   @relation(fields: [jobStepId], references: [id])
+}
+
+// barcode scan log — the advance engine (docs/10)
+model ScanEvent {
+  id               String     @id @default(uuid())
+  jobId            String
+  stationDepartmentId String
+  scannedById      String
+  clientTs         DateTime
+  serverTs         DateTime   @default(now())
+  idempotencyKey   String     @unique // client UUID per physical scan → dedup
+  result           ScanResult
+  note             String?
+  job              Job        @relation(fields: [jobId], references: [id])
+  station          Department @relation(fields: [stationDepartmentId], references: [id])
+  scannedBy        User       @relation(fields: [scannedById], references: [id])
+
+  @@index([jobId])
+}
+
+model QcInspection {
+  id           String   @id @default(uuid())
+  jobId        String
+  result       QcResult
+  inspectorId  String
+  notes        String? // required when result = rework
+  reworkJobId  String?
+  createdAt    DateTime @default(now())
+  job          Job      @relation(fields: [jobId], references: [id])
+}
+
+model Closure {
+  id            String        @id @default(uuid())
+  jobId         String        @unique
+  requestedById String
+  requestedAt   DateTime      @default(now())
+  approvedById  String?
+  approvedAt    DateTime?
+  status        ClosureStatus @default(requested)
+  receivedQty   Int
+  job           Job           @relation(fields: [jobId], references: [id])
+}
+
+// ───────────────────────── maintenance ─────────────────────────
+model MaintenanceTicket {
+  id           String        @id @default(uuid())
+  ticketNo     String        @unique // MT-0001
+  category     MaintCategory
+  priority     MaintPriority @default(normal)
+  status       MaintStatus   @default(open)
+  locationText String
+  description  String
+  reportedById String
+  assignedToId String?
+  closedById   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  events       MaintenanceEvent[]
+}
+
+model MaintenanceEvent {
+  id        String            @id @default(uuid())
+  ticketId  String
+  type      String
+  actorId   String?
+  body      String?
+  createdAt DateTime          @default(now())
+  ticket    MaintenanceTicket @relation(fields: [ticketId], references: [id])
+}
+
+// ───────────────────────── notifications, audit, AI, sequences ─────────────────────────
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  jobId     String?
+  ticketId  String?
+  body      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id       String   @id @default(uuid())
+  entity   String
+  entityId String
+  action   String
+  actorId  String?
+  before   Json?
+  after    Json?
+  at       DateTime @default(now())
+
+  @@index([entity, entityId])
+}
+
+// AI suggestions (docs/08) — read-only assistant writes here; humans act, logged in audit
+model Suggestion {
+  id        String           @id @default(uuid())
+  kind      SuggestionKind
+  severity  Severity
+  title     String
+  detail    String
+  jobId     String?
+  ticketId  String?
+  action    String
+  source    String           @default("rule") // rule | llm
+  status    SuggestionStatus @default(open)
+  actedById String?
+  createdAt DateTime         @default(now())
+}
+
+// atomic daily counters for the 001 sequence in job/PR/MT ids
+model DailySequence {
+  scope     String @id // e.g. "job:AT:2026-06-08"
+  lastValue Int    @default(0)
+}
