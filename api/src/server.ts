@@ -2,9 +2,8 @@ import 'dotenv/config'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
-import { PrismaClient } from '@prisma/client'
-
-export const prisma = new PrismaClient()
+import { prisma } from './lib/prisma.js'
+import { authRoutes } from './routes/auth.js'
 
 const app = Fastify({ logger: true })
 
@@ -23,11 +22,11 @@ app.get('/health', async () => {
   return { ok: true, service: 'grynx-api', time: new Date().toISOString() }
 })
 
-// ── routes are mounted here as they are built ───────────────────────────────
-// app.register(authRoutes,  { prefix: '/api/v1/auth' })
-// app.register(jobRoutes,   { prefix: '/api/v1/jobs' })
-// app.register(scanRoutes,  { prefix: '/api/v1/scan' })   // the state-machine engine (docs/10)
-// app.register(deptRoutes,  { prefix: '/api/v1/departments' })
+// ── routes ──────────────────────────────────────────────────────────────────
+await app.register(authRoutes, { prefix: '/api/v1/auth' })
+// await app.register(jobRoutes,   { prefix: '/api/v1/jobs' })
+// await app.register(scanRoutes,  { prefix: '/api/v1/scan' })   // state-machine engine (docs/10)
+// await app.register(deptRoutes,  { prefix: '/api/v1/departments' })
 
 const port = Number(process.env.PORT ?? 4000)
 app
