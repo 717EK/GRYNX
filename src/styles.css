@@ -264,6 +264,19 @@ button {
 .iconbtn:hover {
   border-color: var(--border-strong);
 }
+.iconbtn--bell {
+  position: relative;
+}
+.bell-dot {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 2px var(--bg);
+}
 
 /* on narrow phones swap dense segments for a single compact status */
 @media (max-width: 620px) {
@@ -323,6 +336,15 @@ button {
 }
 .btn--solid:not(:disabled):hover {
   filter: brightness(1.12);
+}
+.btn--ghost {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+.btn--ghost:not(:disabled):hover {
+  border-color: var(--brand);
+  color: var(--text);
 }
 .btn--danger {
   background: var(--danger);

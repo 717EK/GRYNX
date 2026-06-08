@@ -1,0 +1,242 @@
+.jobdetail {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.jd__id {
+  font-size: clamp(20px, 5vw, 28px);
+  letter-spacing: 0.03em;
+}
+.jd__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* keep children at content height (don't let flex shrink the grid rows) */
+.jd__scroll > * {
+  flex: 0 0 auto;
+}
+
+/* progress stepper */
+.jd__progress-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.stepper {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1 0 auto;
+  min-width: 72px;
+  position: relative;
+}
+.step::before {
+  content: '';
+  position: absolute;
+  top: 13px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border-strong);
+}
+.step:first-child::before {
+  display: none;
+}
+.step__node {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  position: relative;
+  z-index: 1;
+}
+.step__label {
+  font-size: 8px;
+  text-align: center;
+  max-width: 72px;
+}
+.step--done .step__node {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+}
+.step--done::before {
+  background: var(--brand);
+}
+.step--current .step__node {
+  border-color: var(--brand);
+  color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
+}
+.step--current .step__label {
+  color: var(--text);
+}
+.step--hold .step__node {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+/* meta cells */
+.jd__meta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.jd__cell {
+  background: var(--surface);
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.jd__cell-v {
+  font-size: 17px;
+  font-weight: 800;
+}
+.jd__cell-v.is-brand {
+  color: var(--brand);
+}
+
+/* actions */
+.jd__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.jd__actions .btn {
+  height: 46px;
+  font-size: 13px;
+}
+.jd__actions .btn--solid {
+  grid-column: 1 / -1;
+}
+.jd__actions .btn--ghost {
+  grid-column: 1 / -1;
+}
+
+/* timeline */
+.jd__section-title {
+  display: block;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.jd__section-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 30px;
+  height: 2px;
+  background: var(--brand);
+}
+.timeline {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.tl {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 12px;
+  padding: 9px 0 9px 0;
+  position: relative;
+}
+.tl__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--brand);
+  margin-top: 4px;
+  position: relative;
+  z-index: 1;
+}
+.tl::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 14px;
+  bottom: -4px;
+  width: 1px;
+  background: var(--border-strong);
+}
+.tl:last-child::before {
+  display: none;
+}
+.tl__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tl__type {
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+.tl__note {
+  color: var(--warning);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+.tl__meta {
+  white-space: nowrap;
+  letter-spacing: 0.06em;
+}
+
+/* hold reason list */
+.holdlist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.holdlist__item {
+  text-align: left;
+  padding: 13px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+.holdlist__item:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+@media (max-width: 560px) {
+  .jd__meta {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .tl {
+    grid-template-columns: auto 1fr;
+  }
+  .tl__meta {
+    grid-column: 2;
+    white-space: normal;
+  }
+}

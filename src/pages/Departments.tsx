@@ -21,10 +21,12 @@ export default function Departments({
   user,
   onBack,
   onLock,
+  onOpenDept,
 }: {
   user: SessionUser
   onBack: () => void
   onLock: () => void
+  onOpenDept: () => void
 }) {
   return (
     <div className="app">
@@ -48,7 +50,7 @@ export default function Departments({
         <div className="screen__scroll">
           <div className="deptlist">
             {DEPARTMENTS.map((d) => (
-              <button key={d.dept} className="deptrow">
+              <button key={d.dept} className="deptrow" onClick={onOpenDept}>
                 <span className={`heat heat--${d.status}`} title={d.status} />
                 <span className="deptrow__name">
                   <span className="display">{d.dept}</span>

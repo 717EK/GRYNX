@@ -1,4 +1,5 @@
 import { useClock, useUptime } from '../lib/useClock'
+import { navTo } from '../lib/nav'
 import ThemePicker from './ThemePicker'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark.png'
@@ -75,6 +76,15 @@ export function TopBar({
             <span className="userid__name">{user.name}</span>
             <span className="userid__sub">{user.role} · ID {user.id}</span>
           </div>
+        )}
+        {user && (
+          <button className="iconbtn iconbtn--bell" title="Notifications" onClick={() => navTo('notifications')}>
+            <span className="bell-dot" />
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+              <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" />
+              <path d="M10 20a2 2 0 0 0 4 0" />
+            </svg>
+          </button>
         )}
         <ThemePicker />
         {user && (

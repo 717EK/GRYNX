@@ -34,13 +34,14 @@ export default function JobStatus({
   user,
   onBack,
   onLock,
+  onOpenJob,
 }: {
   user: SessionUser
   onBack: () => void
   onLock: () => void
+  onOpenJob: () => void
 }) {
-  // onOpenJob → job detail screen (built once reference is provided)
-  const openJob = () => {}
+  const openJob = onOpenJob
 
   return (
     <div className="app">

@@ -1,0 +1,54 @@
+.dd__summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.dd__stat {
+  background: var(--surface);
+  padding: 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+}
+.dd__stat b {
+  font-size: 30px;
+  font-weight: 800;
+}
+.dd__stat b.is-brand {
+  color: var(--brand);
+}
+.dd__stat b.is-warning {
+  color: var(--warning);
+}
+
+/* accept rows reuse .jrow but add an action button */
+.jrow--accept {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--brand);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  padding: 11px 13px;
+}
+.jrow__main--btn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  min-width: 0;
+}
+.dd__accept {
+  height: 38px;
+  padding: 0 18px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}

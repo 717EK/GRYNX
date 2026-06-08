@@ -38,10 +38,12 @@ export default function Maintenance({
   user,
   onBack,
   onLock,
+  onOpenTicket,
 }: {
   user: SessionUser
   onBack: () => void
   onLock: () => void
+  onOpenTicket: () => void
 }) {
   return (
     <div className="app">
@@ -72,7 +74,7 @@ export default function Maintenance({
 
           <div className="mnt__list">
             {TICKETS.map((t) => (
-              <button key={t.id} className="ticket">
+              <button key={t.id} className="ticket" onClick={onOpenTicket}>
                 <span className="ticket__lead">
                   <span className={`pri pri--${t.pri}`} />
                   <span className="ticket__main">
