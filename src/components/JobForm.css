@@ -445,20 +445,31 @@
   border-bottom: 1px solid var(--border);
 }
 .mrow__code {
-  background: transparent;
-  border: none;
-  outline: none;
   color: var(--text);
   font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  width: 60%;
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 3px 0;
-  border-bottom: 1px solid transparent;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.mrow__code:focus {
-  border-bottom-color: var(--brand);
+.mrow__size {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 4px 6px;
+  outline: none;
+  cursor: pointer;
+}
+.mrow__size:focus {
+  border-color: var(--brand);
 }
 .mrow__right {
   display: flex;

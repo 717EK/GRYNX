@@ -256,12 +256,13 @@ model Product {
 }
 
 model Model {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   productId String
   code      String
   name      String
-  active    Boolean @default(true)
-  product   Product @relation(fields: [productId], references: [id])
+  sizes     String[] @default([]) // available lengths, e.g. ["3M","2M","1M"]
+  active    Boolean  @default(true)
+  product   Product  @relation(fields: [productId], references: [id])
 
   jobModels JobModel[]
   ppcModels PpcRequestModel[]
@@ -367,12 +368,13 @@ model Job {
 }
 
 model JobModel {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   jobId    String
   modelId  String
+  size     String? // chosen length for this line, e.g. "3M"
   quantity Int
-  job      Job    @relation(fields: [jobId], references: [id])
-  model    Model  @relation(fields: [modelId], references: [id])
+  job      Job     @relation(fields: [jobId], references: [id])
+  model    Model   @relation(fields: [modelId], references: [id])
 }
 
 // the workflow state machine — one row per pipeline department, snapshotted at creation

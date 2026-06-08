@@ -73,15 +73,14 @@ const ALLOY_TRUSS: [string, string[]][] = [
   ['DUBAI 387x387', ['3M', '1M']],
   ['ST520V', ['3M', '2M', '1.5M', '1M']],
 ]
-const alloyModels = ALLOY_TRUSS.flatMap(([type, sizes]) =>
-  sizes.map((s) => ({ code: `${type} ${s}`, name: `${type} ${s}` })),
-)
+// one model per truss TYPE, carrying its available lengths (size picked per job)
+const alloyModels = ALLOY_TRUSS.map(([type, sizes]) => ({ code: type, name: type, sizes }))
 
 const PRODUCTS: {
   code: string
   name: string
   description?: string
-  models: { code: string; name: string }[]
+  models: { code: string; name: string; sizes: string[] }[]
   pipeline: { name: string; steps: string[] }
 }[] = [
   { code: 'AT', name: 'Alloy Truss', description: 'Aluminium truss systems', models: alloyModels, pipeline: { name: 'Alloy Truss Default', steps: ALLOY_STEPS } },
@@ -138,8 +137,8 @@ async function main() {
     for (const m of p.models) {
       await prisma.model.upsert({
         where: { productId_code: { productId: product.id, code: m.code } },
-        update: { name: m.name, active: true },
-        create: { productId: product.id, code: m.code, name: m.name },
+        update: { name: m.name, sizes: m.sizes, active: true },
+        create: { productId: product.id, code: m.code, name: m.name, sizes: m.sizes },
       })
     }
     // retire models no longer in the list (old placeholder SKUs)

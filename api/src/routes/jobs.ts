@@ -19,7 +19,7 @@ const createSchema = z.object({
   reworkIssue: z.string().max(500).optional(),
   reworkEntryDepartmentId: z.string().uuid().optional(),
   models: z
-    .array(z.object({ modelId: z.string().uuid(), quantity: z.number().int().positive() }))
+    .array(z.object({ modelId: z.string().uuid(), size: z.string().max(20).optional(), quantity: z.number().int().positive() }))
     .min(1),
 })
 
@@ -106,7 +106,7 @@ export async function jobRoutes(app: FastifyInstance) {
               startDate: input.startDate ?? null,
               reworkIssue: input.reworkIssue ?? null,
               reworkEntryDepartmentId: input.reworkEntryDepartmentId ?? null,
-              models: { create: input.models.map((m) => ({ modelId: m.modelId, quantity: m.quantity })) },
+              models: { create: input.models.map((m) => ({ modelId: m.modelId, size: m.size ?? null, quantity: m.quantity })) },
               steps: {
                 create: template.steps.map((s, i) => ({
                   departmentId: s.departmentId,
@@ -211,7 +211,7 @@ export async function jobRoutes(app: FastifyInstance) {
       totalQty: job.totalQty,
       createdAt: job.createdAt,
       startDate: job.startDate,
-      models: job.models.map((m) => ({ code: m.model.code, name: m.model.name, quantity: m.quantity })),
+      models: job.models.map((m) => ({ code: m.model.code, name: m.model.name, size: m.size, quantity: m.quantity })),
       steps: job.steps.map((s) => ({ sequence: s.sequence, name: s.department.name })),
     })
     return reply.type('text/html; charset=utf-8').send(html)

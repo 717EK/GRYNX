@@ -19,7 +19,7 @@ export async function catalogueRoutes(app: FastifyInstance) {
       where: { active: true },
       orderBy: { code: 'asc' },
       include: {
-        models: { where: { active: true }, orderBy: { code: 'asc' }, select: { id: true, code: true, name: true } },
+        models: { where: { active: true }, orderBy: { code: 'asc' }, select: { id: true, code: true, name: true, sizes: true } },
         pipelines: {
           orderBy: { isDefault: 'desc' },
           include: {

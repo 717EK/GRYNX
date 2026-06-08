@@ -22,25 +22,8 @@ const DEPARTMENTS: DeptLite[] = [
 const deptByCode = Object.fromEntries(DEPARTMENTS.map((d) => [d.code, d]))
 
 const ALLOY_STEPS = ['DESIGN', 'LASER', 'ALLOY_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
-const MS_STEPS = ['DESIGN', 'LASER', 'MS_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
-function mkProduct(code: string, name: string, modelCodes: string[], steps: string[], description?: string): ProductDTO {
-  return {
-    id: `p_${code}`,
-    code,
-    name,
-    description: description ?? null,
-    models: modelCodes.map((c) => ({ id: `m_${c}`, code: c, name: c })),
-    pipelines: [
-      {
-        id: `pl_${code}`,
-        name: `${name} Default`,
-        isDefault: true,
-        steps: steps.map((sc, i) => ({ sequence: (i + 1) * 10, department: deptByCode[sc] })),
-      },
-    ],
-  }
-}
-// Real Alloy Truss catalogue (mirrors api/prisma/seed.ts). One SKU per length.
+// Real Alloy Truss catalogue (mirrors api/prisma/seed.ts). One model per type,
+// carrying its available lengths.
 const ALLOY_TRUSS: [string, string[]][] = [
   ['LD30', ['3M', '2M', '1M', '0.5M', '0.25M']],
   ['LD38', ['3M', '2M', '1M', '0.5M', '0.25M']],
@@ -71,8 +54,23 @@ const ALLOY_TRUSS: [string, string[]][] = [
   ['DUBAI 387x387', ['3M', '1M']],
   ['ST520V', ['3M', '2M', '1.5M', '1M']],
 ]
-const alloyModelCodes = ALLOY_TRUSS.flatMap(([t, sizes]) => sizes.map((s) => `${t} ${s}`))
-const PRODUCTS: ProductDTO[] = [mkProduct('AT', 'Alloy Truss', alloyModelCodes, ALLOY_STEPS, 'Aluminium truss systems')]
+const PRODUCTS: ProductDTO[] = [
+  {
+    id: 'p_AT',
+    code: 'AT',
+    name: 'Alloy Truss',
+    description: 'Aluminium truss systems',
+    models: ALLOY_TRUSS.map(([t, sizes]) => ({ id: `m_${t}`, code: t, name: t, sizes })),
+    pipelines: [
+      {
+        id: 'pl_AT',
+        name: 'Alloy Truss Default',
+        isDefault: true,
+        steps: ALLOY_STEPS.map((sc, i) => ({ sequence: (i + 1) * 10, department: deptByCode[sc] })),
+      },
+    ],
+  },
+]
 
 type Role = ApiUser['roles'][number]
 type SeedUser = { username: string; fullName: string; roles: Role[] }
@@ -231,7 +229,7 @@ export function demoCreateJob(input: CreateJobInput) {
     steps: makeSteps(stepCodes),
     models: input.models.map((m) => {
       const model = product.models.find((x) => x.id === m.modelId)!
-      return { quantity: m.quantity, model: { code: model.code, name: model.name } }
+      return { quantity: m.quantity, size: m.size ?? null, model: { code: model.code, name: model.name } }
     }),
     events: [{ id: 'e0', type: 'created', body: 'created', createdAt: now.toISOString() }],
   }
@@ -287,7 +285,7 @@ export function demoScanForUser(roles: Role[], jobNo: string, preview: boolean) 
 export function demoJobCardHtml(id: string): string {
   const job = state.jobs.find((j) => j.id === id)
   if (!job) return '<h1>Job not found</h1>'
-  const rows = (job.models ?? []).map((m) => `<tr><td>${m.model.code}</td><td>${m.model.name}</td><td style="text-align:right">${m.quantity}</td></tr>`).join('')
+  const rows = (job.models ?? []).map((m) => `<tr><td>${m.model.code}</td><td>${m.size ?? '—'}</td><td style="text-align:right">${m.quantity}</td></tr>`).join('')
   const pills = (job.steps ?? []).map((s) => `<span style="border:1px solid #ddd;border-radius:3px;padding:2px 8px"><b style="color:#f5a623">${s.sequence / 10}</b> ${s.department.name}</span>`).join(' → ')
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>${job.displayLabel}</title>

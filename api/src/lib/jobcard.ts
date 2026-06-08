@@ -13,7 +13,7 @@ export interface JobCardData {
   totalQty: number
   createdAt: Date
   startDate: Date | null
-  models: { code: string; name: string; quantity: number }[]
+  models: { code: string; name: string; size?: string | null; quantity: number }[]
   steps: { sequence: number; name: string }[]
 }
 
@@ -33,7 +33,7 @@ export async function renderJobCard(d: JobCardData): Promise<string> {
   const dt = (x: Date | null) => (x ? new Date(x).toLocaleDateString('en-GB') : '—')
 
   const modelRows = d.models
-    .map((m) => `<tr><td>${esc(m.code)}</td><td>${esc(m.name)}</td><td class="num">${m.quantity}</td></tr>`)
+    .map((m) => `<tr><td>${esc(m.code)}</td><td>${esc(m.size ?? '—')}</td><td class="num">${m.quantity}</td></tr>`)
     .join('')
   const stepPills = d.steps
     .map((s) => `<span class="pill"><b>${s.sequence / 10}</b> ${esc(s.name)}</span>`)
@@ -83,7 +83,7 @@ export async function renderJobCard(d: JobCardData): Promise<string> {
     <div class="grid">
       <div>
         <table>
-          <thead><tr><th>Model</th><th>Name</th><th class="num">Qty</th></tr></thead>
+          <thead><tr><th>Model</th><th>Length</th><th class="num">Qty</th></tr></thead>
           <tbody>${modelRows}</tbody>
         </table>
         <div class="flow"><strong>Pipeline:</strong><br>${stepPills}</div>

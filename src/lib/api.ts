@@ -168,7 +168,7 @@ export interface ProductDTO {
   code: string
   name: string
   description: string | null
-  models: { id: string; code: string; name: string }[]
+  models: { id: string; code: string; name: string; sizes: string[] }[]
   pipelines: { id: string; name: string; isDefault: boolean; steps: { sequence: number; department: { id: string; code: string; name: string } }[] }[]
 }
 export const getProducts = () => (DEMO ? demo.demoProducts() : req<{ products: ProductDTO[] }>('GET', '/api/v1/products'))
@@ -194,7 +194,7 @@ export interface JobDTO {
   totalQty: number
   product?: { code: string; name: string }
   steps?: JobStepDTO[]
-  models?: { quantity: number; model: { code: string; name: string } }[]
+  models?: { quantity: number; size?: string | null; model: { code: string; name: string } }[]
   events?: { id: string; type: string; body: string | null; createdAt: string }[]
 }
 
@@ -207,7 +207,7 @@ export interface CreateJobInput {
   priority: 'normal' | 'urgent'
   jobType?: 'production' | 'rework'
   startDate?: string
-  models: { modelId: string; quantity: number }[]
+  models: { modelId: string; size?: string; quantity: number }[]
 }
 export const createJob = (input: CreateJobInput) =>
   DEMO ? demo.demoCreateJob(input) : req<{ job: JobDTO }>('POST', '/api/v1/jobs', input)

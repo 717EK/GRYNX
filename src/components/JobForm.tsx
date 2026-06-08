@@ -4,10 +4,15 @@ import './JobForm.css'
 
 export interface JobFormSelection {
   productCode: string
-  models: { code: string; qty: number }[]
+  models: { code: string; size: string; qty: number }[]
   priority: 'urgent' | 'normal'
   startDate: string
   startTime: string
+}
+
+export interface ModelType {
+  code: string
+  sizes: string[]
 }
 
 const INITIAL_PRODUCTS: Option[] = [
@@ -47,9 +52,15 @@ const ddmmyy = (d: Date) => `${pad2(d.getDate())}${pad2(d.getMonth() + 1)}${Stri
 interface Model {
   id: number
   code: string
+  size: string
   qty: number
 }
 let nextId = 100
+
+// mock catalogue (no sizes) used only when the live catalogue isn't passed
+const MOCK_CATALOGUE: Record<string, ModelType[]> = Object.fromEntries(
+  Object.entries(MODELS_BY_PRODUCT).map(([k, codes]) => [k, codes.map((c) => ({ code: c, sizes: [] }))]),
+)
 
 // Default visible rows — kept constant so the table never changes height
 // (deleting a model just swaps a row for a blank placeholder). Scrolls past this.
@@ -62,18 +73,19 @@ const usageCount: Record<string, number> = { AT290: 3, AT400: 2, AT500: 1 }
 export default function JobForm({
   jobIdLabel,
   products: productsProp,
-  modelsByProduct,
+  modelCatalogue: catalogueProp,
   onChange,
 }: {
   jobIdLabel: string
   /** Real catalogue from the API. When omitted, falls back to mock data. */
   products?: Option[]
-  modelsByProduct?: Record<string, string[]>
+  /** Per-product list of truss types and their available lengths. */
+  modelCatalogue?: Record<string, ModelType[]>
   /** Emits the current selection so the parent can submit it. */
   onChange?: (sel: JobFormSelection) => void
 }) {
   const live = !!productsProp
-  const modelCatalogue = modelsByProduct ?? MODELS_BY_PRODUCT
+  const catalogue = catalogueProp ?? MOCK_CATALOGUE
   const [products, setProducts] = useState<Option[]>(productsProp ?? INITIAL_PRODUCTS)
   const [productCode, setProductCode] = useState(productsProp?.[0]?.value ?? 'AT')
   const [priority, setPriority] = useState<'urgent' | 'normal'>('urgent')
@@ -81,10 +93,14 @@ export default function JobForm({
     live
       ? []
       : [
-          { id: 1, code: 'AT290', qty: 20 },
-          { id: 2, code: 'AT400', qty: 15 },
-          { id: 3, code: 'AT500', qty: 10 },
+          { id: 1, code: 'AT290', size: '', qty: 20 },
+          { id: 2, code: 'AT400', size: '', qty: 15 },
+          { id: 3, code: 'AT500', size: '', qty: 10 },
         ],
+  )
+  // available lengths for each truss type in the current product
+  const sizesByCode: Record<string, string[]> = Object.fromEntries(
+    (catalogue[productCode] ?? []).map((t) => [t.code, t.sizes]),
   )
   const [modelsExpanded, setModelsExpanded] = useState(false)
   const [pipeline, setPipeline] = useState<string[]>(DEFAULT_PIPELINE)
@@ -103,17 +119,17 @@ export default function JobForm({
 
   const setQty = (id: number, qty: number) =>
     setModels((ms) => ms.map((m) => (m.id === id ? { ...m, qty } : m)))
-  const setCode = (id: number, code: string) =>
-    setModels((ms) => ms.map((m) => (m.id === id ? { ...m, code: code.toUpperCase() } : m)))
+  const setSize = (id: number, size: string) =>
+    setModels((ms) => ms.map((m) => (m.id === id ? { ...m, size } : m)))
   const removeModel = (id: number) => setModels((ms) => ms.filter((m) => m.id !== id))
-  // adding an existing model bumps its quantity instead of duplicating the row
+  // adding a type defaults to its first length; same type+length bumps quantity
   const addModelByCode = (code: string) => {
     usageCount[code] = (usageCount[code] || 0) + 1
+    const defaultSize = sizesByCode[code]?.[0] ?? ''
     setModels((ms) => {
-      if (ms.some((m) => m.code === code)) {
-        return ms.map((m) => (m.code === code ? { ...m, qty: m.qty + 1 } : m))
-      }
-      return [...ms, { id: ++nextId, code, qty: 1 }]
+      const existing = ms.find((m) => m.code === code && m.size === defaultSize)
+      if (existing) return ms.map((m) => (m === existing ? { ...m, qty: m.qty + 1 } : m))
+      return [...ms, { id: ++nextId, code, size: defaultSize, qty: 1 }]
     })
   }
 
@@ -121,7 +137,7 @@ export default function JobForm({
   useEffect(() => {
     onChange?.({
       productCode,
-      models: models.map((m) => ({ code: m.code, qty: Number(m.qty) || 0 })),
+      models: models.map((m) => ({ code: m.code, size: m.size, qty: Number(m.qty) || 0 })),
       priority,
       startDate,
       startTime,
@@ -130,8 +146,8 @@ export default function JobForm({
   }, [productCode, models, priority, startDate, startTime])
 
   // most-added first, then alphabetical
-  const modelOptions: Option[] = (modelCatalogue[productCode] || [])
-    .map((c) => ({ value: c, label: c }))
+  const modelOptions: Option[] = (catalogue[productCode] || [])
+    .map((t) => ({ value: t.code, label: t.code }))
     .sort(
       (a, b) =>
         (usageCount[b.value] || 0) - (usageCount[a.value] || 0) || a.label.localeCompare(b.label),
@@ -186,13 +202,20 @@ export default function JobForm({
           <div className={`mtable__rows ${modelsExpanded ? 'is-expanded' : ''}`}>
             {models.map((m) => (
               <div className="mrow" key={m.id}>
-                <input
-                  className="mrow__code display"
-                  value={m.code}
-                  onChange={(e) => setCode(m.id, e.target.value)}
-                  aria-label="Model code"
-                />
+                <span className="mrow__code display" title={m.code}>{m.code}</span>
                 <div className="mrow__right">
+                  {(sizesByCode[m.code]?.length ?? 0) > 0 && (
+                    <select
+                      className="mrow__size display"
+                      value={m.size}
+                      onChange={(e) => setSize(m.id, e.target.value)}
+                      aria-label="Length"
+                    >
+                      {sizesByCode[m.code].map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  )}
                   <input
                     className="mrow__qty display"
                     type="number"

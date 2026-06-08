@@ -32,8 +32,8 @@ export default function CreateJob({
     () => (catalogue ?? []).map((p) => ({ value: p.code, label: p.name, desc: p.description ?? undefined })),
     [catalogue],
   )
-  const modelsByProduct = useMemo(
-    () => Object.fromEntries((catalogue ?? []).map((p) => [p.code, p.models.map((m) => m.code)])),
+  const modelCatalogue = useMemo(
+    () => Object.fromEntries((catalogue ?? []).map((p) => [p.code, p.models.map((m) => ({ code: m.code, sizes: m.sizes }))])),
     [catalogue],
   )
 
@@ -61,8 +61,8 @@ export default function CreateJob({
       return
     }
     const models = s.models
-      .map((m) => ({ modelId: product.models.find((x) => x.code === m.code)?.id, quantity: m.qty }))
-      .filter((m): m is { modelId: string; quantity: number } => !!m.modelId && m.quantity > 0)
+      .map((m) => ({ modelId: product.models.find((x) => x.code === m.code)?.id, size: m.size || undefined, quantity: m.qty }))
+      .filter((m): m is { modelId: string; size: string | undefined; quantity: number } => !!m.modelId && m.quantity > 0)
     if (models.length === 0) {
       setErr('Add at least one catalogue model with a quantity')
       return
@@ -136,7 +136,7 @@ export default function CreateJob({
               <JobForm
                 jobIdLabel="Job ID"
                 products={products}
-                modelsByProduct={modelsByProduct}
+                modelCatalogue={modelCatalogue}
                 onChange={(s) => {
                   sel.current = s
                 }}
