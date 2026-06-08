@@ -38,26 +38,29 @@ const SETTINGS: { key: string; value: unknown }[] = [
   { key: 'escalation.unacceptedHours', value: 2 }, // unaccepted past this -> backup -> admin
 ]
 
-// Catalogue. AT290/AT400/AT500 are the models seen in the prototype JobForm.
-// NOTE: the AT pipeline below is a *sensible default* — confirm the real
-// per-product routing (docs/00 open item: Laser-vs-Laser+Cutting granularity).
-const PRODUCTS = [
-  {
-    code: 'AT',
-    name: 'AT Series',
-    description: 'AT box-section production line',
-    models: [
-      { code: 'AT290', name: 'AT290' },
-      { code: 'AT400', name: 'AT400' },
-      { code: 'AT500', name: 'AT500' },
-    ],
-    pipeline: {
-      name: 'AT Default',
-      // ordered department codes the job flows through
-      steps: ['DESIGN', 'LASER', 'MS_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK'],
-    },
-  },
-] as const
+// Catalogue — starter set covering D-LYFT's product lines. Names/models are
+// sensible defaults; the owner can refine (real catalogue is owner-managed).
+// Two default routings: ALLOY (via Alloy Production) and MS (via MS Production).
+// Pipelines are per-job editable in the UI, so these are just starting points.
+const m = (codes: string[]) => codes.map((c) => ({ code: c, name: c }))
+const ALLOY_STEPS = ['DESIGN', 'LASER', 'ALLOY_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
+const MS_STEPS = ['DESIGN', 'LASER', 'MS_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
+
+const PRODUCTS: {
+  code: string
+  name: string
+  description?: string
+  models: { code: string; name: string }[]
+  pipeline: { name: string; steps: string[] }
+}[] = [
+  { code: 'AT', name: 'Alloy Truss', description: 'Aluminium truss systems', models: m(['AT290', 'AT400', 'AT500', 'AT600', 'AT700', 'AT800', 'AT1000']), pipeline: { name: 'Alloy Truss Default', steps: ALLOY_STEPS } },
+  { code: 'MT', name: 'MS Truss', description: 'Mild-steel truss systems', models: m(['MT290', 'MT400', 'MT500', 'MT600']), pipeline: { name: 'MS Truss Default', steps: MS_STEPS } },
+  { code: 'SC', name: 'Scaffolding', models: m(['SC-1.0M', 'SC-1.5M', 'SC-2.0M']), pipeline: { name: 'Scaffolding Default', steps: MS_STEPS } },
+  { code: 'ST', name: 'Stage', models: m(['ST-4x4', 'ST-6x4', 'ST-8x6']), pipeline: { name: 'Stage Default', steps: MS_STEPS } },
+  { code: 'MJ', name: 'Mojo', description: 'Mojo barriers (alloy/MS)', models: m(['MJ-A', 'MJ-B']), pipeline: { name: 'Mojo Default', steps: MS_STEPS } },
+  { code: 'LF', name: 'Lifter', description: 'Lifters (alloy/MS)', models: m(['LF-1T', 'LF-2T', 'LF-3T']), pipeline: { name: 'Lifter Default', steps: MS_STEPS } },
+  { code: 'SK', name: 'Stacker', models: m(['SK-S', 'SK-L']), pipeline: { name: 'Stacker Default', steps: MS_STEPS } },
+]
 
 const DEMO_PIN = '123456'
 

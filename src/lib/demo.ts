@@ -21,27 +21,33 @@ const DEPARTMENTS: DeptLite[] = [
 ]
 const deptByCode = Object.fromEntries(DEPARTMENTS.map((d) => [d.code, d]))
 
-const AT_PIPELINE = ['DESIGN', 'LASER', 'MS_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
-const PRODUCTS: ProductDTO[] = [
-  {
-    id: 'p_at',
-    code: 'AT',
-    name: 'AT Series',
-    description: 'AT box-section production line',
-    models: [
-      { id: 'm_at290', code: 'AT290', name: 'AT290' },
-      { id: 'm_at400', code: 'AT400', name: 'AT400' },
-      { id: 'm_at500', code: 'AT500', name: 'AT500' },
-    ],
+const ALLOY_STEPS = ['DESIGN', 'LASER', 'ALLOY_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
+const MS_STEPS = ['DESIGN', 'LASER', 'MS_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
+function mkProduct(code: string, name: string, modelCodes: string[], steps: string[], description?: string): ProductDTO {
+  return {
+    id: `p_${code}`,
+    code,
+    name,
+    description: description ?? null,
+    models: modelCodes.map((c) => ({ id: `m_${c}`, code: c, name: c })),
     pipelines: [
       {
-        id: 'pl_at',
-        name: 'AT Default',
+        id: `pl_${code}`,
+        name: `${name} Default`,
         isDefault: true,
-        steps: AT_PIPELINE.map((code, i) => ({ sequence: (i + 1) * 10, department: deptByCode[code] })),
+        steps: steps.map((sc, i) => ({ sequence: (i + 1) * 10, department: deptByCode[sc] })),
       },
     ],
-  },
+  }
+}
+const PRODUCTS: ProductDTO[] = [
+  mkProduct('AT', 'Alloy Truss', ['AT290', 'AT400', 'AT500', 'AT600', 'AT700', 'AT800', 'AT1000'], ALLOY_STEPS, 'Aluminium truss systems'),
+  mkProduct('MT', 'MS Truss', ['MT290', 'MT400', 'MT500', 'MT600'], MS_STEPS, 'Mild-steel truss systems'),
+  mkProduct('SC', 'Scaffolding', ['SC-1.0M', 'SC-1.5M', 'SC-2.0M'], MS_STEPS),
+  mkProduct('ST', 'Stage', ['ST-4x4', 'ST-6x4', 'ST-8x6'], MS_STEPS),
+  mkProduct('MJ', 'Mojo', ['MJ-A', 'MJ-B'], MS_STEPS, 'Mojo barriers (alloy/MS)'),
+  mkProduct('LF', 'Lifter', ['LF-1T', 'LF-2T', 'LF-3T'], MS_STEPS, 'Lifters (alloy/MS)'),
+  mkProduct('SK', 'Stacker', ['SK-S', 'SK-L'], MS_STEPS),
 ]
 
 type Role = ApiUser['roles'][number]
@@ -172,8 +178,8 @@ export function demoSetStatus(id: string, status: 'active' | 'suspended') {
 }
 
 // ── jobs ─────────────────────────────────────────────────────────────────────
-function makeSteps(): NonNullable<JobDTO['steps']> {
-  return AT_PIPELINE.map((code, i) => ({
+function makeSteps(stepCodes: string[]): NonNullable<JobDTO['steps']> {
+  return stepCodes.map((code, i) => ({
     id: `s_${Math.random().toString(16).slice(2)}`,
     sequence: (i + 1) * 10,
     status: i === 0 ? 'waiting_acceptance' : 'pending',
@@ -185,6 +191,7 @@ function makeSteps(): NonNullable<JobDTO['steps']> {
 export function demoCreateJob(input: CreateJobInput) {
   const product = PRODUCTS.find((p) => p.id === input.productId)
   if (!product) throw new ApiError(404, { error: 'product_not_found' })
+  const stepCodes = product.pipelines[0].steps.map((s) => s.department.code)
   const totalQty = input.models.reduce((s, m) => s + m.quantity, 0)
   state.seq += 1
   const now = new Date()
@@ -197,7 +204,7 @@ export function demoCreateJob(input: CreateJobInput) {
     priority: input.priority,
     totalQty,
     product: { code: product.code, name: product.name },
-    steps: makeSteps(),
+    steps: makeSteps(stepCodes),
     models: input.models.map((m) => {
       const model = product.models.find((x) => x.id === m.modelId)!
       return { quantity: m.quantity, model: { code: model.code, name: model.name } }
