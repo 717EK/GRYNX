@@ -16,6 +16,7 @@ datasource db {
 enum UserStatus {
   active
   suspended
+  pending
 }
 
 enum Role {

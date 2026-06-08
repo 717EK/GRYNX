@@ -143,8 +143,8 @@ async function main() {
   ) => {
     const user = await prisma.user.upsert({
       where: { username },
-      update: { fullName },
-      create: { username, fullName, pinHash, passwordHash: pinHash },
+      update: { fullName, status: 'active' },
+      create: { username, fullName, pinHash, passwordHash: pinHash, status: 'active' },
     })
     const departmentId = departmentCode ? deptByCode.get(departmentCode) ?? null : null
     const existing = await prisma.roleAssignment.findFirst({
@@ -156,7 +156,8 @@ async function main() {
     return user
   }
 
-  await upsertUser('admin', 'Administrator', 'admin')
+  await upsertUser('aashish', 'AASHISH', 'admin') // primary admin (PIN 123456)
+  await upsertUser('admin', 'Administrator', 'admin') // legacy alias, kept working
   await upsertUser('ppc', 'PPC Planner', 'ppc')
   // one head per operational department so scan-to-advance is testable end to end
   for (const code of ['DESIGN', 'LASER', 'MS_PROD', 'ALLOY_PROD', 'CNC_VMC', 'MNTR', 'POWDER']) {

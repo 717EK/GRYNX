@@ -4,6 +4,22 @@ import { prisma } from '../lib/prisma.js'
 import { verifySecret } from '../lib/hash.js'
 import { authenticate, ACCESS_TTL, REFRESH_TTL, type AccessPayload, type RefreshPayload } from '../lib/auth.js'
 import { writeAudit } from '../lib/audit.js'
+import { hashSecret } from '../lib/hash.js'
+
+// Phone number used as the user ID for self-signup. Keep validation loose
+// (formats vary); store digits + optional leading +.
+const phoneSchema = z
+  .string()
+  .trim()
+  .regex(/^\+?[0-9][0-9 \-]{6,18}$/, 'enter a valid phone number')
+  .transform((s) => s.replace(/[\s-]/g, ''))
+
+const signupSchema = z.object({
+  phone: phoneSchema,
+  fullName: z.string().trim().min(2).max(80),
+  departmentId: z.string().uuid(),
+  pin: z.string().regex(/^[0-9]{6}$/, '6-digit PIN'),
+})
 
 const loginSchema = z
   .object({
@@ -60,8 +76,11 @@ export async function authRoutes(app: FastifyInstance) {
     // Always run a verify to keep timing roughly constant whether or not the
     // user exists (avoids username enumeration via response time).
     const hash = pin ? user?.pinHash : user?.passwordHash
+    // Verify the secret regardless of status (constant-time-ish); decide on
+    // status only AFTER a correct PIN so a pending/suspended state is never
+    // revealed to someone who doesn't know the PIN (no enumeration).
     const ok =
-      !!user && user.status === 'active' && !!hash
+      !!user && !!hash
         ? await verifySecret(hash, (pin ?? password)!)
         : await verifySecret('$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'x').then(() => false)
 
@@ -70,6 +89,10 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: 'invalid_credentials' })
     }
     clearFails(username)
+
+    if (user.status !== 'active') {
+      return reply.code(403).send({ error: user.status === 'pending' ? 'account_pending' : 'account_suspended' })
+    }
 
     const roles = await loadRoles(user.id)
     const accessToken = await reply.jwtSign(
@@ -120,5 +143,43 @@ export async function authRoutes(app: FastifyInstance) {
       select: { id: true, username: true, fullName: true, status: true },
     })
     return { user: { ...user, roles: u.roles } }
+  })
+
+  // Public department list for the signup form (no auth — only id/code/name).
+  app.get('/departments', async () => {
+    const departments = await prisma.department.findMany({
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true, code: true, name: true },
+    })
+    return { departments }
+  })
+
+  // Self-service signup: phone = user ID. Lands as `pending` until an admin
+  // approves (see users routes). Assigned a department-bound dept_head role so
+  // they can scan their station once activated; the admin can refine the role.
+  app.post('/signup', async (req, reply) => {
+    const parsed = signupSchema.safeParse(req.body)
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_request', detail: parsed.error.issues })
+    const { phone, fullName, departmentId, pin } = parsed.data
+
+    const dept = await prisma.department.findUnique({ where: { id: departmentId }, select: { id: true } })
+    if (!dept) return reply.code(400).send({ error: 'invalid_department' })
+
+    const existing = await prisma.user.findUnique({ where: { username: phone }, select: { id: true } })
+    if (existing) return reply.code(409).send({ error: 'phone_already_registered' })
+
+    const pinHash = await hashSecret(pin)
+    const user = await prisma.user.create({
+      data: {
+        username: phone,
+        fullName,
+        pinHash,
+        status: 'pending',
+        roles: { create: { role: 'dept_head', departmentId } },
+      },
+      select: { id: true, username: true, fullName: true, status: true },
+    })
+    await writeAudit('user', user.id, 'signup', { actorId: user.id, after: { phone, departmentId } })
+    return reply.code(201).send({ user, message: 'Account created — awaiting admin approval' })
   })
 }
