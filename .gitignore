@@ -13,6 +13,7 @@ out/
 .env
 .env.*
 !.env.example
+!.env.production
 
 # Screenshot artifacts (visual QA)
 _shots/
