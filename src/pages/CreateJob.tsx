@@ -5,21 +5,33 @@ import JobCardModal from '../components/JobCardModal'
 import { useCatalogue } from '../lib/useCatalogue'
 import { createJob, ApiError, type JobDTO } from '../lib/api'
 
+// Same form, three entry points — only the header + bottom action differ.
+const VARIANTS = {
+  job: { title: 'Create Job', sub: 'Create a new production job' },
+  ppc: { title: 'PPC Request', sub: 'Raise a production planning request' },
+  review: { title: 'PPC Request Review', sub: 'Review PPC request and approve to create job' },
+} as const
+
 export default function CreateJob({
   user,
   onBack,
   onLock,
   onOpenPpc,
+  onReject,
   variant = 'job',
 }: {
   user: SessionUser
   onBack: () => void
   onLock: () => void
   onOpenPpc?: () => void
-  /** 'job' = Create Job, 'ppc' = PPC Request (same form, different header). */
-  variant?: 'job' | 'ppc'
+  onReject?: () => void
+  /** 'job' = admin create · 'ppc' = PPC raises a request · 'review' = admin reviews/approves. */
+  variant?: 'job' | 'ppc' | 'review'
 }) {
   const isPpc = variant === 'ppc'
+  const isReview = variant === 'review'
+  const meta = VARIANTS[variant]
+  const submitLabel = isReview ? 'Approve & Create Job' : isPpc ? 'Submit Request' : 'Create Job'
   const { catalogue, products, modelCatalogue, err: catErr } = useCatalogue()
   const loadErr = catErr ? 'Could not load the product catalogue' : null
   const [busy, setBusy] = useState(false)
@@ -67,10 +79,13 @@ export default function CreateJob({
             ←
           </button>
           <div className="jobscreen__titles">
-            <h1 className="jobscreen__title display">{isPpc ? 'PPC Request' : 'Create Job'}</h1>
-            <span className="mono-label">{isPpc ? 'Raise a production planning request' : 'Create a new production job'}</span>
+            <h1 className="jobscreen__title display">
+              {meta.title}
+              {isReview && <span className="jobscreen__pr"> PR-0001</span>}
+            </h1>
+            <span className="mono-label">{meta.sub}</span>
           </div>
-          {!isPpc && onOpenPpc && (
+          {variant === 'job' && onOpenPpc && (
             <button className="jobscreen__pill" onClick={onOpenPpc} title="Pending PPC requests">
               <span className="jobscreen__pill-n display">02</span>
               <span className="mono-label">PPC →</span>
@@ -120,10 +135,15 @@ export default function CreateJob({
                   sel.current = s
                 }}
               />
-              <div className="jobscreen__actions">
+              <div className={`jobscreen__actions ${isReview ? 'jobscreen__actions--two' : ''}`}>
                 <button className="btn btn--solid btn--block" disabled={busy} onClick={submit}>
-                  <span>📄</span> {busy ? 'Submitting…' : isPpc ? 'Submit Request' : 'Create Job'}
+                  <span>{isReview ? '✓' : '📄'}</span> {busy ? 'Submitting…' : submitLabel}
                 </button>
+                {isReview && (
+                  <button className="btn btn--danger btn--block" onClick={onReject ?? onBack} title="Reject request">
+                    Reject
+                  </button>
+                )}
                 {err ? (
                   <span className="jobscreen__note mono-label" style={{ color: 'var(--danger)' }}>
                     {err}

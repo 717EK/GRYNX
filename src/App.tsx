@@ -3,7 +3,6 @@ import LoginPage from './pages/LoginPage'
 import AdminHome from './pages/AdminHome'
 import AdminOverview from './pages/AdminOverview'
 import CreateJob from './pages/CreateJob'
-import PpcReview from './pages/PpcReview'
 import Departments from './pages/Departments'
 import Maintenance from './pages/Maintenance'
 import JobStatus from './pages/JobStatus'
@@ -142,7 +141,7 @@ export default function App() {
       case 'create':
         return <CreateJob user={user} onBack={() => go('home')} onLock={handleLock} onOpenPpc={() => go('ppc')} />
       case 'ppc':
-        return <PpcReview user={user} onBack={() => go('create')} onLock={handleLock} onApprove={() => go('overview')} />
+        return <CreateJob variant="review" user={user} onBack={() => go('create')} onLock={handleLock} onReject={() => go('create')} />
       case 'departments':
         return <Departments user={user} onBack={() => go('home')} onLock={handleLock} onOpenDept={() => go('departmentdetail')} />
       case 'departmentdetail':
