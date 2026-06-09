@@ -202,7 +202,10 @@ async function main() {
   }
   await upsertUser('qc', 'QC Inspector', 'qc', 'QC')
   await upsertUser('fg', 'FG Stock', 'fg_stock', 'FG_STOCK')
-  await upsertUser('maint', 'Maintenance', 'maintenance', 'MAINT')
+  // maintenance crew (head + technicians) for assignment/escalation testing
+  await upsertUser('maint', 'Maintenance Head', 'maintenance', 'MAINT')
+  await upsertUser('maint2', 'Ravi (Electrical)', 'maintenance', 'MAINT')
+  await upsertUser('maint3', 'Suresh (Mechanical)', 'maintenance', 'MAINT')
 
   const userCount = await prisma.user.count()
   console.log(`  users: ${userCount} (all PIN ${DEMO_PIN})`)

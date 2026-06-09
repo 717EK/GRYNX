@@ -22,3 +22,32 @@ export async function notifyDepartment(
     })),
   })
 }
+
+/** Notify the whole maintenance crew (everyone with the maintenance role). */
+export async function notifyMaintenanceCrew(
+  tx: Prisma.TransactionClient,
+  payload: { type: NotificationType; body: string; ticketId?: string },
+) {
+  const crew = await tx.roleAssignment.findMany({
+    where: { role: 'maintenance' },
+    select: { userId: true },
+  })
+  const ids = [...new Set(crew.map((c) => c.userId))]
+  if (ids.length === 0) return
+  await tx.notification.createMany({
+    data: ids.map((userId) => ({ userId, type: payload.type, body: payload.body, ticketId: payload.ticketId ?? null })),
+  })
+}
+
+/** Notify specific users (e.g. the assignee, or the reporter on close). */
+export async function notifyUsers(
+  tx: Prisma.TransactionClient,
+  userIds: string[],
+  payload: { type: NotificationType; body: string; ticketId?: string; jobId?: string },
+) {
+  const ids = [...new Set(userIds)].filter(Boolean)
+  if (ids.length === 0) return
+  await tx.notification.createMany({
+    data: ids.map((userId) => ({ userId, type: payload.type, body: payload.body, ticketId: payload.ticketId ?? null, jobId: payload.jobId ?? null })),
+  })
+}

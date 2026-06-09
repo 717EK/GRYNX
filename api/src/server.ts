@@ -8,6 +8,7 @@ import { catalogueRoutes } from './routes/catalogue.js'
 import { jobRoutes } from './routes/jobs.js'
 import { scanRoutes } from './routes/scan.js'
 import { userRoutes } from './routes/users.js'
+import { maintenanceRoutes } from './routes/maintenance.js'
 
 const app = Fastify({ logger: true })
 
@@ -46,6 +47,7 @@ await app.register(catalogueRoutes, { prefix: '/api/v1' })
 await app.register(jobRoutes, { prefix: '/api/v1/jobs' })
 await app.register(scanRoutes, { prefix: '/api/v1/scan' }) // state-machine engine (docs/10)
 await app.register(userRoutes, { prefix: '/api/v1/users' }) // admin: approve signups
+await app.register(maintenanceRoutes, { prefix: '/api/v1/maintenance' })
 
 const port = Number(process.env.PORT ?? 4000)
 app
