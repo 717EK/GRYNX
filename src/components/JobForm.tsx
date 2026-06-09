@@ -64,7 +64,7 @@ const MOCK_CATALOGUE: Record<string, ModelType[]> = Object.fromEntries(
 
 // Default visible rows — kept constant so the table never changes height
 // (deleting a model just swaps a row for a blank placeholder). Scrolls past this.
-const VISIBLE_MODEL_ROWS = 5
+const VISIBLE_MODEL_ROWS = 3
 
 // how many times each model has been added — drives most-added-first ordering
 // (seeded so the demo's pre-filled models sort to the top).
