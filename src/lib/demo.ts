@@ -239,6 +239,15 @@ export function demoCreateJob(input: CreateJobInput) {
 }
 
 export const demoGetJobs = () => delay({ jobs: state.jobs })
+export function demoQueue(departmentId?: string) {
+  const code = departmentId ? DEPARTMENTS.find((d) => d.id === departmentId)?.code : null
+  const active = (s: { status: string; department: { code: string } }) =>
+    (!code || s.department.code === code) && (s.status === 'waiting_acceptance' || s.status === 'in_progress')
+  const jobs = state.jobs
+    .filter((j) => (j.steps ?? []).some(active))
+    .map((j) => ({ ...j, stepStatus: (j.steps ?? []).find(active)?.status }))
+  return delay({ jobs })
+}
 export function demoGetJob(id: string) {
   const job = state.jobs.find((j) => j.id === id)
   if (!job) throw new ApiError(404, { error: 'not_found' })

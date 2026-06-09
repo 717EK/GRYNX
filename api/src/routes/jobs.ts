@@ -172,6 +172,38 @@ export async function jobRoutes(app: FastifyInstance) {
     return { jobs }
   })
 
+  // ── a station's queue: jobs arriving at / in progress at a department ────────
+  app.get('/queue', async (req, reply) => {
+    const u = req.user as AccessPayload
+    const q = z.object({ departmentId: z.string().uuid().optional() }).parse(req.query)
+    const isAdmin = u.roles.some((r) => r.role === 'admin')
+    // station = explicit (admins/superuser may query any dept) or the user's own
+    let deptId = q.departmentId
+    if (deptId) {
+      if (!isAdmin && !u.roles.some((r) => r.departmentId === deptId)) return reply.code(403).send({ error: 'forbidden' })
+    } else {
+      const floor = u.roles.find((r) => ['dept_head', 'qc', 'fg_stock', 'maintenance'].includes(r.role) && r.departmentId)
+      deptId = floor?.departmentId ?? undefined
+    }
+    if (!deptId) return { jobs: [] }
+
+    const steps = await prisma.jobStep.findMany({
+      where: {
+        departmentId: deptId,
+        status: { in: ['waiting_acceptance', 'in_progress'] },
+        job: { status: { notIn: ['closed', 'cancelled'] } },
+      },
+      orderBy: [{ status: 'asc' }, { slaDueAt: 'asc' }],
+      select: {
+        status: true,
+        slaDueAt: true,
+        job: { select: jobSummarySelect },
+      },
+    })
+    const jobs = steps.map((s) => ({ ...s.job, stepStatus: s.status, slaDueAt: s.slaDueAt }))
+    return { jobs }
+  })
+
   // ── detail (incl. live step states + timeline) ──────────────────────────────
   app.get('/:id', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params)

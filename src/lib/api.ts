@@ -198,6 +198,15 @@ export interface JobDTO {
   events?: { id: string; type: string; body: string | null; createdAt: string }[]
 }
 
+export interface QueueJob extends JobDTO {
+  stepStatus?: string
+  slaDueAt?: string | null
+}
+export const getQueue = (departmentId?: string) =>
+  DEMO
+    ? demo.demoQueue(departmentId)
+    : req<{ jobs: QueueJob[] }>('GET', `/api/v1/jobs/queue${departmentId ? `?departmentId=${departmentId}` : ''}`)
+
 export const getJobs = (status?: string) =>
   DEMO ? demo.demoGetJobs() : req<{ jobs: JobDTO[] }>('GET', `/api/v1/jobs${status ? `?status=${status}` : ''}`)
 export const getJob = (id: string) => (DEMO ? demo.demoGetJob(id) : req<{ job: JobDTO }>('GET', `/api/v1/jobs/${id}`))

@@ -12,13 +12,15 @@ export type StationResolution =
   | { ok: false; reason: 'no_station' | 'ambiguous'; options?: string[] }
 
 export function resolveStation(user: AccessPayload, explicit?: string): StationResolution {
+  const isAdmin = user.roles.some((r) => r.role === 'admin')
   const ids = [
     ...new Set(
       user.roles.filter((r) => STATION_ROLES.has(r.role) && r.departmentId).map((r) => r.departmentId as string),
     ),
   ]
   if (explicit) {
-    if (ids.includes(explicit)) return { ok: true, departmentId: explicit }
+    // admins/superuser ("View as") may scan at any station for testing
+    if (ids.includes(explicit) || isAdmin) return { ok: true, departmentId: explicit }
     return { ok: false, reason: 'no_station' }
   }
   if (ids.length === 1) return { ok: true, departmentId: ids[0] }

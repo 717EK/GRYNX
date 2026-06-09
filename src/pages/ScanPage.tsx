@@ -8,7 +8,20 @@ type Phase = 'idle' | 'confirm' | 'result'
 // accept the Job ID (AT-N-050-080626-010) or the opaque code (Jxxxxxxxxxxx)
 const CODE_RE = /^[A-Z0-9-]{6,40}$/
 
-export default function ScanPage({ user, onLock }: { user: SessionUser; onLock: () => void }) {
+export default function ScanPage({
+  user,
+  onLock,
+  onBack,
+  stationName,
+  stationDepartmentId,
+}: {
+  user: SessionUser
+  onLock: () => void
+  onBack?: () => void
+  /** Explicit station (View As / admin) — overrides the station derived from auth. */
+  stationName?: string
+  stationDepartmentId?: string
+}) {
   const [jobNo, setJobNo] = useState('')
   const [phase, setPhase] = useState<Phase>('idle')
   const [busy, setBusy] = useState(false)
@@ -29,7 +42,7 @@ export default function ScanPage({ user, onLock }: { user: SessionUser; onLock: 
     }
     setBusy(true)
     try {
-      const { data } = await scan({ jobNo: no, idempotencyKey: newIdempotencyKey(), clientTs: new Date().toISOString(), preview: true })
+      const { data } = await scan({ jobNo: no, idempotencyKey: newIdempotencyKey(), clientTs: new Date().toISOString(), preview: true, stationDepartmentId })
       setPreview(data)
       setPhase(data.result === 'applied' || data.result === 'forced' ? 'confirm' : 'result')
       if (data.result !== 'applied' && data.result !== 'forced') setResult(data)
@@ -45,7 +58,7 @@ export default function ScanPage({ user, onLock }: { user: SessionUser; onLock: 
     setBusy(true)
     setError(null)
     try {
-      const { data } = await scan({ jobNo: no, idempotencyKey: newIdempotencyKey(), clientTs: new Date().toISOString(), force })
+      const { data } = await scan({ jobNo: no, idempotencyKey: newIdempotencyKey(), clientTs: new Date().toISOString(), force, stationDepartmentId })
       setResult(data)
       setPhase('result')
     } catch {
@@ -98,13 +111,16 @@ export default function ScanPage({ user, onLock }: { user: SessionUser; onLock: 
 
   useEffect(() => () => void stopCamera(), [])
 
-  const station = user.role
+  const station = stationName ?? user.role
 
   return (
     <div className="app">
       <TopBar user={user} onLock={onLock} />
       <main className="app__body scan">
         <header className="scan__head">
+          {onBack && (
+            <button className="scan__back" onClick={onBack} aria-label="Back">←</button>
+          )}
           <h1 className="scan__title display">Scan</h1>
           <span className="scan__station mono-label">STATION · {station}</span>
         </header>

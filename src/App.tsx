@@ -14,6 +14,8 @@ import Insights from './pages/Insights'
 import QcInspection from './pages/QcInspection'
 import FgClosure from './pages/FgClosure'
 import ScanPage from './pages/ScanPage'
+import StationHome from './pages/StationHome'
+import ViewAsPanel from './pages/ViewAsPanel'
 import SignupPage from './pages/SignupPage'
 import Approvals from './pages/Approvals'
 import UpdatePrompt from './components/UpdatePrompt'
@@ -41,13 +43,16 @@ export type Screen =
   | 'scan'
   | 'signup'
   | 'approvals'
+  | 'viewas'
+  | 'station'
 
 const FLOOR_ROLES = ['dept_head', 'qc', 'fg_stock', 'maintenance']
 
 function landingFor(u: ApiUser): Screen {
-  if (u.roles.some((r) => r.role === 'admin')) return 'home'
+  if (u.username.toLowerCase() === 'admin') return 'viewas' // SuperUser (testing)
+  if (u.roles.some((r) => r.role === 'admin')) return 'home' // AASHISH = real admin
   if (u.roles.some((r) => r.role === 'ppc')) return 'create'
-  return 'scan'
+  return 'station' // floor users land on their station home
 }
 
 function toSession(u: ApiUser, depNames: Record<string, string>): SessionUser {
@@ -67,6 +72,7 @@ export default function App() {
   const [user, setUser] = useState<SessionUser | null>(null)
   const [depNames, setDepNames] = useState<Record<string, string>>({})
   const [maintTicketId, setMaintTicketId] = useState<string | null>(null)
+  const [viewAs, setViewAs] = useState<{ id: string; name: string } | null>(null)
   const go = (s: Screen) => setScreen(s)
 
   useEffect(() => registerNav(go), [])
@@ -124,8 +130,40 @@ export default function App() {
 
   const renderScreen = () => {
     switch (screen) {
+      case 'viewas':
+        return (
+          <ViewAsPanel
+            user={user}
+            onLock={handleLock}
+            onViewStation={(dept) => {
+              setViewAs(dept)
+              go('station')
+            }}
+            onNavigate={go}
+          />
+        )
+      case 'station':
+        return (
+          <StationHome
+            user={user}
+            viewAs={viewAs}
+            onScan={() => go('scan')}
+            onLock={handleLock}
+            onReport={() => go('maintenance')}
+            onOpenJob={() => go('jobdetail')}
+            onExitViewAs={viewAs ? () => { setViewAs(null); go('viewas') } : undefined}
+          />
+        )
       case 'scan':
-        return <ScanPage user={user} onLock={handleLock} />
+        return (
+          <ScanPage
+            user={user}
+            onLock={handleLock}
+            onBack={() => go('station')}
+            stationName={viewAs?.name}
+            stationDepartmentId={viewAs?.id}
+          />
+        )
       case 'approvals':
         return <Approvals user={user} onBack={() => go('home')} onLock={handleLock} />
       case 'overview':

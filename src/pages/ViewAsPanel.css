@@ -1,0 +1,70 @@
+.va {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+  overflow: hidden;
+}
+.va__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.va__kicker {
+  color: var(--brand);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+.va__title {
+  font-size: 28px;
+}
+.va__sub {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.va__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.va__group {
+  color: var(--text-secondary);
+  font-size: 10px;
+  margin-top: 6px;
+}
+.va__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.va__card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  text-align: left;
+  cursor: pointer;
+}
+.va__card:hover {
+  border-color: var(--brand);
+}
+.va__card--role {
+  background: color-mix(in srgb, var(--brand) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--brand) 30%, var(--border));
+}
+.va__card-title {
+  font-size: 16px;
+}
+.va__card-sub {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
