@@ -4,7 +4,7 @@
 // approvals — persisted to localStorage so it survives reloads on a phone.
 // The instant VITE_API_BASE points at a real server, none of this runs.
 
-import { ApiError, type ApiUser, type ProductDTO, type JobDTO, type ScanResult, type PendingUser, type DeptLite, type CreateJobInput, type SignupInput } from './api'
+import { ApiError, type ApiUser, type ProductDTO, type JobDTO, type ScanResult, type PendingUser, type DeptLite, type CreateJobInput, type SignupInput, type MaintTicket, type RaiseTicketInput, type MaintUpdateInput, type MaintUserBrief } from './api'
 
 const DEPARTMENTS: DeptLite[] = [
   { id: 'd_design', code: 'DESIGN', name: 'Design' },
@@ -309,4 +309,108 @@ export function demoJobCardHtml(id: string): string {
   </div>
   <div style="text-align:center;margin-top:14px"><button onclick="window.print()" style="font:inherit;padding:8px 18px;border:1.5px solid #0a0a0a;background:#f5a623">Print</button></div>
   </body>`
+}
+
+// ── maintenance (in-memory, demo only) ───────────────────────────────────────
+const MAINT_KEY = 'grynx-demo-maint'
+interface MaintStore { tickets: MaintTicket[]; seq: number }
+function loadMaint(): MaintStore {
+  try {
+    const s = JSON.parse(localStorage.getItem(MAINT_KEY) || '')
+    if (s && Array.isArray(s.tickets)) return s
+  } catch {
+    /* fall through */
+  }
+  return { tickets: [], seq: 0 }
+}
+let maint = loadMaint()
+const saveMaint = () => localStorage.setItem(MAINT_KEY, JSON.stringify(maint))
+
+const DEMO_CREW: MaintUserBrief[] = [
+  { id: 'u_maint', fullName: 'Maintenance Head', username: 'maint' },
+  { id: 'u_maint2', fullName: 'Ravi (Electrical)', username: 'maint2' },
+  { id: 'u_maint3', fullName: 'Suresh (Mechanical)', username: 'maint3' },
+]
+function demoActor(): MaintUserBrief {
+  try {
+    const u = JSON.parse(localStorage.getItem('grynx-user') || 'null')
+    if (u) return { id: u.id, fullName: u.fullName, username: u.username }
+  } catch {
+    /* ignore */
+  }
+  return { id: 'u_unknown', fullName: 'User', username: 'user' }
+}
+const findTicket = (id: string) => {
+  const t = maint.tickets.find((x) => x.id === id)
+  if (!t) throw new ApiError(404, { error: 'not_found' })
+  return t
+}
+function pushEvent(t: MaintTicket, type: string, body: string | null) {
+  t.events = [...(t.events ?? []), { id: 'e_' + Date.now() + Math.random(), type, body, actorId: demoActor().id, createdAt: new Date().toISOString() }]
+  t._count = { events: t.events.length }
+  t.updatedAt = new Date().toISOString()
+}
+
+export const demoMaintCrew = () => delay({ crew: DEMO_CREW })
+export const demoMaintList = (status?: string) => delay({ tickets: maint.tickets.filter((t) => !status || t.status === status) })
+export const demoMaintGet = (id: string) => delay({ ticket: findTicket(id) })
+
+export function demoMaintRaise(input: RaiseTicketInput) {
+  const u = demoActor()
+  maint.seq += 1
+  const now = new Date().toISOString()
+  const t: MaintTicket = {
+    id: 'mt_' + Date.now(),
+    ticketNo: 'MT-' + String(maint.seq).padStart(4, '0'),
+    category: input.category,
+    priority: input.priority,
+    status: 'open',
+    locationText: input.locationText,
+    description: input.description,
+    etaHours: null,
+    partsNeeded: null,
+    closeRemark: null,
+    reportedById: u.id,
+    assignedToId: null,
+    createdAt: now,
+    updatedAt: now,
+    reportedBy: u,
+    assignedTo: null,
+    events: [{ id: 'e0', type: 'created', body: input.description, actorId: u.id, createdAt: now }],
+    _count: { events: 1 },
+  }
+  maint.tickets.unshift(t)
+  saveMaint()
+  return delay({ ticket: t })
+}
+export function demoMaintAssign(id: string, assignedToId: string) {
+  const t = findTicket(id)
+  t.assignedToId = assignedToId
+  t.assignedTo = DEMO_CREW.find((c) => c.id === assignedToId) ?? null
+  t.status = 'assigned'
+  pushEvent(t, 'assigned', t.assignedTo?.fullName ?? null)
+  saveMaint()
+  return delay({ ticket: t })
+}
+export function demoMaintUpdate(id: string, body: MaintUpdateInput) {
+  const t = findTicket(id)
+  if (body.etaHours !== undefined) t.etaHours = body.etaHours
+  if (body.partsNeeded !== undefined) t.partsNeeded = body.partsNeeded
+  t.status = body.status ?? (t.status === 'assigned' ? 'in_progress' : t.status)
+  const txt =
+    body.note ??
+    ([body.etaHours != null ? `ETA ${body.etaHours}h` : null, body.partsNeeded ? `parts: ${body.partsNeeded}` : null, body.status ? `→ ${body.status}` : null]
+      .filter(Boolean)
+      .join(' · ') || 'update')
+  pushEvent(t, 'update', txt)
+  saveMaint()
+  return delay({ ticket: t })
+}
+export function demoMaintClose(id: string, remark: string) {
+  const t = findTicket(id)
+  t.status = 'closed'
+  t.closeRemark = remark
+  pushEvent(t, 'closed', remark)
+  saveMaint()
+  return delay({ ticket: t })
 }

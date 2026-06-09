@@ -156,3 +156,39 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ---- Raise ticket modal + empty/loading ---- */
+.mnt__empty { display:block; text-align:center; color:var(--text-tertiary); padding:30px 10px; }
+.mnt__overlay {
+  position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,0.55);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.mnt__modal {
+  width: 100%; max-width: 460px; background: var(--surface);
+  border: 1px solid var(--border-strong); border-radius: var(--r-md) var(--r-md) 0 0;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  max-height: 88vh; overflow-y: auto;
+}
+@media (min-width: 520px) { .mnt__overlay { align-items: center; } .mnt__modal { border-radius: var(--r-md); } }
+.mnt__modal-head { display: flex; align-items: center; justify-content: space-between; }
+.mnt__modal-title { font-size: 22px; }
+.mnt__field { display: flex; flex-direction: column; gap: 5px; }
+.mnt__field .mono-label { font-size: 10px; color: var(--text-secondary); }
+.mnt__select, .mnt__input, .mnt__textarea {
+  background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  color: var(--text); font-family: var(--font-mono); font-size: 15px; padding: 11px 12px; outline: none;
+}
+.mnt__select:focus, .mnt__input:focus, .mnt__textarea:focus { border-color: var(--brand); }
+.mnt__textarea { resize: vertical; }
+.mnt__prio { display: flex; gap: 8px; }
+.mnt__prio-opt {
+  flex: 1; padding: 9px 0; border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  background: transparent; color: var(--text); font-family: var(--font-mono); font-size: 12px;
+  text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer;
+}
+.mnt__prio-opt.is-sel { background: var(--brand); border-color: var(--brand); color: var(--on-brand,#0a0a0a); font-weight: 700; }
+.mnt__err { color: var(--danger); font-size: 11px; text-align: center; }
+
+.mnt__row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mnt__check { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+.mnt__check input { width: 16px; height: 16px; accent-color: var(--brand); }

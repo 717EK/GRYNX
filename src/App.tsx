@@ -67,6 +67,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>(() => (isAuthed() ? 'home' : 'login'))
   const [user, setUser] = useState<SessionUser | null>(null)
   const [depNames, setDepNames] = useState<Record<string, string>>({})
+  const [maintTicketId, setMaintTicketId] = useState<string | null>(null)
   const go = (s: Screen) => setScreen(s)
 
   useEffect(() => registerNav(go), [])
@@ -147,9 +148,19 @@ export default function App() {
       case 'departmentdetail':
         return <DepartmentDetail user={user} onBack={() => go('departments')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
       case 'maintenance':
-        return <Maintenance user={user} onBack={() => go('home')} onLock={handleLock} onOpenTicket={() => go('maintenancedetail')} />
+        return (
+          <Maintenance
+            user={user}
+            onBack={() => go('home')}
+            onLock={handleLock}
+            onOpenTicket={(id) => {
+              setMaintTicketId(id)
+              go('maintenancedetail')
+            }}
+          />
+        )
       case 'maintenancedetail':
-        return <MaintenanceDetail user={user} onBack={() => go('maintenance')} onLock={handleLock} />
+        return <MaintenanceDetail user={user} ticketId={maintTicketId} onBack={() => go('maintenance')} onLock={handleLock} />
       case 'jobstatus':
         return <JobStatus user={user} onBack={() => go('home')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
       case 'jobdetail':

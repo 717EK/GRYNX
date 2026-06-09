@@ -87,3 +87,6 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.md__actions--row { display: flex; gap: 8px; }
+.md__actions--row .btn { flex: 1; height: 44px; font-size: 12px; }

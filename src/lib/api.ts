@@ -258,6 +258,59 @@ export async function scan(input: ScanInput): Promise<{ status: number; data: Sc
   return { status: res.status, data: text ? JSON.parse(text) : {} }
 }
 
+// ── maintenance ───────────────────────────────────────────────────────────
+export interface MaintUserBrief {
+  id: string
+  fullName: string
+  username: string
+}
+export interface MaintTicket {
+  id: string
+  ticketNo: string
+  category: string
+  priority: string
+  status: string
+  locationText: string
+  description: string
+  etaHours: number | null
+  partsNeeded: string | null
+  closeRemark: string | null
+  reportedById: string
+  assignedToId: string | null
+  createdAt: string
+  updatedAt: string
+  assignedTo?: MaintUserBrief | null
+  reportedBy?: MaintUserBrief | null
+  events?: { id: string; type: string; body: string | null; actorId: string | null; createdAt: string }[]
+  _count?: { events: number }
+}
+export interface RaiseTicketInput {
+  category: string
+  priority: string
+  locationText: string
+  description: string
+}
+export interface MaintUpdateInput {
+  note?: string
+  etaHours?: number | null
+  partsNeeded?: string | null
+  status?: 'in_progress' | 'completed'
+}
+export const listMaintenance = (status?: string) =>
+  DEMO ? demo.demoMaintList(status) : req<{ tickets: MaintTicket[] }>('GET', `/api/v1/maintenance${status ? `?status=${status}` : ''}`)
+export const getMaintenance = (id: string) =>
+  DEMO ? demo.demoMaintGet(id) : req<{ ticket: MaintTicket }>('GET', `/api/v1/maintenance/${id}`)
+export const raiseMaintenance = (input: RaiseTicketInput) =>
+  DEMO ? demo.demoMaintRaise(input) : req<{ ticket: MaintTicket }>('POST', '/api/v1/maintenance', input)
+export const maintenanceCrew = () =>
+  DEMO ? demo.demoMaintCrew() : req<{ crew: MaintUserBrief[] }>('GET', '/api/v1/maintenance/crew')
+export const assignMaintenance = (id: string, assignedToId: string) =>
+  DEMO ? demo.demoMaintAssign(id, assignedToId) : req<{ ticket: MaintTicket }>('POST', `/api/v1/maintenance/${id}/assign`, { assignedToId })
+export const updateMaintenance = (id: string, body: MaintUpdateInput) =>
+  DEMO ? demo.demoMaintUpdate(id, body) : req<{ ticket: MaintTicket }>('POST', `/api/v1/maintenance/${id}/update`, body)
+export const closeMaintenance = (id: string, remark: string) =>
+  DEMO ? demo.demoMaintClose(id, remark) : req<{ ticket: MaintTicket }>('POST', `/api/v1/maintenance/${id}/close`, { remark })
+
 export const newIdempotencyKey = () =>
   (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`)
 

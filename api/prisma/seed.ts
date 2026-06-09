@@ -36,9 +36,14 @@ const SETTINGS: { key: string; value: unknown }[] = [
   { key: 'sla.qtyPerHour', value: 25 },
   { key: 'sla.maxHours', value: 10 },
   { key: 'escalation.unacceptedHours', value: 2 }, // unaccepted past this -> backup -> admin
+  { key: 'maint.escalation.acknowledgeMins', value: 15 }, // unacked ticket -> re-notify head + admin
+  { key: 'maint.escalation.assignMins', value: 30 }, // unassigned ticket -> escalate to admin
 ]
 
 const ALLOY_STEPS = ['DESIGN', 'LASER', 'ALLOY_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
+const MS_STEPS = ['DESIGN', 'LASER', 'MS_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
+// products without a real model list yet carry a single "Custom" model
+const CUSTOM_ONLY = [{ code: 'Custom', name: 'Custom', sizes: [] as string[] }]
 
 // Real Alloy Truss catalogue (owner-provided stock sheets, GT + UTT lines).
 // Each entry is [truss type, [available lengths]]; one model SKU per length,
@@ -84,6 +89,13 @@ const PRODUCTS: {
   pipeline: { name: string; steps: string[] }
 }[] = [
   { code: 'AT', name: 'Alloy Truss', description: 'Aluminium truss systems', models: alloyModels, pipeline: { name: 'Alloy Truss Default', steps: ALLOY_STEPS } },
+  // other lines — real model lists to be added by the owner; "Custom" for now
+  { code: 'MT', name: 'MS Truss', description: 'Mild-steel truss systems', models: CUSTOM_ONLY, pipeline: { name: 'MS Truss Default', steps: MS_STEPS } },
+  { code: 'SC', name: 'Scaffolding', models: CUSTOM_ONLY, pipeline: { name: 'Scaffolding Default', steps: MS_STEPS } },
+  { code: 'ST', name: 'Stage', models: CUSTOM_ONLY, pipeline: { name: 'Stage Default', steps: MS_STEPS } },
+  { code: 'MJ', name: 'Mojo', description: 'Mojo barriers', models: CUSTOM_ONLY, pipeline: { name: 'Mojo Default', steps: MS_STEPS } },
+  { code: 'LF', name: 'Lifter', models: CUSTOM_ONLY, pipeline: { name: 'Lifter Default', steps: MS_STEPS } },
+  { code: 'SK', name: 'Stacker', models: CUSTOM_ONLY, pipeline: { name: 'Stacker Default', steps: MS_STEPS } },
 ]
 
 const DEMO_PIN = '123456'
