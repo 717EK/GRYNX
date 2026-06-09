@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import JobForm, { type JobFormSelection } from '../components/JobForm'
 import JobCardModal from '../components/JobCardModal'
-import type { Option } from '../components/CustomSelect'
-import { getProducts, createJob, ApiError, type ProductDTO, type JobDTO } from '../lib/api'
+import { useCatalogue } from '../lib/useCatalogue'
+import { createJob, ApiError, type JobDTO } from '../lib/api'
 
 export default function CreateJob({
   user,
@@ -20,28 +20,13 @@ export default function CreateJob({
   variant?: 'job' | 'ppc'
 }) {
   const isPpc = variant === 'ppc'
-  const [catalogue, setCatalogue] = useState<ProductDTO[] | null>(null)
-  const [loadErr, setLoadErr] = useState<string | null>(null)
+  const { catalogue, products, modelCatalogue, err: catErr } = useCatalogue()
+  const loadErr = catErr ? 'Could not load the product catalogue' : null
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [created, setCreated] = useState<JobDTO | null>(null)
   const [cardJobId, setCardJobId] = useState<string | null>(null)
   const sel = useRef<JobFormSelection | null>(null)
-
-  useEffect(() => {
-    getProducts()
-      .then((r) => setCatalogue(r.products))
-      .catch(() => setLoadErr('Could not load the product catalogue'))
-  }, [])
-
-  const products: Option[] = useMemo(
-    () => (catalogue ?? []).map((p) => ({ value: p.code, label: p.name, desc: p.description ?? undefined })),
-    [catalogue],
-  )
-  const modelCatalogue = useMemo(
-    () => Object.fromEntries((catalogue ?? []).map((p) => [p.code, p.models.map((m) => ({ code: m.code, sizes: m.sizes }))])),
-    [catalogue],
-  )
 
   async function submit() {
     setErr(null)

@@ -1,5 +1,6 @@
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import JobForm from '../components/JobForm'
+import { useCatalogue } from '../lib/useCatalogue'
 
 export default function PpcReview({
   user,
@@ -12,6 +13,7 @@ export default function PpcReview({
   onLock: () => void
   onApprove: () => void
 }) {
+  const { products, modelCatalogue } = useCatalogue()
   return (
     <div className="app">
       <TopBar user={user} onLock={onLock} />
@@ -30,7 +32,7 @@ export default function PpcReview({
         </header>
 
         <div className="jobscreen__scroll">
-          <JobForm jobIdLabel="Job ID (Auto Generated)" />
+          <JobForm jobIdLabel="Job ID (Auto Generated)" products={products} modelCatalogue={modelCatalogue} />
 
           <div className="jobscreen__actions jobscreen__actions--two">
             <button className="btn btn--solid btn--block" onClick={onApprove}>
