@@ -1,0 +1,112 @@
+/* shared styling for QC / FG / Purchase department home pages */
+.dh__empty {
+  display: block;
+  text-align: center;
+  color: var(--text-tertiary);
+  padding: 36px 10px;
+}
+.dh__count {
+  color: var(--brand);
+}
+.dh__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dh__row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  text-align: left;
+  cursor: pointer;
+}
+.dh__row:hover {
+  border-color: var(--brand);
+}
+.dh__main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.dh__label {
+  font-size: 17px;
+}
+.dh__meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.dh__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.dh__tag {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+.dh__tag--urgent {
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 50%, transparent);
+}
+.dh__tag--ok {
+  color: var(--ok, #2e7d32);
+  border: 1px solid color-mix(in srgb, var(--ok, #2e7d32) 45%, transparent);
+}
+.dh__tag--info {
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+}
+/* serial chips */
+.dh__serials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.dh__serial {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+}
+.dh__matline {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  gap: 2px;
+}
+.dh__matline b {
+  font-family: var(--font-display);
+  font-size: 13px;
+}
+.dh__matline span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.dh__modal-actions {
+  display: flex;
+  gap: 8px;
+}
+.dh__modal-actions .btn {
+  flex: 1;
+  height: 44px;
+}

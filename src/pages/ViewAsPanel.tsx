@@ -25,7 +25,7 @@ export default function ViewAsPanel({
   }, [])
 
   // departments that have their own dedicated screen (not the station template)
-  const special: Record<string, Screen> = { MAINT: 'maintenance' }
+  const special: Record<string, Screen> = { MAINT: 'maintenance', QC: 'qc', FG_STOCK: 'fgclosure', PURCHASE: 'purchase' }
 
   const roleViews: { label: string; sub: string; to: Screen }[] = [
     { label: 'Admin Home', sub: 'AASHISH · full control', to: 'home' },

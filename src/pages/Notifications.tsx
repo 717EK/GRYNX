@@ -1,68 +1,66 @@
+import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
+import { getNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '../lib/api'
 import './Notifications.css'
 
-type NType = 'new_job' | 'update_request' | 'hold_alert' | 'ppc_approval' | 'maintenance' | 'closure' | 'escalation'
-
-const ICON: Record<NType, string> = {
+const ICON: Record<string, string> = {
   new_job: '＋',
   update_request: '↻',
   hold_alert: '‖',
   ppc_approval: '✓',
-  maintenance: '⚙',
-  closure: '◳',
+  maintenance_alert: '⚙',
+  closure_request: '◳',
   escalation: '⚠',
 }
 
-interface Notif {
-  type: NType
-  title: string
-  body: string
-  at: string
-  unread: boolean
-}
-
-const TODAY: Notif[] = [
-  { type: 'escalation', title: 'Job escalated to Admin', body: 'ST-N-012 unaccepted for 24h — Powder Coat', at: '14m ago', unread: true },
-  { type: 'ppc_approval', title: 'PPC request awaiting approval', body: 'PR-0002 · Alloy Truss · 45 units', at: '1h ago', unread: true },
-  { type: 'hold_alert', title: 'Job placed on hold', body: 'CNC / VMC — Machine Breakdown', at: '2h ago', unread: true },
-  { type: 'closure', title: 'Closure requested', body: 'AT-U-040-040626-001 · FG Stock', at: '3h ago', unread: false },
-]
-
-const EARLIER: Notif[] = [
-  { type: 'new_job', title: 'New job assigned', body: 'MT-N-030 reached MS Production', at: 'Yesterday', unread: false },
-  { type: 'update_request', title: 'Update requested', body: 'Admin requested an update on AT-U-045', at: 'Yesterday', unread: false },
-  { type: 'maintenance', title: 'Maintenance completed', body: 'MT-0004 · Office AC Unit', at: '2 days ago', unread: false },
-]
-
-function List({ title, items }: { title: string; items: Notif[] }) {
-  return (
-    <section className="nsec">
-      <span className="nsec__title mono-label">{title}</span>
-      <div className="nlist">
-        {items.map((n, i) => (
-          <button key={i} className={`notif ${n.unread ? 'is-unread' : ''}`}>
-            <span className={`notif__icon notif__icon--${n.type}`}>{ICON[n.type]}</span>
-            <span className="notif__body">
-              <span className="notif__title">{n.title}</span>
-              <span className="notif__text mono-label">{n.body}</span>
-            </span>
-            <span className="notif__at mono-label">{n.at}</span>
-          </button>
-        ))}
-      </div>
-    </section>
-  )
+function ago(iso: string) {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
 }
 
 export default function Notifications({
   user,
   onBack,
   onLock,
+  onOpen,
 }: {
   user: SessionUser
   onBack: () => void
   onLock: () => void
+  onOpen: (n: Notification) => void
 }) {
+  const [items, setItems] = useState<Notification[] | null>(null)
+
+  async function load() {
+    try {
+      const { notifications } = await getNotifications()
+      setItems(notifications)
+    } catch {
+      setItems([])
+    }
+  }
+  useEffect(() => {
+    void load()
+  }, [])
+
+  const unread = items?.filter((n) => !n.readAt).length ?? 0
+
+  async function open(n: Notification) {
+    if (!n.readAt) {
+      markNotificationRead(n.id).catch(() => {})
+      setItems((xs) => xs?.map((x) => (x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x)) ?? xs)
+    }
+    onOpen(n)
+  }
+
+  async function readAll() {
+    await markAllNotificationsRead().catch(() => {})
+    setItems((xs) => xs?.map((x) => ({ ...x, readAt: x.readAt ?? new Date().toISOString() })) ?? xs)
+  }
+
   return (
     <div className="app">
       <TopBar user={user} onLock={onLock} />
@@ -71,13 +69,28 @@ export default function Notifications({
           <button className="screen__back" onClick={onBack} aria-label="Back">←</button>
           <div className="screen__titles">
             <h1 className="screen__title display">Notifications</h1>
-            <span className="mono-label">3 Unread</span>
+            <span className="mono-label">{unread} Unread</span>
           </div>
-          <button className="notif__readall mono-label">Mark all read</button>
+          <button className="notif__readall mono-label" onClick={readAll}>Mark all read</button>
         </header>
         <div className="screen__scroll">
-          <List title="Today" items={TODAY} />
-          <List title="Earlier" items={EARLIER} />
+          {items === null ? (
+            <span className="nsec__title mono-label" style={{ display: 'block', textAlign: 'center', padding: 30 }}>Loading…</span>
+          ) : items.length === 0 ? (
+            <span className="nsec__title mono-label" style={{ display: 'block', textAlign: 'center', padding: 30 }}>No notifications.</span>
+          ) : (
+            <div className="nlist">
+              {items.map((n) => (
+                <button key={n.id} className={`notif ${n.readAt ? '' : 'is-unread'}`} onClick={() => open(n)}>
+                  <span className={`notif__icon notif__icon--${n.type}`}>{ICON[n.type] ?? '•'}</span>
+                  <span className="notif__body">
+                    <span className="notif__text">{n.body}</span>
+                  </span>
+                  <span className="notif__at mono-label">{ago(n.createdAt)}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </main>
       <BottomBar />

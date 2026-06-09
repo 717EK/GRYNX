@@ -11,8 +11,9 @@ import Notifications from './pages/Notifications'
 import DepartmentDetail from './pages/DepartmentDetail'
 import MaintenanceDetail from './pages/MaintenanceDetail'
 import Insights from './pages/Insights'
-import QcInspection from './pages/QcInspection'
-import FgClosure from './pages/FgClosure'
+import QcHome from './pages/QcHome'
+import FgHome from './pages/FgHome'
+import PurchaseHome from './pages/PurchaseHome'
 import ScanPage from './pages/ScanPage'
 import PpcQueue from './pages/PpcQueue'
 import StationHome from './pages/StationHome'
@@ -47,6 +48,7 @@ export type Screen =
   | 'viewas'
   | 'station'
   | 'ppcqueue'
+  | 'purchase'
 
 const FLOOR_ROLES = ['dept_head', 'qc', 'fg_stock', 'maintenance']
 
@@ -54,7 +56,9 @@ function landingFor(u: ApiUser): Screen {
   if (u.username.toLowerCase() === 'admin') return 'viewas' // SuperUser (testing)
   if (u.roles.some((r) => r.role === 'admin')) return 'home' // AASHISH = real admin
   if (u.roles.some((r) => r.role === 'ppc')) return 'create'
-  return 'station' // floor users land on their station home
+  if (u.roles.some((r) => r.role === 'qc')) return 'qc'
+  if (u.roles.some((r) => r.role === 'fg_stock')) return 'fgclosure'
+  return 'station' // production-station floor users land on their station home
 }
 
 function toSession(u: ApiUser, depNames: Record<string, string>): SessionUser {
@@ -118,6 +122,10 @@ export default function App() {
     setScreen('login')
   }
 
+  // SuperUser (Administrator) returns to the View As panel; everyone else home.
+  const isSuper = (getUser()?.username ?? '').toLowerCase() === 'admin'
+  const deptBack = () => go(isSuper ? 'viewas' : 'home')
+
   if (!user) {
     return (
       <>
@@ -176,9 +184,11 @@ export default function App() {
       case 'ppcrequest':
         return <CreateJob key="cj-ppc-request" variant="ppc" user={user} onBack={() => go('jobstatus')} onLock={handleLock} />
       case 'qc':
-        return <QcInspection user={user} onBack={() => go('jobstatus')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
+        return <QcHome user={user} onBack={deptBack} onLock={handleLock} />
       case 'fgclosure':
-        return <FgClosure user={user} onBack={() => go('jobstatus')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
+        return <FgHome user={user} onBack={deptBack} onLock={handleLock} />
+      case 'purchase':
+        return <PurchaseHome user={user} onBack={deptBack} onLock={handleLock} />
       case 'create':
         return <CreateJob key="cj-create" user={user} onBack={() => go('home')} onLock={handleLock} onOpenPpc={() => go('ppcqueue')} />
       case 'ppc':
@@ -228,7 +238,22 @@ export default function App() {
       case 'jobdetail':
         return <JobDetail user={user} onBack={() => go('jobstatus')} onLock={handleLock} />
       case 'notifications':
-        return <Notifications user={user} onBack={() => go('home')} onLock={handleLock} />
+        return (
+          <Notifications
+            user={user}
+            onBack={() => go(isSuper ? 'viewas' : 'home')}
+            onLock={handleLock}
+            onOpen={(n) => {
+              if (n.type === 'ppc_approval') return go('ppcqueue')
+              if (n.ticketId) {
+                setMaintTicketId(n.ticketId)
+                return go('maintenancedetail')
+              }
+              if (n.type === 'maintenance_alert') return go('maintenance')
+              if (n.jobId) return go('jobstatus')
+            }}
+          />
+        )
       case 'home':
       default:
         return <AdminHome user={user} onNavigate={go} onOpenOverview={() => go('overview')} onLock={handleLock} />

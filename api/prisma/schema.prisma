@@ -366,6 +366,40 @@ model Job {
   holds    Hold[]
   qc       QcInspection[]
   closure  Closure?
+  materials MaterialUsage[]
+  serials   Serial[]
+}
+
+// Purchase logs the raw material consumed by a job (traceability/genealogy).
+model MaterialUsage {
+  id           String   @id @default(uuid())
+  jobId        String
+  item         String
+  materialType String?
+  vendor       String?
+  batchRef     String?
+  quantity     String? // freeform, e.g. "120 kg" / "40 pcs"
+  loggedById   String
+  createdAt    DateTime @default(now())
+  job          Job      @relation(fields: [jobId], references: [id])
+
+  @@index([jobId])
+  @@index([batchRef])
+}
+
+// FG records a serial number per produced unit (searchable).
+model Serial {
+  id        String   @id @default(uuid())
+  jobId     String
+  serialNo  String
+  modelCode String?
+  size      String?
+  addedById String
+  createdAt DateTime @default(now())
+  job       Job      @relation(fields: [jobId], references: [id])
+
+  @@unique([serialNo])
+  @@index([jobId])
 }
 
 model JobModel {

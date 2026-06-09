@@ -160,6 +160,11 @@ async function main() {
     })
 
     // pipeline template (+ steps). Rebuild steps to match the declared order.
+    // Demote any stale templates so exactly one default remains per product.
+    await prisma.pipelineTemplate.updateMany({
+      where: { productId: product.id, name: { not: p.pipeline.name } },
+      data: { isDefault: false },
+    })
     let template = await prisma.pipelineTemplate.findFirst({
       where: { productId: product.id, name: p.pipeline.name },
     })
@@ -168,6 +173,7 @@ async function main() {
         data: { productId: product.id, name: p.pipeline.name, isDefault: true },
       })
     } else {
+      await prisma.pipelineTemplate.update({ where: { id: template.id }, data: { isDefault: true } })
       await prisma.pipelineTemplateStep.deleteMany({ where: { templateId: template.id } })
     }
     await prisma.pipelineTemplateStep.createMany({

@@ -10,6 +10,10 @@ import { scanRoutes } from './routes/scan.js'
 import { userRoutes } from './routes/users.js'
 import { maintenanceRoutes } from './routes/maintenance.js'
 import { ppcRoutes } from './routes/ppc.js'
+import { notificationRoutes } from './routes/notifications.js'
+import { qcRoutes } from './routes/qc.js'
+import { fgRoutes } from './routes/fg.js'
+import { purchaseRoutes } from './routes/purchase.js'
 
 const app = Fastify({ logger: true })
 
@@ -50,6 +54,10 @@ await app.register(scanRoutes, { prefix: '/api/v1/scan' }) // state-machine engi
 await app.register(userRoutes, { prefix: '/api/v1/users' }) // admin: approve signups
 await app.register(maintenanceRoutes, { prefix: '/api/v1/maintenance' })
 await app.register(ppcRoutes, { prefix: '/api/v1/ppc' })
+await app.register(notificationRoutes, { prefix: '/api/v1/notifications' })
+await app.register(qcRoutes, { prefix: '/api/v1/qc' })
+await app.register(fgRoutes, { prefix: '/api/v1/fg' })
+await app.register(purchaseRoutes, { prefix: '/api/v1/purchase' })
 
 const port = Number(process.env.PORT ?? 4000)
 app

@@ -347,6 +347,69 @@ export const rejectPpcRequest = (id: string, note?: string) =>
   DEMO ? demo.demoPpcReject() : req<{ ok: boolean }>('POST', `/api/v1/ppc/${id}/reject`, note ? { note } : undefined)
 export const ppcCount = () => (DEMO ? demo.demoPpcCount() : req<{ pending: number }>('GET', '/api/v1/ppc/count'))
 
+// ── notifications ───────────────────────────────────────────────────────────
+export interface Notification {
+  id: string
+  type: string
+  body: string
+  jobId: string | null
+  ticketId: string | null
+  readAt: string | null
+  createdAt: string
+}
+export const getNotifications = () =>
+  DEMO ? Promise.resolve({ notifications: [] as Notification[] }) : req<{ notifications: Notification[] }>('GET', '/api/v1/notifications')
+export const notificationCount = () =>
+  DEMO ? Promise.resolve({ unread: 0 }) : req<{ unread: number }>('GET', '/api/v1/notifications/count')
+export const markNotificationRead = (id: string) =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/notifications/${id}/read`)
+export const markAllNotificationsRead = () =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', '/api/v1/notifications/read-all')
+
+// ── QC ──────────────────────────────────────────────────────────────────────
+export const getQcQueue = () =>
+  DEMO ? Promise.resolve({ jobs: [] as QueueJob[] }) : req<{ jobs: QueueJob[] }>('GET', '/api/v1/qc/queue')
+export const qcApprove = (jobId: string, notes?: string) =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/qc/${jobId}/approve`, notes ? { notes } : {})
+export const qcRework = (jobId: string, notes: string) =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/qc/${jobId}/rework`, { notes })
+
+// ── FG Stock ────────────────────────────────────────────────────────────────
+export interface FgJob extends QueueJob {
+  serialCount?: number
+}
+export const getFgQueue = () =>
+  DEMO ? Promise.resolve({ jobs: [] as FgJob[] }) : req<{ jobs: FgJob[] }>('GET', '/api/v1/fg/queue')
+export const getSerials = (jobId: string) =>
+  DEMO ? Promise.resolve({ serials: [] as { id: string; serialNo: string; modelCode: string | null; size: string | null }[] }) : req<{ serials: { id: string; serialNo: string; modelCode: string | null; size: string | null }[] }>('GET', `/api/v1/fg/${jobId}/serials`)
+export const addSerials = (jobId: string, serials: string[], modelCode?: string, size?: string) =>
+  DEMO ? Promise.resolve({ added: serials.length }) : req<{ added: number }>('POST', `/api/v1/fg/${jobId}/serials`, { serials, modelCode, size })
+export const requestClosure = (jobId: string, receivedQty: number) =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/fg/${jobId}/closure`, { receivedQty })
+
+// ── Purchase ────────────────────────────────────────────────────────────────
+export interface MaterialLine {
+  id: string
+  item: string
+  materialType: string | null
+  vendor: string | null
+  batchRef: string | null
+  quantity: string | null
+}
+export interface PurchaseInput {
+  item: string
+  materialType?: string
+  vendor?: string
+  batchRef?: string
+  quantity?: string
+}
+export const getPurchaseJobs = () =>
+  DEMO ? Promise.resolve({ jobs: [] as (QueueJob & { materialCount?: number })[] }) : req<{ jobs: (QueueJob & { materialCount?: number })[] }>('GET', '/api/v1/purchase/jobs')
+export const getMaterials = (jobId: string) =>
+  DEMO ? Promise.resolve({ materials: [] as MaterialLine[] }) : req<{ materials: MaterialLine[] }>('GET', `/api/v1/purchase/${jobId}/materials`)
+export const logMaterial = (jobId: string, input: PurchaseInput) =>
+  DEMO ? Promise.resolve({ material: { id: 'x', ...input, materialType: input.materialType ?? null, vendor: input.vendor ?? null, batchRef: input.batchRef ?? null, quantity: input.quantity ?? null } as MaterialLine }) : req<{ material: MaterialLine }>('POST', `/api/v1/purchase/${jobId}/materials`, input)
+
 export const newIdempotencyKey = () =>
   (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`)
 
