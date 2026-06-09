@@ -171,15 +171,15 @@ export default function App() {
       case 'insights':
         return <Insights user={user} onBack={() => go('overview')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
       case 'ppcrequest':
-        return <CreateJob variant="ppc" user={user} onBack={() => go('jobstatus')} onLock={handleLock} />
+        return <CreateJob key="cj-ppc-request" variant="ppc" user={user} onBack={() => go('jobstatus')} onLock={handleLock} />
       case 'qc':
         return <QcInspection user={user} onBack={() => go('jobstatus')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
       case 'fgclosure':
         return <FgClosure user={user} onBack={() => go('jobstatus')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
       case 'create':
-        return <CreateJob user={user} onBack={() => go('home')} onLock={handleLock} onOpenPpc={() => go('ppc')} />
+        return <CreateJob key="cj-create" user={user} onBack={() => go('home')} onLock={handleLock} onOpenPpc={() => go('ppc')} />
       case 'ppc':
-        return <CreateJob variant="review" user={user} onBack={() => go('create')} onLock={handleLock} onReject={() => go('create')} />
+        return <CreateJob key="cj-ppc-review" variant="review" user={user} onBack={() => go('create')} onLock={handleLock} onReject={() => go('create')} />
       case 'departments':
         return <Departments user={user} onBack={() => go('home')} onLock={handleLock} onOpenDept={() => go('departmentdetail')} />
       case 'departmentdetail':

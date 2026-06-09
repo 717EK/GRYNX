@@ -15,9 +15,11 @@ export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUs
   const [editingUser, setEditingUser] = useState(remembered === '')
   const [username, setUsername] = useState(remembered.toUpperCase())
   const [digits, setDigits] = useState<string[]>(Array(PIN_LENGTH).fill(''))
+  const [reveal, setReveal] = useState(-1) // index shown as a digit; others masked
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const inputs = useRef<Array<HTMLInputElement | null>>([])
+  const revealTimer = useRef<ReturnType<typeof setTimeout>>()
 
   const loginId = (editingUser ? username : remembered).trim()
   const complete = loginId !== '' && digits.every((d) => d !== '')
@@ -64,7 +66,13 @@ export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUs
       next[i] = v
       return next
     })
-    if (v && i < PIN_LENGTH - 1) inputs.current[i + 1]?.focus()
+    if (v) {
+      // reveal this digit; it masks when the next is entered or after a moment
+      setReveal(i)
+      clearTimeout(revealTimer.current)
+      revealTimer.current = setTimeout(() => setReveal(-1), 500)
+      if (i < PIN_LENGTH - 1) inputs.current[i + 1]?.focus()
+    }
   }
 
   function onKeyDown(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
@@ -129,7 +137,7 @@ export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUs
                 }}
                 className={`pin__box ${d ? 'is-filled' : ''}`}
                 inputMode="numeric"
-                type="password"
+                type={reveal === i ? 'text' : 'password'}
                 autoComplete="off"
                 maxLength={1}
                 value={d}

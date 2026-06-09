@@ -75,6 +75,7 @@ export default function JobForm({
   products: productsProp,
   modelCatalogue: catalogueProp,
   onChange,
+  initial,
 }: {
   jobIdLabel: string
   /** Real catalogue from the API. When omitted, falls back to mock data. */
@@ -83,20 +84,24 @@ export default function JobForm({
   modelCatalogue?: Record<string, ModelType[]>
   /** Emits the current selection so the parent can submit it. */
   onChange?: (sel: JobFormSelection) => void
+  /** Pre-fill the form (a saved draft, or a PPC request being reviewed). */
+  initial?: JobFormSelection | null
 }) {
   const live = !!productsProp
   const catalogue = catalogueProp ?? MOCK_CATALOGUE
   const [products, setProducts] = useState<Option[]>(productsProp ?? INITIAL_PRODUCTS)
-  const [productCode, setProductCode] = useState(productsProp?.[0]?.value ?? 'AT')
-  const [priority, setPriority] = useState<'urgent' | 'normal'>('normal')
+  const [productCode, setProductCode] = useState(initial?.productCode ?? productsProp?.[0]?.value ?? 'AT')
+  const [priority, setPriority] = useState<'urgent' | 'normal'>(initial?.priority ?? 'normal')
   const [models, setModels] = useState<Model[]>(
-    live
-      ? []
-      : [
-          { id: 1, code: 'AT290', size: '', qty: 20 },
-          { id: 2, code: 'AT400', size: '', qty: 15 },
-          { id: 3, code: 'AT500', size: '', qty: 10 },
-        ],
+    initial?.models?.length
+      ? initial.models.map((m) => ({ id: ++nextId, code: m.code, size: m.size, qty: m.qty }))
+      : live
+        ? []
+        : [
+            { id: 1, code: 'AT290', size: '', qty: 20 },
+            { id: 2, code: 'AT400', size: '', qty: 15 },
+            { id: 3, code: 'AT500', size: '', qty: 10 },
+          ],
   )
   // available lengths for each truss type in the current product
   const sizesByCode: Record<string, string[]> = Object.fromEntries(
@@ -111,8 +116,8 @@ export default function JobForm({
   const [editingPipe, setEditingPipe] = useState(false)
 
   const today = new Date()
-  const [startDate, setStartDate] = useState(today.toISOString().slice(0, 10))
-  const [startTime, setStartTime] = useState('09:00')
+  const [startDate, setStartDate] = useState(initial?.startDate || today.toISOString().slice(0, 10))
+  const [startTime, setStartTime] = useState(initial?.startTime || '09:00')
   const [targetDate, setTargetDate] = useState('2026-06-15')
   const [targetTime, setTargetTime] = useState('18:00')
 

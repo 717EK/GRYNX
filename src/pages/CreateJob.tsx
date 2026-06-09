@@ -40,6 +40,24 @@ export default function CreateJob({
   const [cardJobId, setCardJobId] = useState<string | null>(null)
   const sel = useRef<JobFormSelection | null>(null)
 
+  // Create Job keeps an unsaved draft on this device, so leaving and coming
+  // back (e.g. peeking at PPC) doesn't lose what the admin was entering. PPC
+  // Request / Review have their own data and don't use this draft.
+  const DRAFT_KEY = 'grynx-jobdraft'
+  const [initialDraft] = useState<JobFormSelection | null>(() => {
+    if (variant !== 'job') return null
+    try {
+      return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null')
+    } catch {
+      return null
+    }
+  })
+  const onFormChange = (s: JobFormSelection) => {
+    sel.current = s
+    if (variant === 'job') localStorage.setItem(DRAFT_KEY, JSON.stringify(s))
+  }
+  const clearDraft = () => variant === 'job' && localStorage.removeItem(DRAFT_KEY)
+
   async function submit() {
     setErr(null)
     const s = sel.current
@@ -61,6 +79,7 @@ export default function CreateJob({
     setBusy(true)
     try {
       const { job } = await createJob({ productId: product.id, priority: s.priority, models, startDate })
+      clearDraft() // job created → discard the saved draft
       setCreated(job)
       setCardJobId(job.id) // open the card in-app
     } catch (e) {
@@ -131,9 +150,8 @@ export default function CreateJob({
                 jobIdLabel="Job ID"
                 products={products}
                 modelCatalogue={modelCatalogue}
-                onChange={(s) => {
-                  sel.current = s
-                }}
+                initial={initialDraft}
+                onChange={onFormChange}
               />
               <div className={`jobscreen__actions ${isReview ? 'jobscreen__actions--two' : ''}`}>
                 <button className="btn btn--solid btn--block" disabled={busy} onClick={submit}>
