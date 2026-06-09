@@ -75,6 +75,7 @@ enum PpcStatus {
   draft
   submitted
   clarification
+  pending_confirm
   approved
   rejected
   cancelled

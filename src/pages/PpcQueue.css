@@ -51,3 +51,16 @@
   font-size: 11px;
   color: var(--text-tertiary);
 }
+.ppcq__card:disabled { opacity: 0.6; cursor: default; }
+.ppcq__card:disabled:hover { border-color: var(--border); }
+.ppcq__tag {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.ppcq__tag--wait { color: #d98a00; border-color: #d98a0066; }
+.ppcq__tag--rc { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+.ppcq__tag--info { color: var(--text-tertiary); }

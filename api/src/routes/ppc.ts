@@ -18,6 +18,30 @@ const createSchema = z.object({
     .min(1),
 })
 
+// An edit applied to an existing request (admin proposal, or PPC resubmit).
+const editSchema = createSchema
+
+// Re-validate models belong to the product, then overwrite the request's
+// header fields + lines inside the given transaction. Caller sets status.
+async function applyEdit(tx: Prisma.TransactionClient, id: string, input: z.infer<typeof editSchema>) {
+  const product = await tx.product.findUnique({ where: { id: input.productId }, include: { models: { select: { id: true } } } })
+  if (!product) return { ok: false as const, status: 404, error: 'product_not_found' }
+  const allowed = new Set(product.models.map((m) => m.id))
+  if (input.models.some((m) => !allowed.has(m.modelId))) return { ok: false as const, status: 400, error: 'model_not_in_product' }
+  await tx.ppcRequestModel.deleteMany({ where: { requestId: id } })
+  await tx.ppcRequest.update({
+    where: { id },
+    data: {
+      productId: input.productId,
+      priority: input.priority,
+      startDate: input.startDate ?? null,
+      targetDate: input.targetDate ?? null,
+      models: { create: input.models.map((m) => ({ modelId: m.modelId, size: m.size ?? null, quantity: m.quantity })) },
+    },
+  })
+  return { ok: true as const }
+}
+
 const requestSelect = {
   id: true,
   requestNo: true,
@@ -72,9 +96,24 @@ export async function ppcRoutes(app: FastifyInstance) {
 
   // ── list (default = the pending review queue) + count for the badge ─────────
   app.get('/', async (req) => {
-    const q = z.object({ status: z.enum(['submitted', 'approved', 'rejected', 'clarification', 'cancelled', 'draft']).optional() }).parse(req.query)
+    const q = z
+      .object({ status: z.enum(['submitted', 'approved', 'rejected', 'clarification', 'pending_confirm', 'cancelled', 'draft']).optional() })
+      .parse(req.query)
     const requests = await prisma.ppcRequest.findMany({
       where: { status: q.status ?? 'submitted' },
+      orderBy: { createdAt: 'desc' },
+      select: requestSelect,
+    })
+    return { requests }
+  })
+
+  // ── PPC's own inbox: requests of mine still needing action ──────────────────
+  // pending_confirm = admin proposed edits I must confirm; clarification = admin
+  // sent it back (RC) for me to fix & resubmit. Submitted are awaiting admin.
+  app.get('/mine', async (req) => {
+    const actorId = (req.user as AccessPayload).sub
+    const requests = await prisma.ppcRequest.findMany({
+      where: { createdById: actorId, status: { in: ['pending_confirm', 'clarification', 'submitted'] } },
       orderBy: { createdAt: 'desc' },
       select: requestSelect,
     })
@@ -99,6 +138,9 @@ export async function ppcRoutes(app: FastifyInstance) {
     const r = await prisma.ppcRequest.findUnique({ where: { id }, include: { models: true } })
     if (!r) return reply.code(404).send({ error: 'not_found' })
     if (r.status === 'approved') return reply.code(409).send({ error: 'already_approved', approvedJobId: r.approvedJobId })
+    // Only a submitted request may be approved. If admin proposed edits it is
+    // pending_confirm and must come back through PPC first.
+    if (r.status !== 'submitted') return reply.code(409).send({ error: 'awaiting_ppc', status: r.status })
 
     const result = await createJobFromInput(
       { productId: r.productId, priority: r.priority, startDate: r.startDate, models: r.models.map((m) => ({ modelId: m.modelId, size: m.size, quantity: m.quantity })) },
@@ -123,5 +165,79 @@ export async function ppcRoutes(app: FastifyInstance) {
     await writeAudit('ppc_request', id, 'reject', { actorId })
     await notifyUsers(prisma, [r.createdById], { type: 'ppc_approval', body: `Request ${r.requestNo} sent back${body.note ? ': ' + body.note : ''}` })
     return { ok: true }
+  })
+
+  // ── admin requests changes (RC) → back to PPC with feedback ─────────────────
+  app.post('/:id/request-change', { preHandler: requireRole('admin') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const body = z.object({ note: z.string().min(1).max(500) }).parse(req.body ?? {})
+    const actorId = (req.user as AccessPayload).sub
+    const r = await prisma.ppcRequest.findUnique({ where: { id }, select: { createdById: true, requestNo: true, status: true } })
+    if (!r) return reply.code(404).send({ error: 'not_found' })
+    if (r.status === 'approved') return reply.code(409).send({ error: 'already_approved' })
+    await prisma.ppcRequest.update({ where: { id }, data: { status: 'clarification', clarificationNote: body.note } })
+    await writeAudit('ppc_request', id, 'request_change', { actorId, after: { note: body.note } })
+    await notifyUsers(prisma, [r.createdById], { type: 'ppc_approval', body: `Changes requested on ${r.requestNo}: ${body.note}` })
+    return { ok: true }
+  })
+
+  // ── admin proposes edits → PPC must confirm before it can be approved ───────
+  app.post('/:id/propose', { preHandler: requireRole('admin') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const parsed = editSchema.safeParse(req.body)
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_request', detail: parsed.error.issues })
+    const actorId = (req.user as AccessPayload).sub
+    const r = await prisma.ppcRequest.findUnique({ where: { id }, select: { createdById: true, requestNo: true, status: true } })
+    if (!r) return reply.code(404).send({ error: 'not_found' })
+    if (r.status === 'approved') return reply.code(409).send({ error: 'already_approved' })
+
+    const note = z.object({ note: z.string().max(500).optional() }).parse(req.body ?? {}).note
+    const out = await prisma.$transaction(async (tx) => {
+      const e = await applyEdit(tx, id, parsed.data)
+      if (!e.ok) return e
+      await tx.ppcRequest.update({ where: { id }, data: { status: 'pending_confirm', clarificationNote: note ?? null } })
+      await writeAudit('ppc_request', id, 'propose', { actorId, after: { models: parsed.data.models.length, note }, tx })
+      await notifyUsers(tx, [r.createdById], { type: 'ppc_approval', body: `Admin proposed changes to ${r.requestNo} — please confirm` })
+      return { ok: true as const }
+    })
+    if (!out.ok) return reply.code(out.status).send({ error: out.error })
+    const request = await prisma.ppcRequest.findUnique({ where: { id }, select: requestSelect })
+    return { request }
+  })
+
+  // ── PPC confirms admin's proposed edits → back to admin for final approval ──
+  app.post('/:id/confirm', { preHandler: requireRole('ppc', 'admin') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const actorId = (req.user as AccessPayload).sub
+    const r = await prisma.ppcRequest.findUnique({ where: { id }, select: { requestNo: true, status: true } })
+    if (!r) return reply.code(404).send({ error: 'not_found' })
+    if (r.status !== 'pending_confirm') return reply.code(409).send({ error: 'not_pending_confirm', status: r.status })
+    await prisma.ppcRequest.update({ where: { id }, data: { status: 'submitted', clarificationNote: null } })
+    await writeAudit('ppc_request', id, 'confirm', { actorId })
+    await notifyAdmins(prisma, { type: 'ppc_approval', body: `${r.requestNo} confirmed by PPC — ready to approve` })
+    return { ok: true }
+  })
+
+  // ── PPC resubmits after an RC (edited the request) → back to admin queue ────
+  app.post('/:id/resubmit', { preHandler: requireRole('ppc', 'admin') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const parsed = editSchema.safeParse(req.body)
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_request', detail: parsed.error.issues })
+    const actorId = (req.user as AccessPayload).sub
+    const r = await prisma.ppcRequest.findUnique({ where: { id }, select: { requestNo: true, status: true } })
+    if (!r) return reply.code(404).send({ error: 'not_found' })
+    if (r.status !== 'clarification') return reply.code(409).send({ error: 'not_in_clarification', status: r.status })
+
+    const out = await prisma.$transaction(async (tx) => {
+      const e = await applyEdit(tx, id, parsed.data)
+      if (!e.ok) return e
+      await tx.ppcRequest.update({ where: { id }, data: { status: 'submitted', clarificationNote: null } })
+      await writeAudit('ppc_request', id, 'resubmit', { actorId, tx })
+      await notifyAdmins(tx, { type: 'ppc_approval', body: `${r.requestNo} resubmitted by PPC — review & approve` })
+      return { ok: true as const }
+    })
+    if (!out.ok) return reply.code(out.status).send({ error: out.error })
+    const request = await prisma.ppcRequest.findUnique({ where: { id }, select: requestSelect })
+    return { request }
   })
 }

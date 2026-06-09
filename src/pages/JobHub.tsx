@@ -2,18 +2,22 @@ import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import { listPpcRequests, type PpcRequest } from '../lib/api'
 import './PpcQueue.css'
+import './JobHub.css'
 
-// The admin's PPC review queue: every pending request PPC has raised. Tap one
-// to open it in the review form and approve → job.
-export default function PpcQueue({
+// The admin's job entry point. Two clear intents: start a brand-new job, or pick
+// up a request PPC already raised. PPC requests open as a read-only job sheet
+// (PpcReviewSheet) — not a form — so review is the default and editing is opt-in.
+export default function JobHub({
   user,
   onBack,
   onLock,
+  onNew,
   onOpen,
 }: {
   user: SessionUser
   onBack: () => void
   onLock: () => void
+  onNew: () => void
   onOpen: (req: PpcRequest) => void
 }) {
   const [requests, setRequests] = useState<PpcRequest[] | null>(null)
@@ -30,13 +34,26 @@ export default function PpcQueue({
         <header className="screen__head">
           <button className="screen__back" onClick={onBack} aria-label="Back">←</button>
           <div className="screen__titles">
-            <h1 className="screen__title display">PPC Requests</h1>
-            <span className="mono-label">{requests ? `${requests.length} pending review` : 'Loading…'}</span>
+            <h1 className="screen__title display">Create Job</h1>
+            <span className="mono-label">Start fresh, or approve a PPC request</span>
           </div>
           <span />
         </header>
 
         <div className="screen__scroll">
+          <button className="jobhub__new" onClick={onNew}>
+            <span className="jobhub__plus" aria-hidden>＋</span>
+            <span className="jobhub__new-text">
+              <span className="jobhub__new-title display">Create a new job</span>
+              <span className="mono-label">Build a job from scratch</span>
+            </span>
+            <span className="jobhub__chev" aria-hidden>›</span>
+          </button>
+
+          <span className="jobhub__group mono-label">
+            PPC Requests {requests ? `· ${requests.length} pending` : ''}
+          </span>
+
           {requests === null ? (
             <span className="ppcq__empty mono-label">Loading…</span>
           ) : requests.length === 0 ? (

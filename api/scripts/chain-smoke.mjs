@@ -20,7 +20,7 @@ const scan=(tok,code)=>call('POST','/api/v1/scan',tok,{jobNo:code,idempotencyKey
   // FG queue
   const fg=await login('fg')
   const fq=await call('GET','/api/v1/fg/queue',fg); ok(fq.j.jobs.some(x=>x.id===jobId),'job appears in FG queue')
-  const ser=await call('POST','/api/v1/fg/'+jobId+'/serials',fg,{serials:['SN-001','SN-002','SN-003']}); ok(ser.j.added===3,'FG added 3 serials')
+  const sp='SN-'+Date.now().toString().slice(-6)+'-'; const ser=await call('POST','/api/v1/fg/'+jobId+'/serials',fg,{serials:[sp+'1',sp+'2',sp+'3']}); ok(ser.j.added===3,'FG added 3 serials')
   const clo=await call('POST','/api/v1/fg/'+jobId+'/closure',fg,{receivedQty:10}); ok(clo.s===200,'FG requested closure')
   // admin approves closure
   const ca=await call('POST','/api/v1/fg/closure/'+jobId+'/approve',admin); ok(ca.s===200,'admin approved closure')

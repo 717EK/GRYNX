@@ -1,0 +1,86 @@
+.prs { display: flex; flex-direction: column; gap: 12px; }
+
+.prs__row--top { display: flex; gap: 8px; flex-wrap: wrap; }
+.prs__chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--border);
+}
+.prs__chip--review { color: var(--brand); border-color: color-mix(in srgb, var(--brand) 45%, transparent); }
+.prs__chip--wait { color: #d98a00; border-color: #d98a0066; }
+.prs__chip--rc { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.prs__chip--ok { color: #28a745; border-color: #28a74566; }
+.prs__chip--urgent { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+
+.prs__note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 13px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+}
+.prs__note-k { color: var(--text-secondary); letter-spacing: 0.07em; }
+.prs__note-t { font-size: 14px; line-height: 1.35; }
+
+/* sheet (looks like the printed job card) */
+.prs__sheet {
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.prs__sheet-head,
+.prs__line {
+  display: grid;
+  grid-template-columns: 1fr 80px 52px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+}
+.prs__sheet-head {
+  color: var(--text-secondary);
+  letter-spacing: 0.07em;
+  border-bottom: 1px solid var(--border);
+}
+.prs__sheet-head span:nth-child(3),
+.prs__line span:nth-child(3) { text-align: right; }
+.prs__line { border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.prs__line:last-child { border-bottom: none; }
+.prs__model { font-size: 16px; }
+.prs__size { color: var(--text-secondary); }
+.prs__qty { font-size: 16px; }
+.prs__line--total { background: color-mix(in srgb, var(--brand) 7%, transparent); }
+.prs__line--total .prs__qty { color: var(--brand); }
+
+.prs__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  overflow: hidden;
+}
+.prs__meta-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 14px;
+  background: var(--surface);
+}
+.prs__meta-k { color: var(--text-secondary); letter-spacing: 0.06em; }
+.prs__meta-v { font-size: 14px; }
+
+.prs__edit {
+  flex: none;
+  padding: 7px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.prs__edit:active { transform: scale(0.97); }

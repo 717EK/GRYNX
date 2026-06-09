@@ -3,6 +3,9 @@ import LoginPage from './pages/LoginPage'
 import AdminHome from './pages/AdminHome'
 import AdminOverview from './pages/AdminOverview'
 import CreateJob from './pages/CreateJob'
+import JobHub from './pages/JobHub'
+import PpcReviewSheet from './pages/PpcReviewSheet'
+import PpcInbox from './pages/PpcInbox'
 import Departments from './pages/Departments'
 import Maintenance from './pages/Maintenance'
 import JobStatus from './pages/JobStatus'
@@ -15,7 +18,6 @@ import QcHome from './pages/QcHome'
 import FgHome from './pages/FgHome'
 import PurchaseHome from './pages/PurchaseHome'
 import ScanPage from './pages/ScanPage'
-import PpcQueue from './pages/PpcQueue'
 import StationHome from './pages/StationHome'
 import ViewAsPanel from './pages/ViewAsPanel'
 import SignupPage from './pages/SignupPage'
@@ -30,7 +32,7 @@ export type Screen =
   | 'home'
   | 'overview'
   | 'create'
-  | 'ppc'
+  | 'review'
   | 'departments'
   | 'maintenance'
   | 'jobstatus'
@@ -47,7 +49,8 @@ export type Screen =
   | 'approvals'
   | 'viewas'
   | 'station'
-  | 'ppcqueue'
+  | 'jobhub'
+  | 'ppcinbox'
   | 'purchase'
 
 const FLOOR_ROLES = ['dept_head', 'qc', 'fg_stock', 'maintenance']
@@ -55,7 +58,7 @@ const FLOOR_ROLES = ['dept_head', 'qc', 'fg_stock', 'maintenance']
 function landingFor(u: ApiUser): Screen {
   if (u.username.toLowerCase() === 'admin') return 'viewas' // SuperUser (testing)
   if (u.roles.some((r) => r.role === 'admin')) return 'home' // AASHISH = real admin
-  if (u.roles.some((r) => r.role === 'ppc')) return 'create'
+  if (u.roles.some((r) => r.role === 'ppc')) return 'ppcrequest'
   if (u.roles.some((r) => r.role === 'qc')) return 'qc'
   if (u.roles.some((r) => r.role === 'fg_stock')) return 'fgclosure'
   return 'station' // production-station floor users land on their station home
@@ -80,7 +83,16 @@ export default function App() {
   const [maintTicketId, setMaintTicketId] = useState<string | null>(null)
   const [viewAs, setViewAs] = useState<{ id: string; name: string } | null>(null)
   const [selectedPpc, setSelectedPpc] = useState<PpcRequest | null>(null)
+  const [reviewMode, setReviewMode] = useState<'admin' | 'ppc'>('admin')
   const go = (s: Screen) => setScreen(s)
+  // open a PPC request as a job sheet; mode decides the available actions and
+  // where Back/Done return to (admin → hub, PPC → inbox).
+  const openReview = (req: PpcRequest, mode: 'admin' | 'ppc') => {
+    setSelectedPpc(req)
+    setReviewMode(mode)
+    go('review')
+  }
+  const reviewExit = () => go(reviewMode === 'admin' ? 'jobhub' : 'ppcinbox')
 
   useEffect(() => registerNav(go), [])
 
@@ -182,7 +194,16 @@ export default function App() {
       case 'insights':
         return <Insights user={user} onBack={() => go('overview')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
       case 'ppcrequest':
-        return <CreateJob key="cj-ppc-request" variant="ppc" user={user} onBack={() => go('jobstatus')} onLock={handleLock} />
+        return (
+          <CreateJob
+            key="cj-ppc-request"
+            variant="ppc"
+            user={user}
+            onBack={() => go(isSuper ? 'viewas' : 'home')}
+            onLock={handleLock}
+            onOpenInbox={() => go('ppcinbox')}
+          />
+        )
       case 'qc':
         return <QcHome user={user} onBack={deptBack} onLock={handleLock} />
       case 'fgclosure':
@@ -190,29 +211,38 @@ export default function App() {
       case 'purchase':
         return <PurchaseHome user={user} onBack={deptBack} onLock={handleLock} />
       case 'create':
-        return <CreateJob key="cj-create" user={user} onBack={() => go('home')} onLock={handleLock} onOpenPpc={() => go('ppcqueue')} />
-      case 'ppc':
+        return <CreateJob key="cj-create" user={user} onBack={() => go('jobhub')} onLock={handleLock} />
+      case 'jobhub':
         return (
-          <CreateJob
-            key={`cj-ppc-review-${selectedPpc?.id ?? 'none'}`}
-            variant="review"
-            ppcRequest={selectedPpc}
+          <JobHub
             user={user}
-            onBack={() => go('ppcqueue')}
+            onBack={() => go(isSuper ? 'viewas' : 'home')}
             onLock={handleLock}
-            onReject={() => go('ppcqueue')}
+            onNew={() => go('create')}
+            onOpen={(reqData) => openReview(reqData, 'admin')}
           />
         )
-      case 'ppcqueue':
-        return (
-          <PpcQueue
+      case 'review':
+        return selectedPpc ? (
+          <PpcReviewSheet
+            key={`review-${selectedPpc.id}`}
             user={user}
-            onBack={() => go('home')}
+            request={selectedPpc}
+            mode={reviewMode}
+            onBack={reviewExit}
             onLock={handleLock}
-            onOpen={(reqData) => {
-              setSelectedPpc(reqData)
-              go('ppc')
-            }}
+            onDone={reviewExit}
+          />
+        ) : (
+          <JobHub user={user} onBack={() => go('home')} onLock={handleLock} onNew={() => go('create')} onOpen={(r) => openReview(r, 'admin')} />
+        )
+      case 'ppcinbox':
+        return (
+          <PpcInbox
+            user={user}
+            onBack={() => go('ppcrequest')}
+            onLock={handleLock}
+            onOpen={(reqData) => openReview(reqData, 'ppc')}
           />
         )
       case 'departments':
@@ -244,7 +274,8 @@ export default function App() {
             onBack={() => go(isSuper ? 'viewas' : 'home')}
             onLock={handleLock}
             onOpen={(n) => {
-              if (n.type === 'ppc_approval') return go('ppcqueue')
+              // PPC users land in their own inbox; admins in the job hub queue.
+              if (n.type === 'ppc_approval') return go(user.role === 'PPC' ? 'ppcinbox' : 'jobhub')
               if (n.ticketId) {
                 setMaintTicketId(n.ticketId)
                 return go('maintenancedetail')

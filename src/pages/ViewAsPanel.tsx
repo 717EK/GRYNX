@@ -29,7 +29,8 @@ export default function ViewAsPanel({
 
   const roleViews: { label: string; sub: string; to: Screen }[] = [
     { label: 'Admin Home', sub: 'AASHISH · full control', to: 'home' },
-    { label: 'Create Job', sub: 'admin / PPC', to: 'create' },
+    { label: 'Create Job', sub: 'admin hub + PPC queue', to: 'jobhub' },
+    { label: 'PPC Request', sub: 'raise + my requests', to: 'ppcrequest' },
     { label: 'Maintenance', sub: 'tickets', to: 'maintenance' },
   ]
 

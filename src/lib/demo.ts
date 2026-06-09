@@ -484,3 +484,46 @@ export async function demoPpcApprove(id: string) {
   savePpc()
   return { job }
 }
+function applyDemoEdit(r: PpcRequest, input: CreateJobInput) {
+  const product = PRODUCTS.find((p) => p.id === input.productId)
+  if (!product) throw new ApiError(404, { error: 'product_not_found' })
+  r.product = { id: product.id, code: product.code, name: product.name }
+  r.priority = input.priority
+  r.startDate = input.startDate ?? null
+  r.models = input.models.map((m) => {
+    const model = product.models.find((x) => x.id === m.modelId)!
+    return { quantity: m.quantity, size: m.size ?? null, model: { id: model.id, code: model.code, name: model.name } }
+  })
+}
+export const demoPpcMine = () =>
+  delay({ requests: ppc.reqs.filter((r) => ['pending_confirm', 'clarification', 'submitted'].includes(r.status)) })
+export function demoPpcRequestChange(id: string, note: string) {
+  const r = findReq(id)
+  r.status = 'clarification'
+  r.clarificationNote = note
+  savePpc()
+  return delay({ ok: true })
+}
+export function demoPpcPropose(id: string, input: CreateJobInput & { note?: string }) {
+  const r = findReq(id)
+  applyDemoEdit(r, input)
+  r.status = 'pending_confirm'
+  r.clarificationNote = input.note ?? null
+  savePpc()
+  return delay({ request: r })
+}
+export function demoPpcConfirm(id: string) {
+  const r = findReq(id)
+  r.status = 'submitted'
+  r.clarificationNote = null
+  savePpc()
+  return delay({ ok: true })
+}
+export function demoPpcResubmit(id: string, input: CreateJobInput) {
+  const r = findReq(id)
+  applyDemoEdit(r, input)
+  r.status = 'submitted'
+  r.clarificationNote = null
+  savePpc()
+  return delay({ request: r })
+}

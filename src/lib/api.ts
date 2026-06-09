@@ -346,6 +346,21 @@ export const approvePpcRequest = (id: string) =>
 export const rejectPpcRequest = (id: string, note?: string) =>
   DEMO ? demo.demoPpcReject() : req<{ ok: boolean }>('POST', `/api/v1/ppc/${id}/reject`, note ? { note } : undefined)
 export const ppcCount = () => (DEMO ? demo.demoPpcCount() : req<{ pending: number }>('GET', '/api/v1/ppc/count'))
+// PPC's own inbox: requests still needing my action (pending_confirm / clarification / submitted)
+export const listMyPpcRequests = () =>
+  DEMO ? demo.demoPpcMine() : req<{ requests: PpcRequest[] }>('GET', '/api/v1/ppc/mine')
+// admin requests changes (RC) → back to PPC with feedback
+export const requestPpcChange = (id: string, note: string) =>
+  DEMO ? demo.demoPpcRequestChange(id, note) : req<{ ok: boolean }>('POST', `/api/v1/ppc/${id}/request-change`, { note })
+// admin proposes edits → PPC must confirm (round-trip)
+export const proposePpcEdit = (id: string, input: CreateJobInput & { note?: string }) =>
+  DEMO ? demo.demoPpcPropose(id, input) : req<{ request: PpcRequest }>('POST', `/api/v1/ppc/${id}/propose`, input)
+// PPC confirms admin's proposed edits → back to admin to approve
+export const confirmPpcRequest = (id: string) =>
+  DEMO ? demo.demoPpcConfirm(id) : req<{ ok: boolean }>('POST', `/api/v1/ppc/${id}/confirm`)
+// PPC resubmits after an RC → back to admin queue
+export const resubmitPpcRequest = (id: string, input: CreateJobInput) =>
+  DEMO ? demo.demoPpcResubmit(id, input) : req<{ request: PpcRequest }>('POST', `/api/v1/ppc/${id}/resubmit`, input)
 
 // ── notifications ───────────────────────────────────────────────────────────
 export interface Notification {
