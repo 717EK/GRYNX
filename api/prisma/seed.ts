@@ -206,11 +206,21 @@ async function main() {
   }
 
   await upsertUser('aashish', 'AASHISH', 'admin') // primary admin (PIN 123456)
-  await upsertUser('admin', 'Administrator', 'admin') // legacy alias, kept working
-  await upsertUser('ppc', 'PPC Planner', 'ppc')
-  // one head per operational department so scan-to-advance is testable end to end
-  for (const code of ['DESIGN', 'LASER', 'MS_PROD', 'ALLOY_PROD', 'CNC_VMC', 'MNTR', 'POWDER']) {
-    await upsertUser(code.toLowerCase(), `${code} Head`, 'dept_head', code)
+  await upsertUser('admin', 'Administrator', 'admin') // SuperUser (View As, testing)
+  await upsertUser('ppc', 'Deepak (PPC)', 'ppc')
+  // named heads per operational department (+ a backup on a couple) for testing
+  const HEADS: [string, string, string?][] = [
+    ['DESIGN', 'Pratik', 'Neha'],
+    ['LASER', 'Ramesh', 'Imran'],
+    ['MS_PROD', 'Suresh'],
+    ['ALLOY_PROD', 'Mahesh'],
+    ['CNC_VMC', 'Vijay', 'Anil'],
+    ['MNTR', 'Kunal'],
+    ['POWDER', 'Arjun'],
+  ]
+  for (const [code, head, backup] of HEADS) {
+    await upsertUser(code.toLowerCase(), `${head} (${code})`, 'dept_head', code)
+    if (backup) await upsertUser(`${code.toLowerCase()}2`, `${backup} (${code})`, 'dept_head', code)
   }
   await upsertUser('qc', 'QC Inspector', 'qc', 'QC')
   await upsertUser('fg', 'FG Stock', 'fg_stock', 'FG_STOCK')
@@ -221,6 +231,48 @@ async function main() {
 
   const userCount = await prisma.user.count()
   console.log(`  users: ${userCount} (all PIN ${DEMO_PIN})`)
+
+  // ── sample PPC requests (for the review queue) — only if the queue is empty ──
+  const pendingPpc = await prisma.ppcRequest.count({ where: { status: 'submitted' } })
+  if (pendingPpc < 3) {
+    const ppcUser = await prisma.user.findUnique({ where: { username: 'ppc' }, select: { id: true } })
+    const at = await prisma.product.findUnique({
+      where: { code: 'AT' },
+      include: { models: { where: { active: true }, select: { id: true, code: true, sizes: true } } },
+    })
+    if (ppcUser && at) {
+      const pick = (n: number) => at.models.filter((m) => m.sizes.length).slice(0, n)
+      const samples: { priority: 'normal' | 'urgent'; lines: { code: string; n: number }[] }[] = [
+        { priority: 'urgent', lines: [{ code: 'LD38', n: 40 }, { code: 'LD38', n: 10 }] },
+        { priority: 'normal', lines: [{ code: 'ST-35', n: 60 }, { code: 'HD48', n: 12 }] },
+        { priority: 'normal', lines: [{ code: 'JTX', n: 24 }] },
+        { priority: 'urgent', lines: [{ code: 'RT65', n: 18 }, { code: 'DT-XR', n: 8 }] },
+      ]
+      let n = 0
+      for (const s of samples) {
+        const seq = (await prisma.dailySequence.upsert({ where: { scope: 'ppc:counter' }, update: { lastValue: { increment: 1 } }, create: { scope: 'ppc:counter', lastValue: 1 } })).lastValue
+        const lines = s.lines
+          .map((l) => {
+            const m = at.models.find((x) => x.code === l.code) ?? pick(1)[0]
+            return m ? { modelId: m.id, size: m.sizes[0] ?? null, quantity: l.n } : null
+          })
+          .filter((x): x is { modelId: string; size: string | null; quantity: number } => !!x)
+        if (!lines.length) continue
+        await prisma.ppcRequest.create({
+          data: {
+            requestNo: `PR-${String(seq).padStart(4, '0')}`,
+            productId: at.id,
+            priority: s.priority,
+            status: 'submitted',
+            createdById: ppcUser.id,
+            models: { create: lines },
+          },
+        })
+        n++
+      }
+      console.log(`  sample PPC requests created: ${n}`)
+    }
+  }
   console.log('Seed complete.')
 }
 

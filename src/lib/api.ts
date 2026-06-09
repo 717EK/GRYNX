@@ -320,6 +320,33 @@ export const updateMaintenance = (id: string, body: MaintUpdateInput) =>
 export const closeMaintenance = (id: string, remark: string) =>
   DEMO ? demo.demoMaintClose(id, remark) : req<{ ticket: MaintTicket }>('POST', `/api/v1/maintenance/${id}/close`, { remark })
 
+// ── PPC requests ──────────────────────────────────────────────────────────
+export interface PpcRequest {
+  id: string
+  requestNo: string
+  priority: string
+  status: string
+  startDate: string | null
+  targetDate: string | null
+  createdAt: string
+  createdById: string
+  approvedJobId: string | null
+  clarificationNote: string | null
+  product: { id: string; code: string; name: string }
+  models: { quantity: number; size: string | null; model: { id: string; code: string; name: string } }[]
+}
+export const createPpcRequest = (input: CreateJobInput) =>
+  DEMO ? demo.demoPpcCreate(input) : req<{ request: PpcRequest }>('POST', '/api/v1/ppc', input)
+export const listPpcRequests = (status?: string) =>
+  DEMO ? demo.demoPpcList(status) : req<{ requests: PpcRequest[] }>('GET', `/api/v1/ppc${status ? `?status=${status}` : ''}`)
+export const getPpcRequest = (id: string) =>
+  DEMO ? demo.demoPpcGet(id) : req<{ request: PpcRequest }>('GET', `/api/v1/ppc/${id}`)
+export const approvePpcRequest = (id: string) =>
+  DEMO ? demo.demoPpcApprove(id) : req<{ job: JobDTO }>('POST', `/api/v1/ppc/${id}/approve`)
+export const rejectPpcRequest = (id: string, note?: string) =>
+  DEMO ? demo.demoPpcReject() : req<{ ok: boolean }>('POST', `/api/v1/ppc/${id}/reject`, note ? { note } : undefined)
+export const ppcCount = () => (DEMO ? demo.demoPpcCount() : req<{ pending: number }>('GET', '/api/v1/ppc/count'))
+
 export const newIdempotencyKey = () =>
   (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`)
 

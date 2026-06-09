@@ -14,6 +14,7 @@ import Insights from './pages/Insights'
 import QcInspection from './pages/QcInspection'
 import FgClosure from './pages/FgClosure'
 import ScanPage from './pages/ScanPage'
+import PpcQueue from './pages/PpcQueue'
 import StationHome from './pages/StationHome'
 import ViewAsPanel from './pages/ViewAsPanel'
 import SignupPage from './pages/SignupPage'
@@ -21,7 +22,7 @@ import Approvals from './pages/Approvals'
 import UpdatePrompt from './components/UpdatePrompt'
 import { registerNav } from './lib/nav'
 import type { SessionUser } from './components/UtilityBars'
-import { getUser, isAuthed, logout, getDepartments, type ApiUser } from './lib/api'
+import { getUser, isAuthed, logout, getDepartments, type ApiUser, type PpcRequest } from './lib/api'
 
 export type Screen =
   | 'login'
@@ -45,6 +46,7 @@ export type Screen =
   | 'approvals'
   | 'viewas'
   | 'station'
+  | 'ppcqueue'
 
 const FLOOR_ROLES = ['dept_head', 'qc', 'fg_stock', 'maintenance']
 
@@ -73,6 +75,7 @@ export default function App() {
   const [depNames, setDepNames] = useState<Record<string, string>>({})
   const [maintTicketId, setMaintTicketId] = useState<string | null>(null)
   const [viewAs, setViewAs] = useState<{ id: string; name: string } | null>(null)
+  const [selectedPpc, setSelectedPpc] = useState<PpcRequest | null>(null)
   const go = (s: Screen) => setScreen(s)
 
   useEffect(() => registerNav(go), [])
@@ -177,9 +180,31 @@ export default function App() {
       case 'fgclosure':
         return <FgClosure user={user} onBack={() => go('jobstatus')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
       case 'create':
-        return <CreateJob key="cj-create" user={user} onBack={() => go('home')} onLock={handleLock} onOpenPpc={() => go('ppc')} />
+        return <CreateJob key="cj-create" user={user} onBack={() => go('home')} onLock={handleLock} onOpenPpc={() => go('ppcqueue')} />
       case 'ppc':
-        return <CreateJob key="cj-ppc-review" variant="review" user={user} onBack={() => go('create')} onLock={handleLock} onReject={() => go('create')} />
+        return (
+          <CreateJob
+            key={`cj-ppc-review-${selectedPpc?.id ?? 'none'}`}
+            variant="review"
+            ppcRequest={selectedPpc}
+            user={user}
+            onBack={() => go('ppcqueue')}
+            onLock={handleLock}
+            onReject={() => go('ppcqueue')}
+          />
+        )
+      case 'ppcqueue':
+        return (
+          <PpcQueue
+            user={user}
+            onBack={() => go('home')}
+            onLock={handleLock}
+            onOpen={(reqData) => {
+              setSelectedPpc(reqData)
+              go('ppc')
+            }}
+          />
+        )
       case 'departments':
         return <Departments user={user} onBack={() => go('home')} onLock={handleLock} onOpenDept={() => go('departmentdetail')} />
       case 'departmentdetail':

@@ -3,11 +3,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { authenticate, requireRole, type AccessPayload } from '../lib/auth.js'
-import { writeAudit } from '../lib/audit.js'
-import { notifyDepartment } from '../lib/notify.js'
-import { nextDailySequence } from '../lib/sequence.js'
-import { buildDisplayLabel, dailyScope, opaqueJobNo } from '../lib/label.js'
-import { acceptanceDueAt } from '../lib/sla.js'
+import { createJobFromInput } from '../lib/jobCreate.js'
 import { renderJobCard } from '../lib/jobcard.js'
 
 const createSchema = z.object({
@@ -43,113 +39,10 @@ export async function jobRoutes(app: FastifyInstance) {
   app.post('/', { preHandler: requireRole('admin') }, async (req, reply) => {
     const parsed = createSchema.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: 'bad_request', detail: parsed.error.issues })
-    const input = parsed.data
     const actorId = (req.user as AccessPayload).sub
-
-    // resolve product + validate models belong to it
-    const product = await prisma.product.findUnique({
-      where: { id: input.productId },
-      include: { models: { select: { id: true } } },
-    })
-    if (!product) return reply.code(404).send({ error: 'product_not_found' })
-    const allowed = new Set(product.models.map((m) => m.id))
-    const badModel = input.models.find((m) => !allowed.has(m.modelId))
-    if (badModel) return reply.code(400).send({ error: 'model_not_in_product', modelId: badModel.modelId })
-
-    // resolve pipeline (explicit, else product default)
-    const template = input.pipelineTemplateId
-      ? await prisma.pipelineTemplate.findFirst({
-          where: { id: input.pipelineTemplateId, productId: product.id },
-          include: { steps: { orderBy: { sequence: 'asc' } } },
-        })
-      : await prisma.pipelineTemplate.findFirst({
-          where: { productId: product.id, isDefault: true },
-          include: { steps: { orderBy: { sequence: 'asc' } } },
-        })
-    if (!template || template.steps.length === 0)
-      return reply.code(400).send({ error: 'no_pipeline' })
-
-    if (input.jobType === 'rework' && !input.reworkEntryDepartmentId)
-      return reply.code(400).send({ error: 'rework_entry_required' })
-
-    const totalQty = input.models.reduce((s, m) => s + m.quantity, 0)
-    const now = new Date()
-    const priority = input.priority
-    // Read SLA config *before* the transaction — keeps the tx to pure writes so
-    // it stays well under the timeout on a high-latency (Neon) connection. The
-    // first step is armed with the acceptance-escalation clock inline.
-    const firstStepDue = await acceptanceDueAt(now)
-    const firstDeptId = template.steps[0].departmentId
-
-    // The whole creation is one transaction: sequence, label, job, steps,
-    // event, audit, first-dept notify — all-or-nothing. Retry once on the
-    // (astronomically rare) opaque-jobNo collision.
-    const create = () =>
-      prisma.$transaction(
-        async (tx) => {
-          const seq = await nextDailySequence(tx, dailyScope(product.code, now))
-          const displayLabel = buildDisplayLabel(product.code, priority, totalQty, now, seq)
-          const jobNo = opaqueJobNo()
-
-          const job = await tx.job.create({
-            data: {
-              jobNo,
-              displayLabel,
-              jobType: input.jobType,
-              productId: product.id,
-              priority,
-              totalQty,
-              status: 'in_production',
-              pipelineTemplateId: template.id,
-              source: 'admin',
-              createdById: actorId,
-              startDate: input.startDate ?? null,
-              reworkIssue: input.reworkIssue ?? null,
-              reworkEntryDepartmentId: input.reworkEntryDepartmentId ?? null,
-              models: { create: input.models.map((m) => ({ modelId: m.modelId, size: m.size ?? null, quantity: m.quantity })) },
-              steps: {
-                create: template.steps.map((s, i) => ({
-                  departmentId: s.departmentId,
-                  sequence: s.sequence,
-                  status: i === 0 ? 'waiting_acceptance' : 'pending',
-                  slaDueAt: i === 0 ? firstStepDue : null,
-                })),
-              },
-            },
-            include: { steps: { orderBy: { sequence: 'asc' } } },
-          })
-
-          await tx.jobEvent.create({
-            data: {
-              jobId: job.id,
-              type: 'created',
-              actorId,
-              body: displayLabel,
-              meta: { totalQty, models: input.models.length, pipeline: template.name },
-            },
-          })
-          await writeAudit('job', job.id, 'create', { actorId, after: { jobNo, displayLabel, status: job.status }, tx })
-          await notifyDepartment(tx, firstDeptId, {
-            type: 'new_job',
-            jobId: job.id,
-            body: `New job ${displayLabel} arriving`,
-          })
-          return job
-        },
-        { timeout: 20_000, maxWait: 5_000 },
-      )
-
-    let job
-    try {
-      job = await create()
-    } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        job = await create() // jobNo collision — one retry with a fresh id
-      } else {
-        throw e
-      }
-    }
-
+    const result = await createJobFromInput(parsed.data, { actorId, source: 'admin' })
+    if (!result.ok) return reply.code(result.status).send({ error: result.error })
+    const job = result.job
     return reply.code(201).send({
       job: { id: job.id, jobNo: job.jobNo, displayLabel: job.displayLabel, status: job.status, steps: job.steps },
     })

@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import JobForm, { type JobFormSelection } from '../components/JobForm'
 import JobCardModal from '../components/JobCardModal'
 import { useCatalogue } from '../lib/useCatalogue'
-import { createJob, ApiError, type JobDTO } from '../lib/api'
+import { createJob, approvePpcRequest, ppcCount, ApiError, type JobDTO, type PpcRequest } from '../lib/api'
 
 // Same form, three entry points — only the header + bottom action differ.
 const VARIANTS = {
@@ -19,6 +19,7 @@ export default function CreateJob({
   onOpenPpc,
   onReject,
   variant = 'job',
+  ppcRequest,
 }: {
   user: SessionUser
   onBack: () => void
@@ -27,6 +28,8 @@ export default function CreateJob({
   onReject?: () => void
   /** 'job' = admin create · 'ppc' = PPC raises a request · 'review' = admin reviews/approves. */
   variant?: 'job' | 'ppc' | 'review'
+  /** The PPC request being reviewed (review variant). */
+  ppcRequest?: PpcRequest | null
 }) {
   const isPpc = variant === 'ppc'
   const isReview = variant === 'review'
@@ -39,12 +42,16 @@ export default function CreateJob({
   const [created, setCreated] = useState<JobDTO | null>(null)
   const [cardJobId, setCardJobId] = useState<string | null>(null)
   const sel = useRef<JobFormSelection | null>(null)
+  const [ppcPending, setPpcPending] = useState(0)
+  useEffect(() => {
+    if (variant === 'job') ppcCount().then((r) => setPpcPending(r.pending)).catch(() => {})
+  }, [variant])
 
   // Create Job keeps an unsaved draft on this device, so leaving and coming
   // back (e.g. peeking at PPC) doesn't lose what the admin was entering. PPC
   // Request / Review have their own data and don't use this draft.
   const DRAFT_KEY = 'grynx-jobdraft'
-  const [initialDraft] = useState<JobFormSelection | null>(() => {
+  const [savedDraft] = useState<JobFormSelection | null>(() => {
     if (variant !== 'job') return null
     try {
       return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null')
@@ -52,6 +59,18 @@ export default function CreateJob({
       return null
     }
   })
+  // Review prefills from the PPC request; Create Job from the device draft.
+  const reviewInitial: JobFormSelection | null =
+    isReview && ppcRequest
+      ? {
+          productCode: ppcRequest.product.code,
+          models: ppcRequest.models.map((m) => ({ code: m.model.code, size: m.size ?? '', qty: m.quantity })),
+          priority: ppcRequest.priority === 'urgent' ? 'urgent' : 'normal',
+          startDate: ppcRequest.startDate ? ppcRequest.startDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          startTime: '09:00',
+        }
+      : null
+  const formInitial = variant === 'job' ? savedDraft : reviewInitial
   const onFormChange = (s: JobFormSelection) => {
     sel.current = s
     if (variant === 'job') localStorage.setItem(DRAFT_KEY, JSON.stringify(s))
@@ -60,6 +79,20 @@ export default function CreateJob({
 
   async function submit() {
     setErr(null)
+    // Review: approve the PPC request → backend creates the job from it.
+    if (isReview && ppcRequest) {
+      setBusy(true)
+      try {
+        const { job } = await approvePpcRequest(ppcRequest.id)
+        setCreated(job)
+        setCardJobId(job.id)
+      } catch (e) {
+        setErr(e instanceof ApiError ? `Could not approve (${e.message})` : 'Could not approve request')
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
     const s = sel.current
     if (!s || !catalogue) return
     const product = catalogue.find((p) => p.code === s.productCode)
@@ -100,13 +133,13 @@ export default function CreateJob({
           <div className="jobscreen__titles">
             <h1 className="jobscreen__title display">
               {meta.title}
-              {isReview && <span className="jobscreen__pr"> PR-0001</span>}
+              {isReview && ppcRequest && <span className="jobscreen__pr"> {ppcRequest.requestNo}</span>}
             </h1>
             <span className="mono-label">{meta.sub}</span>
           </div>
           {variant === 'job' && onOpenPpc && (
             <button className="jobscreen__pill" onClick={onOpenPpc} title="Pending PPC requests">
-              <span className="jobscreen__pill-n display">02</span>
+              <span className="jobscreen__pill-n display">{String(ppcPending).padStart(2, '0')}</span>
               <span className="mono-label">PPC →</span>
             </button>
           )}
@@ -150,7 +183,7 @@ export default function CreateJob({
                 jobIdLabel="Job ID"
                 products={products}
                 modelCatalogue={modelCatalogue}
-                initial={initialDraft}
+                initial={formInitial}
                 onChange={onFormChange}
               />
               <div className={`jobscreen__actions ${isReview ? 'jobscreen__actions--two' : ''}`}>

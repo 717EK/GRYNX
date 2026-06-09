@@ -327,6 +327,7 @@ model PpcRequestModel {
   id        String     @id @default(uuid())
   requestId String
   modelId   String
+  size      String?
   quantity  Int
   request   PpcRequest @relation(fields: [requestId], references: [id])
   model     Model      @relation(fields: [modelId], references: [id])

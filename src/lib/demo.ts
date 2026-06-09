@@ -4,7 +4,7 @@
 // approvals — persisted to localStorage so it survives reloads on a phone.
 // The instant VITE_API_BASE points at a real server, none of this runs.
 
-import { ApiError, type ApiUser, type ProductDTO, type JobDTO, type ScanResult, type PendingUser, type DeptLite, type CreateJobInput, type SignupInput, type MaintTicket, type RaiseTicketInput, type MaintUpdateInput, type MaintUserBrief } from './api'
+import { ApiError, type ApiUser, type ProductDTO, type JobDTO, type ScanResult, type PendingUser, type DeptLite, type CreateJobInput, type SignupInput, type MaintTicket, type RaiseTicketInput, type MaintUpdateInput, type MaintUserBrief, type PpcRequest } from './api'
 
 const DEPARTMENTS: DeptLite[] = [
   { id: 'd_design', code: 'DESIGN', name: 'Design' },
@@ -422,4 +422,65 @@ export function demoMaintClose(id: string, remark: string) {
   pushEvent(t, 'closed', remark)
   saveMaint()
   return delay({ ticket: t })
+}
+
+// ── PPC requests (in-memory, demo only) ──────────────────────────────────────
+const PPC_KEY = 'grynx-demo-ppc'
+function loadPpc(): { reqs: PpcRequest[]; seq: number } {
+  try {
+    const s = JSON.parse(localStorage.getItem(PPC_KEY) || '')
+    if (s && Array.isArray(s.reqs)) return s
+  } catch {
+    /* ignore */
+  }
+  return { reqs: [], seq: 0 }
+}
+let ppc = loadPpc()
+const savePpc = () => localStorage.setItem(PPC_KEY, JSON.stringify(ppc))
+const findReq = (id: string) => {
+  const r = ppc.reqs.find((x) => x.id === id)
+  if (!r) throw new ApiError(404, { error: 'not_found' })
+  return r
+}
+
+export function demoPpcCreate(input: CreateJobInput) {
+  const product = PRODUCTS.find((p) => p.id === input.productId)
+  if (!product) throw new ApiError(404, { error: 'product_not_found' })
+  ppc.seq += 1
+  const r: PpcRequest = {
+    id: 'pr_' + Date.now(),
+    requestNo: 'PR-' + String(ppc.seq).padStart(4, '0'),
+    priority: input.priority,
+    status: 'submitted',
+    startDate: input.startDate ?? null,
+    targetDate: null,
+    createdAt: new Date().toISOString(),
+    createdById: demoActor().id,
+    approvedJobId: null,
+    clarificationNote: null,
+    product: { id: product.id, code: product.code, name: product.name },
+    models: input.models.map((m) => {
+      const model = product.models.find((x) => x.id === m.modelId)!
+      return { quantity: m.quantity, size: m.size ?? null, model: { id: model.id, code: model.code, name: model.name } }
+    }),
+  }
+  ppc.reqs.unshift(r)
+  savePpc()
+  return delay({ request: r })
+}
+export const demoPpcList = (status?: string) => delay({ requests: ppc.reqs.filter((r) => r.status === (status ?? 'submitted')) })
+export const demoPpcGet = (id: string) => delay({ request: findReq(id) })
+export const demoPpcCount = () => delay({ pending: ppc.reqs.filter((r) => r.status === 'submitted').length })
+export const demoPpcReject = () => delay({ ok: true })
+export async function demoPpcApprove(id: string) {
+  const r = findReq(id)
+  const { job } = await demoCreateJob({
+    productId: r.product.id,
+    priority: r.priority as 'normal' | 'urgent',
+    models: r.models.map((m) => ({ modelId: m.model.id, size: m.size ?? undefined, quantity: m.quantity })),
+  })
+  r.status = 'approved'
+  r.approvedJobId = job.id
+  savePpc()
+  return { job }
 }

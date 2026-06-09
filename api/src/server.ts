@@ -9,6 +9,7 @@ import { jobRoutes } from './routes/jobs.js'
 import { scanRoutes } from './routes/scan.js'
 import { userRoutes } from './routes/users.js'
 import { maintenanceRoutes } from './routes/maintenance.js'
+import { ppcRoutes } from './routes/ppc.js'
 
 const app = Fastify({ logger: true })
 
@@ -48,6 +49,7 @@ await app.register(jobRoutes, { prefix: '/api/v1/jobs' })
 await app.register(scanRoutes, { prefix: '/api/v1/scan' }) // state-machine engine (docs/10)
 await app.register(userRoutes, { prefix: '/api/v1/users' }) // admin: approve signups
 await app.register(maintenanceRoutes, { prefix: '/api/v1/maintenance' })
+await app.register(ppcRoutes, { prefix: '/api/v1/ppc' })
 
 const port = Number(process.env.PORT ?? 4000)
 app
