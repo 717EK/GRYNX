@@ -9,7 +9,7 @@ import { notifyDepartment } from '../lib/notify.js'
 import { stationDueAt, acceptanceDueAt } from '../lib/sla.js'
 
 const scanSchema = z.object({
-  jobNo: z.string().min(4).max(32), // opaque id decoded from the barcode
+  jobNo: z.string().min(4).max(40), // the scanned code: display label OR opaque jobNo
   idempotencyKey: z.string().uuid(), // one per physical scan; dedups retries
   clientTs: z.coerce.date(), // when the scan physically happened (offline-safe)
   stationDepartmentId: z.string().uuid().optional(), // only for multi-station users
@@ -55,9 +55,11 @@ export async function scanRoutes(app: FastifyInstance) {
     }
     const stationDeptId = station.departmentId
 
-    // 2. load job + live steps (with dept codes for status mapping)
-    const job = await prisma.job.findUnique({
-      where: { jobNo: body.jobNo },
+    // 2. load job + live steps. The scanned code is the display label (barcode)
+    // or the opaque jobNo — accept either.
+    const code = body.jobNo.trim()
+    const job = await prisma.job.findFirst({
+      where: { OR: [{ jobNo: code }, { displayLabel: code }] },
       select: {
         id: true,
         displayLabel: true,

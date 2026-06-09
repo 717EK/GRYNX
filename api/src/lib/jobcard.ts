@@ -1,5 +1,6 @@
 import QRCode from 'qrcode'
 import bwipjs from 'bwip-js/node'
+import { DLYFT_LOGO } from './logo.js'
 
 // The job card is a self-contained, print-friendly HTML page. It works even if
 // the SPA is down. Both codes encode the OPAQUE jobNo (never the display label,
@@ -21,10 +22,12 @@ const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
 export async function renderJobCard(d: JobCardData): Promise<string> {
-  const qrSvg = await QRCode.toString(d.jobNo, { type: 'svg', margin: 0, width: 150 })
+  // Encode the human Job ID (display label) so a scan/search is recognisable
+  // and date-readable. The scan engine accepts the label OR the opaque jobNo.
+  const qrSvg = await QRCode.toString(d.displayLabel, { type: 'svg', margin: 0, width: 150 })
   const barcodeSvg = bwipjs.toSVG({
     bcid: 'code128',
-    text: d.jobNo,
+    text: d.displayLabel,
     scale: 3,
     height: 9,
     includetext: true,
@@ -49,6 +52,7 @@ export async function renderJobCard(d: JobCardData): Promise<string> {
   .card { max-width:760px; margin:0 auto; border:2px solid var(--ink); padding:18px 20px; }
   .top { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--ink); padding-bottom:10px; }
   .brand { font-weight:700; letter-spacing:.04em; }
+  .brand__logo { height:30px; display:block; margin-bottom:5px; }
   .brand small { display:block; color:var(--mut); font-weight:400; letter-spacing:.18em; font-size:10px; }
   .label { font-size:30px; font-weight:700; letter-spacing:.02em; margin:14px 0 2px; }
   .sub { color:var(--mut); font-size:12px; }
@@ -75,7 +79,7 @@ export async function renderJobCard(d: JobCardData): Promise<string> {
 <body>
   <div class="card">
     <div class="top">
-      <div class="brand">D-LYFT<small>GRYNX · TRACK. SYNC. EXECUTE.</small></div>
+      <div class="brand"><img class="brand__logo" style="height:30px;width:82px;display:block;margin-bottom:5px" width="82" height="30" src="${DLYFT_LOGO}" alt="D-LYFT"><small>GRYNX · TRACK. SYNC. EXECUTE.</small></div>
       <div class="prio ${d.priority === 'urgent' ? 'urgent' : ''}">${esc(d.priority)}</div>
     </div>
     <div class="label">${esc(d.displayLabel)}</div>
@@ -93,7 +97,7 @@ export async function renderJobCard(d: JobCardData): Promise<string> {
         <div style="margin-top:8px">${barcodeSvg}</div>
       </div>
     </div>
-    <div class="foot"><span class="jobno">ID ${esc(d.jobNo)}</span><span>Scan on arrival at each station</span></div>
+    <div class="foot"><span class="jobno">REF ${esc(d.jobNo)}</span><span>Scan on arrival at each station</span></div>
   </div>
   <div class="noprint"><button onclick="window.print()">Print job card</button></div>
 </body></html>`

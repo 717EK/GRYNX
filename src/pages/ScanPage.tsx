@@ -5,7 +5,8 @@ import './ScanPage.css'
 
 type Phase = 'idle' | 'confirm' | 'result'
 
-const JOBNO_RE = /^J[0-9A-Z]{11}$/
+// accept the Job ID (AT-N-050-080626-010) or the opaque code (Jxxxxxxxxxxx)
+const CODE_RE = /^[A-Z0-9-]{6,40}$/
 
 export default function ScanPage({ user, onLock }: { user: SessionUser; onLock: () => void }) {
   const [jobNo, setJobNo] = useState('')
@@ -22,8 +23,8 @@ export default function ScanPage({ user, onLock }: { user: SessionUser; onLock: 
   async function check(rawNo: string) {
     const no = clean(rawNo)
     setError(null)
-    if (!JOBNO_RE.test(no)) {
-      setError('Not a valid GRYNX job code')
+    if (!CODE_RE.test(no)) {
+      setError('Not a valid job code')
       return
     }
     setBusy(true)
@@ -127,7 +128,7 @@ export default function ScanPage({ user, onLock }: { user: SessionUser; onLock: 
             <div className="scan__manual">
               <input
                 className="scan__input"
-                placeholder="JXXXXXXXXXXX"
+                placeholder="AT-N-050-080626-010"
                 value={jobNo}
                 onChange={(e) => setJobNo(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === 'Enter' && check(jobNo)}

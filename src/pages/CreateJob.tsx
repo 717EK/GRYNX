@@ -1,25 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import JobForm, { type JobFormSelection } from '../components/JobForm'
+import JobCardModal from '../components/JobCardModal'
 import type { Option } from '../components/CustomSelect'
-import { getProducts, createJob, getJobCardHtml, ApiError, type ProductDTO, type JobDTO } from '../lib/api'
+import { getProducts, createJob, ApiError, type ProductDTO, type JobDTO } from '../lib/api'
 
 export default function CreateJob({
   user,
   onBack,
   onLock,
   onOpenPpc,
+  variant = 'job',
 }: {
   user: SessionUser
   onBack: () => void
   onLock: () => void
-  onOpenPpc: () => void
+  onOpenPpc?: () => void
+  /** 'job' = Create Job, 'ppc' = PPC Request (same form, different header). */
+  variant?: 'job' | 'ppc'
 }) {
+  const isPpc = variant === 'ppc'
   const [catalogue, setCatalogue] = useState<ProductDTO[] | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [created, setCreated] = useState<JobDTO | null>(null)
+  const [cardJobId, setCardJobId] = useState<string | null>(null)
   const sel = useRef<JobFormSelection | null>(null)
 
   useEffect(() => {
@@ -36,20 +42,6 @@ export default function CreateJob({
     () => Object.fromEntries((catalogue ?? []).map((p) => [p.code, p.models.map((m) => ({ code: m.code, sizes: m.sizes }))])),
     [catalogue],
   )
-
-  async function openCard(jobId: string) {
-    try {
-      const html = await getJobCardHtml(jobId)
-      const w = window.open('', '_blank')
-      if (w) {
-        w.document.open()
-        w.document.write(html)
-        w.document.close()
-      }
-    } catch {
-      /* card can be reprinted from the job later */
-    }
-  }
 
   async function submit() {
     setErr(null)
@@ -73,7 +65,7 @@ export default function CreateJob({
     try {
       const { job } = await createJob({ productId: product.id, priority: s.priority, models, startDate })
       setCreated(job)
-      void openCard(job.id)
+      setCardJobId(job.id) // open the card in-app
     } catch (e) {
       setErr(e instanceof ApiError ? `Could not create job (${e.message})` : 'Could not create job')
     } finally {
@@ -90,24 +82,26 @@ export default function CreateJob({
             ←
           </button>
           <div className="jobscreen__titles">
-            <h1 className="jobscreen__title display">Create Job</h1>
-            <span className="mono-label">Create a new production job</span>
+            <h1 className="jobscreen__title display">{isPpc ? 'PPC Request' : 'Create Job'}</h1>
+            <span className="mono-label">{isPpc ? 'Raise a production planning request' : 'Create a new production job'}</span>
           </div>
-          <button className="jobscreen__pill" onClick={onOpenPpc} title="Pending PPC requests">
-            <span className="jobscreen__pill-n display">02</span>
-            <span className="mono-label">PPC →</span>
-          </button>
+          {!isPpc && onOpenPpc && (
+            <button className="jobscreen__pill" onClick={onOpenPpc} title="Pending PPC requests">
+              <span className="jobscreen__pill-n display">02</span>
+              <span className="mono-label">PPC →</span>
+            </button>
+          )}
         </header>
 
         <div className="jobscreen__scroll">
           {created ? (
             <div className="jobdone">
-              <span className="jobdone__badge mono-label">✓ JOB CREATED</span>
+              <span className="jobdone__badge mono-label">{isPpc ? '✓ REQUEST SUBMITTED' : '✓ JOB CREATED'}</span>
               <span className="jobdone__label display">{created.displayLabel}</span>
               <span className="jobdone__id mono-label">ID {created.jobNo}</span>
-              <p className="jobdone__hint">The job card opened in a new tab to print. The first department has been notified.</p>
+              <p className="jobdone__hint">The job card is ready to print. The first department has been notified.</p>
               <div className="jobscreen__actions">
-                <button className="btn btn--solid btn--block" onClick={() => void openCard(created.id)}>
+                <button className="btn btn--solid btn--block" onClick={() => setCardJobId(created.id)}>
                   ▦ Reprint job card
                 </button>
                 <button
@@ -143,7 +137,7 @@ export default function CreateJob({
               />
               <div className="jobscreen__actions">
                 <button className="btn btn--solid btn--block" disabled={busy} onClick={submit}>
-                  <span>📄</span> {busy ? 'Creating…' : 'Create Job'}
+                  <span>📄</span> {busy ? 'Submitting…' : isPpc ? 'Submit Request' : 'Create Job'}
                 </button>
                 {err ? (
                   <span className="jobscreen__note mono-label" style={{ color: 'var(--danger)' }}>
@@ -158,6 +152,7 @@ export default function CreateJob({
         </div>
       </main>
       <BottomBar />
+      {cardJobId && <JobCardModal jobId={cardJobId} onClose={() => setCardJobId(null)} />}
     </div>
   )
 }

@@ -12,7 +12,6 @@ import Notifications from './pages/Notifications'
 import DepartmentDetail from './pages/DepartmentDetail'
 import MaintenanceDetail from './pages/MaintenanceDetail'
 import Insights from './pages/Insights'
-import PpcRequest from './pages/PpcRequest'
 import QcInspection from './pages/QcInspection'
 import FgClosure from './pages/FgClosure'
 import ScanPage from './pages/ScanPage'
@@ -134,7 +133,7 @@ export default function App() {
       case 'insights':
         return <Insights user={user} onBack={() => go('overview')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
       case 'ppcrequest':
-        return <PpcRequest user={user} onBack={() => go('jobstatus')} onLock={handleLock} />
+        return <CreateJob variant="ppc" user={user} onBack={() => go('jobstatus')} onLock={handleLock} />
       case 'qc':
         return <QcInspection user={user} onBack={() => go('jobstatus')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
       case 'fgclosure':

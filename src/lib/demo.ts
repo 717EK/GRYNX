@@ -248,7 +248,8 @@ export function demoGetJob(id: string) {
 // arrival-scan advance, mirroring the real engine (single station per job here)
 export function demoScan(jobNo: string, stationCode: string | null, preview: boolean): { status: number; data: ScanResult } {
   if (!stationCode) return { status: 403, data: { result: 'rejected_out_of_seq', reason: 'no_station' } }
-  const job = state.jobs.find((j) => j.jobNo === jobNo)
+  const code = jobNo.trim()
+  const job = state.jobs.find((j) => j.jobNo === code || j.displayLabel === code)
   if (!job || !job.steps) return { status: 404, data: { result: 'rejected_out_of_seq', reason: 'job_not_found' } }
 
   const steps = job.steps

@@ -88,7 +88,7 @@ export default function JobForm({
   const catalogue = catalogueProp ?? MOCK_CATALOGUE
   const [products, setProducts] = useState<Option[]>(productsProp ?? INITIAL_PRODUCTS)
   const [productCode, setProductCode] = useState(productsProp?.[0]?.value ?? 'AT')
-  const [priority, setPriority] = useState<'urgent' | 'normal'>('urgent')
+  const [priority, setPriority] = useState<'urgent' | 'normal'>('normal')
   const [models, setModels] = useState<Model[]>(
     live
       ? []
@@ -102,6 +102,10 @@ export default function JobForm({
   const sizesByCode: Record<string, string[]> = Object.fromEntries(
     (catalogue[productCode] ?? []).map((t) => [t.code, t.sizes]),
   )
+  // add-model popup (pick a type -> choose length + quantity)
+  const [addType, setAddType] = useState<string | null>(null)
+  const [addSize, setAddSize] = useState('')
+  const [addQty, setAddQty] = useState('1')
   const [modelsExpanded, setModelsExpanded] = useState(false)
   const [pipeline, setPipeline] = useState<string[]>(DEFAULT_PIPELINE)
   const [editingPipe, setEditingPipe] = useState(false)
@@ -115,22 +119,40 @@ export default function JobForm({
   const total = models.reduce((s, m) => s + (Number(m.qty) || 0), 0)
   const pr = priority === 'urgent' ? 'U' : 'N'
   const jobId = `${productCode}-${pr}-${pad3(total)}-${ddmmyy(today)}-001`
-  const hintSegs = [productCode, pr, pad3(total), ddmmyy(today), '001']
+  // legend explaining what each segment of the Job ID means (not a repeat of it)
+  const hintSegs = ['PRODUCT', 'U/N', 'QTY', 'DDMMYY', 'NO']
 
   const setQty = (id: number, qty: number) =>
     setModels((ms) => ms.map((m) => (m.id === id ? { ...m, qty } : m)))
   const setSize = (id: number, size: string) =>
     setModels((ms) => ms.map((m) => (m.id === id ? { ...m, size } : m)))
   const removeModel = (id: number) => setModels((ms) => ms.filter((m) => m.id !== id))
-  // adding a type defaults to its first length; same type+length bumps quantity
-  const addModelByCode = (code: string) => {
-    usageCount[code] = (usageCount[code] || 0) + 1
-    const defaultSize = sizesByCode[code]?.[0] ?? ''
+
+  // which (type|length) lines already exist — drives grey-out + dedupe
+  const usedKeys = new Set(models.map((m) => `${m.code}|${m.size}`))
+  const typeExhausted = (code: string) => {
+    const sizes = sizesByCode[code] ?? []
+    return sizes.length > 0 && sizes.every((s) => usedKeys.has(`${code}|${s}`))
+  }
+
+  // picking a type opens the popup (default to its first still-available length)
+  const openAdd = (code: string) => {
+    const sizes = sizesByCode[code] ?? []
+    setAddType(code)
+    setAddSize(sizes.find((s) => !usedKeys.has(`${code}|${s}`)) ?? sizes[0] ?? '')
+    setAddQty('1')
+  }
+  const confirmAdd = () => {
+    if (!addType) return
+    const qty = Math.max(1, Number(addQty) || 1)
+    const key = `${addType}|${addSize}`
+    usageCount[addType] = (usageCount[addType] || 0) + 1
     setModels((ms) => {
-      const existing = ms.find((m) => m.code === code && m.size === defaultSize)
-      if (existing) return ms.map((m) => (m === existing ? { ...m, qty: m.qty + 1 } : m))
-      return [...ms, { id: ++nextId, code, size: defaultSize, qty: 1 }]
+      const existing = ms.find((m) => `${m.code}|${m.size}` === key)
+      if (existing) return ms.map((m) => (m === existing ? { ...m, qty: m.qty + qty } : m))
+      return [...ms, { id: ++nextId, code: addType, size: addSize, qty }]
     })
+    setAddType(null)
   }
 
   // emit the live selection to the parent (real-catalogue mode)
@@ -145,8 +167,9 @@ export default function JobForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productCode, models, priority, startDate, startTime])
 
-  // most-added first, then alphabetical
+  // most-added first, then alphabetical; fully-used types drop off the list
   const modelOptions: Option[] = (catalogue[productCode] || [])
+    .filter((t) => !typeExhausted(t.code))
     .map((t) => ({ value: t.code, label: t.code }))
     .sort(
       (a, b) =>
@@ -254,8 +277,8 @@ export default function JobForm({
               searchable
               triggerLabel="+ Add Model"
               triggerClassName="addmodel"
-              onChange={addModelByCode}
-              onAddCustom={(name) => addModelByCode(name.toUpperCase())}
+              onChange={openAdd}
+              onAddCustom={(name) => openAdd(name.toUpperCase())}
               addLabel="Create Custom Product"
             />
             <div className="mtotal">
@@ -326,6 +349,50 @@ export default function JobForm({
 
       {editingPipe && (
         <PipelineEditor steps={pipeline} onChange={setPipeline} onClose={() => setEditingPipe(false)} />
+      )}
+
+      {addType && (
+        <div className="qpop__overlay" onMouseDown={() => setAddType(null)}>
+          <div className="qpop" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="qpop__head">
+              <span className="qpop__type display">{addType}</span>
+              <button className="modal__x" onClick={() => setAddType(null)} aria-label="Close">×</button>
+            </div>
+            {(sizesByCode[addType]?.length ?? 0) > 0 && (
+              <>
+                <span className="qpop__label mono-label">Length</span>
+                <div className="qpop__sizes">
+                  {sizesByCode[addType].map((s) => {
+                    const used = usedKeys.has(`${addType}|${s}`)
+                    return (
+                      <button
+                        key={s}
+                        className={`qpop__size ${addSize === s ? 'is-sel' : ''} ${used ? 'is-used' : ''}`}
+                        disabled={used}
+                        onClick={() => setAddSize(s)}
+                      >
+                        {s}{used ? ' ✓' : ''}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+            <span className="qpop__label mono-label">Quantity</span>
+            <input
+              className="qpop__qty display"
+              type="number"
+              min={1}
+              autoFocus
+              value={addQty}
+              onChange={(e) => setAddQty(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && confirmAdd()}
+            />
+            <button className="btn btn--solid btn--block qpop__add" onClick={confirmAdd}>
+              Add {addType}{addSize ? ` ${addSize}` : ''} × {Math.max(1, Number(addQty) || 1)}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
