@@ -553,6 +553,7 @@ model Notification {
   type      NotificationType
   jobId     String?
   ticketId  String?
+  entityId  String? // generic link target (e.g. PPC request id) so a tap opens it directly
   body      String
   readAt    DateTime?
   createdAt DateTime         @default(now())

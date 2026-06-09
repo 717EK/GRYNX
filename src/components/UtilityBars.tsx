@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { useClock } from '../lib/useClock'
 import { useConnection, type Conn } from '../lib/useConnection'
 import { navTo } from '../lib/nav'
+import { notificationCount, getUser } from '../lib/api'
 import ThemePicker from './ThemePicker'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark.png'
@@ -49,6 +51,19 @@ export function TopBar({
   theme?: boolean
 }) {
   const time = useClock()
+  const [unread, setUnread] = useState(0)
+  // keep the bell badge live — poll the unread count while signed in
+  useEffect(() => {
+    if (!user) return
+    let alive = true
+    const tick = () => notificationCount().then((r) => alive && setUnread(r.unread)).catch(() => {})
+    tick()
+    const h = setInterval(tick, 30_000)
+    return () => {
+      alive = false
+      clearInterval(h)
+    }
+  }, [user])
   return (
     <header className="ubar ubar--top">
       <Brand inApp={!!user} />
@@ -66,8 +81,8 @@ export function TopBar({
           </div>
         )}
         {user && (
-          <button className="iconbtn iconbtn--bell" title="Notifications" onClick={() => navTo('notifications')}>
-            <span className="bell-dot" />
+          <button className="iconbtn iconbtn--bell" title={`Notifications${unread ? ` (${unread} unread)` : ''}`} onClick={() => navTo('notifications')}>
+            {unread > 0 && <span className="bell-dot">{unread > 9 ? '9+' : unread}</span>}
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
               <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" />
               <path d="M10 20a2 2 0 0 0 4 0" />
@@ -94,13 +109,23 @@ const CONN: Record<Conn, { label: string; cls: string }> = {
 export function BottomBar() {
   const conn = useConnection()
   const { label, cls } = CONN[conn]
+  // SuperUser (Administrator) uses the connection pill as a universal escape back
+  // to the View As panel — so testing any department is never a dead end.
+  const isSuper = (getUser()?.username ?? '').toLowerCase() === 'admin'
   return (
     <footer className="ubar ubar--bottom">
       <span className="ubar__version">GRYNX {APP_VERSION}</span>
-      <span className={`conn ${cls}`}>
-        <span className="conn__dot" />
-        {label}
-      </span>
+      {isSuper ? (
+        <button className={`conn conn--btn ${cls}`} onClick={() => navTo('viewas')} title="Back to View As">
+          <span className="conn__dot" />
+          {label} · VIEW AS ↩
+        </button>
+      ) : (
+        <span className={`conn ${cls}`}>
+          <span className="conn__dot" />
+          {label}
+        </span>
+      )}
       <span className="ubar__secure">{conn === 'demo' ? 'LOCAL DATA' : 'ENCRYPTED · TLS'}</span>
     </footer>
   )

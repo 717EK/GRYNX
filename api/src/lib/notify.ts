@@ -41,13 +41,14 @@ export async function notifyMaintenanceCrew(
   })
 }
 
-/** Notify every admin (e.g. a new PPC request to review). */
-export async function notifyAdmins(tx: Db, payload: { type: NotificationType; body: string; jobId?: string }) {
+/** Notify every admin (e.g. a new PPC request to review). entityId links the
+ *  notification to its source (e.g. the PPC request) so a tap opens it directly. */
+export async function notifyAdmins(tx: Db, payload: { type: NotificationType; body: string; jobId?: string; entityId?: string }) {
   const admins = await tx.roleAssignment.findMany({ where: { role: 'admin' }, select: { userId: true } })
   const ids = [...new Set(admins.map((a) => a.userId))]
   if (ids.length === 0) return
   await tx.notification.createMany({
-    data: ids.map((userId) => ({ userId, type: payload.type, body: payload.body, jobId: payload.jobId ?? null })),
+    data: ids.map((userId) => ({ userId, type: payload.type, body: payload.body, jobId: payload.jobId ?? null, entityId: payload.entityId ?? null })),
   })
 }
 
@@ -55,11 +56,11 @@ export async function notifyAdmins(tx: Db, payload: { type: NotificationType; bo
 export async function notifyUsers(
   tx: Db,
   userIds: string[],
-  payload: { type: NotificationType; body: string; ticketId?: string; jobId?: string },
+  payload: { type: NotificationType; body: string; ticketId?: string; jobId?: string; entityId?: string },
 ) {
   const ids = [...new Set(userIds)].filter(Boolean)
   if (ids.length === 0) return
   await tx.notification.createMany({
-    data: ids.map((userId) => ({ userId, type: payload.type, body: payload.body, ticketId: payload.ticketId ?? null, jobId: payload.jobId ?? null })),
+    data: ids.map((userId) => ({ userId, type: payload.type, body: payload.body, ticketId: payload.ticketId ?? null, jobId: payload.jobId ?? null, entityId: payload.entityId ?? null })),
   })
 }

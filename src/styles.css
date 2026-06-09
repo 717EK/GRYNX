@@ -210,6 +210,15 @@ button {
 .conn--demo .conn__dot {
   background: rgba(10, 10, 10, 0.7);
 }
+/* SuperUser: connection pill doubles as a tap-back to View As */
+.conn--btn {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.conn--btn:active {
+  transform: scale(0.96);
+}
 @media (max-width: 560px) {
   .ubar--bottom {
     font-size: 9px;
@@ -347,12 +356,19 @@ button {
 }
 .bell-dot {
   position: absolute;
-  top: 7px;
-  right: 8px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--brand);
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--danger, #e5392e);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
   box-shadow: 0 0 0 2px var(--bg);
 }
 

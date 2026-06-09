@@ -88,7 +88,7 @@ export async function ppcRoutes(app: FastifyInstance) {
         select: requestSelect,
       })
       await writeAudit('ppc_request', r.id, 'create', { actorId, after: { requestNo: r.requestNo }, tx })
-      await notifyAdmins(tx, { type: 'ppc_approval', body: `New PPC request ${r.requestNo} — review & approve` })
+      await notifyAdmins(tx, { type: 'ppc_approval', body: `New PPC request ${r.requestNo} — review & approve`, entityId: r.id })
       return r
     })
     return reply.code(201).send({ request })
@@ -150,7 +150,8 @@ export async function ppcRoutes(app: FastifyInstance) {
     const job = result.job
     await prisma.ppcRequest.update({ where: { id }, data: { status: 'approved', approvedJobId: job.id } })
     await writeAudit('ppc_request', id, 'approve', { actorId, after: { jobId: job.id } })
-    await notifyUsers(prisma, [r.createdById], { type: 'ppc_approval', body: `Request ${r.requestNo} approved → ${job.displayLabel}`, jobId: job.id })
+    // PPC gets the green light to print the job card and release it to the floor.
+    await notifyUsers(prisma, [r.createdById], { type: 'ppc_approval', body: `✓ ${r.requestNo} approved — print job card & release ${job.displayLabel}`, jobId: job.id })
     return reply.code(201).send({ job: { id: job.id, jobNo: job.jobNo, displayLabel: job.displayLabel, status: job.status } })
   })
 
@@ -177,7 +178,7 @@ export async function ppcRoutes(app: FastifyInstance) {
     if (r.status === 'approved') return reply.code(409).send({ error: 'already_approved' })
     await prisma.ppcRequest.update({ where: { id }, data: { status: 'clarification', clarificationNote: body.note } })
     await writeAudit('ppc_request', id, 'request_change', { actorId, after: { note: body.note } })
-    await notifyUsers(prisma, [r.createdById], { type: 'ppc_approval', body: `Changes requested on ${r.requestNo}: ${body.note}` })
+    await notifyUsers(prisma, [r.createdById], { type: 'ppc_approval', body: `Changes requested on ${r.requestNo}: ${body.note}`, entityId: id })
     return { ok: true }
   })
 
@@ -197,7 +198,7 @@ export async function ppcRoutes(app: FastifyInstance) {
       if (!e.ok) return e
       await tx.ppcRequest.update({ where: { id }, data: { status: 'pending_confirm', clarificationNote: note ?? null } })
       await writeAudit('ppc_request', id, 'propose', { actorId, after: { models: parsed.data.models.length, note }, tx })
-      await notifyUsers(tx, [r.createdById], { type: 'ppc_approval', body: `Admin proposed changes to ${r.requestNo} — please confirm` })
+      await notifyUsers(tx, [r.createdById], { type: 'ppc_approval', body: `Admin proposed changes to ${r.requestNo} — please confirm`, entityId: id })
       return { ok: true as const }
     })
     if (!out.ok) return reply.code(out.status).send({ error: out.error })
@@ -214,7 +215,7 @@ export async function ppcRoutes(app: FastifyInstance) {
     if (r.status !== 'pending_confirm') return reply.code(409).send({ error: 'not_pending_confirm', status: r.status })
     await prisma.ppcRequest.update({ where: { id }, data: { status: 'submitted', clarificationNote: null } })
     await writeAudit('ppc_request', id, 'confirm', { actorId })
-    await notifyAdmins(prisma, { type: 'ppc_approval', body: `${r.requestNo} confirmed by PPC — ready to approve` })
+    await notifyAdmins(prisma, { type: 'ppc_approval', body: `${r.requestNo} confirmed by PPC — ready to approve`, entityId: id })
     return { ok: true }
   })
 
@@ -233,7 +234,7 @@ export async function ppcRoutes(app: FastifyInstance) {
       if (!e.ok) return e
       await tx.ppcRequest.update({ where: { id }, data: { status: 'submitted', clarificationNote: null } })
       await writeAudit('ppc_request', id, 'resubmit', { actorId, tx })
-      await notifyAdmins(tx, { type: 'ppc_approval', body: `${r.requestNo} resubmitted by PPC — review & approve` })
+      await notifyAdmins(tx, { type: 'ppc_approval', body: `${r.requestNo} resubmitted by PPC — review & approve`, entityId: id })
       return { ok: true as const }
     })
     if (!out.ok) return reply.code(out.status).send({ error: out.error })

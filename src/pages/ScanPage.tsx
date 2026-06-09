@@ -86,30 +86,49 @@ export default function ScanPage({
     setCamOn(false)
   }
 
-  async function startCamera() {
+  // Just flip the flag — the effect below mounts the reader once the #qr-reader
+  // element is in the DOM (avoids "element not found" from racing the render).
+  const startCamera = () => {
     setError(null)
     setCamOn(true)
-    try {
-      const { Html5Qrcode } = await import('html5-qrcode')
-      const s = new Html5Qrcode('qr-reader')
-      scannerRef.current = s
-      await s.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: 230 },
-        async (decoded: string) => {
-          await stopCamera()
-          setJobNo(clean(decoded))
-          check(decoded)
-        },
-        () => {},
-      )
-    } catch {
-      setError('Camera unavailable — enter the code manually')
-      setCamOn(false)
-    }
   }
 
-  useEffect(() => () => void stopCamera(), [])
+  useEffect(() => {
+    if (!camOn || scannerRef.current) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode')
+        if (cancelled) return
+        const s = new Html5Qrcode('qr-reader')
+        scannerRef.current = s
+        await s.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: 230 },
+          async (decoded: string) => {
+            await stopCamera()
+            setJobNo(clean(decoded))
+            check(decoded)
+          },
+          () => {},
+        )
+      } catch {
+        setError('Camera unavailable — enter the code manually')
+        setCamOn(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camOn])
+
+  // Open the camera straight away when the operator lands on Scan.
+  useEffect(() => {
+    startCamera()
+    return () => void stopCamera()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const station = stationName ?? user.role
 

@@ -60,7 +60,9 @@
 }
 .station__scan-ico {
   font-size: 30px;
-  line-height: 1;
+  line-height: 0;
+  display: inline-flex;
+  margin-bottom: 4px;
 }
 .station__scan-sub {
   font-weight: 400;

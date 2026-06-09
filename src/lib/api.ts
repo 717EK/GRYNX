@@ -369,6 +369,7 @@ export interface Notification {
   body: string
   jobId: string | null
   ticketId: string | null
+  entityId: string | null
   readAt: string | null
   createdAt: string
 }

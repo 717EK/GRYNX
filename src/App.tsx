@@ -23,9 +23,10 @@ import ViewAsPanel from './pages/ViewAsPanel'
 import SignupPage from './pages/SignupPage'
 import Approvals from './pages/Approvals'
 import UpdatePrompt from './components/UpdatePrompt'
+import JobCardModal from './components/JobCardModal'
 import { registerNav } from './lib/nav'
 import type { SessionUser } from './components/UtilityBars'
-import { getUser, isAuthed, logout, getDepartments, type ApiUser, type PpcRequest } from './lib/api'
+import { getUser, isAuthed, logout, getDepartments, getPpcRequest, type ApiUser, type PpcRequest, type Notification } from './lib/api'
 
 export type Screen =
   | 'login'
@@ -65,6 +66,9 @@ function landingFor(u: ApiUser): Screen {
 }
 
 function toSession(u: ApiUser, depNames: Record<string, string>): SessionUser {
+  // The Administrator account is the SuperUser (View As / testing) — show a
+  // single clear identity rather than the raw username.
+  if (u.username.toLowerCase() === 'admin') return { name: 'SuperUser', role: 'SUPERUSER', id: 'SUPERUSER' }
   const roleNames: Record<string, string> = { admin: 'ADMIN', ppc: 'PPC', qc: 'QC', fg_stock: 'FG STOCK', maintenance: 'MAINT' }
   let role = 'OPERATOR'
   if (u.roles.some((r) => r.role === 'admin')) role = 'ADMIN'
@@ -84,6 +88,7 @@ export default function App() {
   const [viewAs, setViewAs] = useState<{ id: string; name: string } | null>(null)
   const [selectedPpc, setSelectedPpc] = useState<PpcRequest | null>(null)
   const [reviewMode, setReviewMode] = useState<'admin' | 'ppc'>('admin')
+  const [cardJobId, setCardJobId] = useState<string | null>(null)
   const go = (s: Screen) => setScreen(s)
   // open a PPC request as a job sheet; mode decides the available actions and
   // where Back/Done return to (admin → hub, PPC → inbox).
@@ -93,6 +98,28 @@ export default function App() {
     go('review')
   }
   const reviewExit = () => go(reviewMode === 'admin' ? 'jobhub' : 'ppcinbox')
+
+  // A notification taps straight through to the thing it's about.
+  async function openNotification(n: Notification, u: SessionUser) {
+    // a maintenance ticket → its detail thread
+    if (n.ticketId) {
+      setMaintTicketId(n.ticketId)
+      return go('maintenancedetail')
+    }
+    // a PPC request (new / proposed / RC / confirmed) → open it directly as a sheet
+    if (n.type === 'ppc_approval' && n.entityId) {
+      try {
+        const { request } = await getPpcRequest(n.entityId)
+        return openReview(request, u.role === 'PPC' ? 'ppc' : 'admin')
+      } catch {
+        return go(u.role === 'PPC' ? 'ppcinbox' : 'jobhub')
+      }
+    }
+    // an approved job → open the printable job card (PPC prints & releases it)
+    if (n.jobId) return setCardJobId(n.jobId)
+    if (n.type === 'maintenance_alert') return go('maintenance')
+    return go(u.role === 'PPC' ? 'ppcinbox' : 'jobhub')
+  }
 
   useEffect(() => registerNav(go), [])
 
@@ -273,16 +300,7 @@ export default function App() {
             user={user}
             onBack={() => go(isSuper ? 'viewas' : 'home')}
             onLock={handleLock}
-            onOpen={(n) => {
-              // PPC users land in their own inbox; admins in the job hub queue.
-              if (n.type === 'ppc_approval') return go(user.role === 'PPC' ? 'ppcinbox' : 'jobhub')
-              if (n.ticketId) {
-                setMaintTicketId(n.ticketId)
-                return go('maintenancedetail')
-              }
-              if (n.type === 'maintenance_alert') return go('maintenance')
-              if (n.jobId) return go('jobstatus')
-            }}
+            onOpen={(n) => void openNotification(n, user)}
           />
         )
       case 'home':
@@ -294,6 +312,7 @@ export default function App() {
   return (
     <>
       {renderScreen()}
+      {cardJobId && <JobCardModal jobId={cardJobId} onClose={() => setCardJobId(null)} />}
       <UpdatePrompt />
     </>
   )

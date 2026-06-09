@@ -5,19 +5,23 @@ const login = async (u) => (await (await fetch(B+'/api/v1/auth/login',{method:'P
 const call = async (m,p,tok,body) => { const r = await fetch(B+p,{method:m,headers:{...(body?{'Content-Type':'application/json'}:{}),...(tok?{Authorization:'Bearer '+tok}:{})},body:body?JSON.stringify(body):undefined}); const t=await r.text(); return {status:r.status, json:t?JSON.parse(t):null} }
 
 const laser = await login('laser'), head = await login('maint'), tech = await login('maint2'), admin = await login('aashish')
+const unread = async (tok) => (await call('GET','/api/v1/notifications/count',tok)).json.unread
+const headU0 = await unread(head), techU0 = await unread(tech), laserU0 = await unread(laser)
 
 // 1. floor user raises a ticket
 const raised = await call('POST','/api/v1/maintenance',laser,{category:'mechanical',priority:'high',locationText:'VMC-2 spindle',description:'Spindle making noise, vibration high'})
 ok(raised.status===201 && /^MT-\d{4}$/.test(raised.json.ticket.ticketNo), `raise ticket → ${raised.json.ticket?.ticketNo}`)
 const id = raised.json.ticket.id
 
-// 2. crew got notified? (maint user has a notification)
+// 2. crew got notified on raise
+ok(await unread(head) > headU0, 'maintenance crew notified on raise')
 // 3. head lists crew + assigns to tech
 const crew = await call('GET','/api/v1/maintenance/crew',head)
 ok(crew.status===200 && crew.json.crew.length>=3, `crew list (${crew.json.crew?.length})`)
 const ravi = crew.json.crew.find(c=>c.username==='maint2')
 const assigned = await call('POST',`/api/v1/maintenance/${id}/assign`,head,{assignedToId:ravi.id})
 ok(assigned.status===200 && assigned.json.ticket.status==='assigned', 'head assigns → status assigned')
+ok(await unread(tech) > techU0, 'assignee notified of assignment')
 
 // 4. non-maint floor user cannot assign
 const badAssign = await call('POST',`/api/v1/maintenance/${id}/assign`,laser,{assignedToId:ravi.id})
@@ -30,6 +34,7 @@ ok(upd.status===200 && upd.json.ticket.status==='in_progress' && upd.json.ticket
 // 6. head closes with remark
 const closed = await call('POST',`/api/v1/maintenance/${id}/close`,head,{remark:'Bearing replaced, tested OK'})
 ok(closed.status===200 && closed.json.ticket.status==='closed', 'head closes → status closed')
+ok(await unread(laser) > laserU0, 'reporter notified of resolution')
 
 // 7. close requires remark
 const noRemark = await call('POST',`/api/v1/maintenance/${id}/close`,head,{})
