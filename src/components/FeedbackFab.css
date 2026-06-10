@@ -1,0 +1,111 @@
+/* Floating, draggable feedback / bug-report button + sheet. */
+.fbk-fab {
+  position: fixed;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  z-index: 9000;
+  background: var(--brand, #f5a623);
+  color: #11110a;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: grab;
+  touch-action: none; /* we handle pointer drag ourselves */
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.08s ease;
+}
+.fbk-fab:active { cursor: grabbing; transform: scale(0.94); }
+
+.fbk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9001;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+@media (min-width: 560px) { .fbk-overlay { align-items: center; padding: 20px; } }
+
+.fbk-sheet {
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface, #18181b);
+  color: var(--text, #eee);
+  border: 1px solid var(--border, #2a2a2c);
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+}
+@media (min-width: 560px) { .fbk-sheet { border-radius: 16px; } }
+
+.fbk-head { display: flex; align-items: baseline; gap: 8px; }
+.fbk-title { font-size: 20px; }
+.fbk-screen { color: var(--text-tertiary, #8a8a8a); font-size: 11px; }
+.fbk-x { margin-left: auto; background: none; border: none; color: var(--text-secondary, #9aa0a6); font-size: 26px; line-height: 1; cursor: pointer; }
+
+.fbk-kinds { display: flex; gap: 8px; }
+.fbk-kind {
+  flex: 1; padding: 9px 6px; border-radius: 10px; cursor: pointer; font-size: 13px;
+  background: transparent; color: var(--text-secondary, #9aa0a6);
+  border: 1px solid var(--border, #2a2a2c);
+}
+.fbk-kind.is-on { background: color-mix(in srgb, var(--brand) 16%, transparent); border-color: var(--brand); color: var(--text, #fff); }
+
+.fbk-remark {
+  width: 100%; resize: vertical; min-height: 88px; box-sizing: border-box;
+  background: var(--input-bg, #0e0e10); color: var(--text, #eee);
+  border: 1px solid var(--border, #2a2a2c); border-radius: 10px; padding: 10px 12px;
+  font: inherit; font-size: 14px;
+}
+.fbk-remark:focus { outline: none; border-color: var(--brand); }
+
+.fbk-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fbk-sevlabel { color: var(--text-tertiary, #8a8a8a); }
+.fbk-sevs { display: flex; gap: 6px; flex: 1; }
+.fbk-sev {
+  flex: 1; padding: 7px 4px; border-radius: 8px; text-transform: capitalize; cursor: pointer; font-size: 11px;
+  background: transparent; color: var(--text-secondary, #9aa0a6); border: 1px solid var(--border, #2a2a2c);
+}
+.fbk-sev.is-on { color: #11110a; font-weight: 700; }
+.fbk-sev--low.is-on { background: #6b7280; border-color: #6b7280; }
+.fbk-sev--normal.is-on { background: #3ecf8e; border-color: #3ecf8e; }
+.fbk-sev--high.is-on { background: #f5a623; border-color: #f5a623; }
+.fbk-sev--critical.is-on { background: #e5392e; border-color: #e5392e; color: #fff; }
+
+.fbk-attach {
+  padding: 10px; border-radius: 10px; cursor: pointer; font-size: 13px;
+  background: transparent; color: var(--text-secondary, #9aa0a6); border: 1px dashed var(--border, #3a3a3c);
+}
+.fbk-attach:disabled { opacity: 0.6; cursor: default; }
+
+.fbk-shotwrap { display: flex; flex-direction: column; gap: 6px; }
+.fbk-shot { width: 100%; max-height: 180px; object-fit: contain; border-radius: 10px; border: 1px solid var(--border, #2a2a2c); background: #000; }
+.fbk-shotrm { align-self: flex-start; background: none; border: none; color: var(--danger, #e5392e); font-size: 12px; cursor: pointer; padding: 2px 0; }
+
+.fbk-err { color: var(--danger, #e5392e); }
+
+.fbk-save {
+  padding: 13px; border-radius: 12px; border: none; cursor: pointer; font-size: 15px; font-weight: 700;
+  background: var(--brand, #f5a623); color: #11110a;
+}
+.fbk-save:disabled { opacity: 0.6; cursor: default; }
+
+.fbk-done { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 0; text-align: center; }
+.fbk-done-tick {
+  width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: #2e9e5b; color: #fff; font-size: 24px;
+}
+.fbk-done .display { font-size: 18px; }
+.fbk-done .mono-label { color: var(--text-tertiary, #8a8a8a); }

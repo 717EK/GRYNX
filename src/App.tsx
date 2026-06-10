@@ -27,6 +27,7 @@ import UpdatePrompt from './components/UpdatePrompt'
 import BiometricEnroll from './components/BiometricEnroll'
 import JobCardModal from './components/JobCardModal'
 import { registerNav } from './lib/nav'
+import FeedbackFab from './components/FeedbackFab'
 import type { SessionUser } from './components/UtilityBars'
 import { getUser, isAuthed, logout, getDepartments, getPpcRequest, type ApiUser, type PpcRequest, type Notification } from './lib/api'
 
@@ -350,6 +351,7 @@ export default function App() {
     return (
       <>
         <DesktopAdmin user={user} onLock={handleLock} />
+        <FeedbackFab screen="desktop-admin" username={getUser()?.username} role={user.role} />
         <UpdatePrompt />
       </>
     )
@@ -360,6 +362,7 @@ export default function App() {
       {renderScreen()}
       {cardJobId && <JobCardModal jobId={cardJobId} onClose={() => setCardJobId(null)} />}
       <BiometricEnroll />
+      <FeedbackFab screen={screen} username={getUser()?.username} role={user.role} />
       <UpdatePrompt />
     </>
   )

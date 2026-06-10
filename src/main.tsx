@@ -4,6 +4,10 @@ import App from './App.tsx'
 import './styles.css'
 import { initNative } from './lib/native'
 import { startScanQueue } from './lib/scanQueue'
+import { startReportLog } from './lib/reportLog'
+
+// capture console errors / breadcrumbs before anything else runs
+startReportLog()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

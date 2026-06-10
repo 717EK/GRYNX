@@ -46,6 +46,14 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.4.0 — in-app feedback / bug reporter
+- **Floating draggable reporter button** on every screen — drag it anywhere, tap to
+  open a bug / idea / note form with severity, a free-text remark, an optional
+  one-tap **screenshot** of the underlying screen, and an auto-attached diagnostic
+  log (screen, role, version, viewport, online state, recent console errors).
+- Reports persist to a new `Feedback` table; admin endpoints to list / triage /
+  resolve and a `/feedback/count` summary (open + critical) for quick standups.
+
 ### v0.3.0 — app completion pass (pre-emulation)
 - **Admin user management** — create users (role + dept + starting PIN), reset PIN,
   suspend / re-activate, replace roles; approvals folded into one Users screen.

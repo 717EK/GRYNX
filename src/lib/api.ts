@@ -593,3 +593,38 @@ export async function ping(): Promise<boolean> {
     return false
   }
 }
+
+// ── in-app feedback / bug reporter ────────────────────────────────────────────
+export type FeedbackKind = 'bug' | 'idea' | 'feedback'
+export type FeedbackSeverity = 'low' | 'normal' | 'high' | 'critical'
+export interface FeedbackInput {
+  kind: FeedbackKind
+  severity: FeedbackSeverity
+  screen?: string
+  remark: string
+  context?: Record<string, unknown>
+  screenshot?: string
+}
+export interface FeedbackItem {
+  id: string
+  kind: FeedbackKind
+  severity: FeedbackSeverity
+  status: 'open' | 'resolved'
+  screen: string | null
+  remark: string
+  context: Record<string, unknown>
+  createdByName: string | null
+  createdAt: string
+  resolvedAt: string | null
+  hasScreenshot: boolean
+}
+export const submitFeedback = (input: FeedbackInput) =>
+  DEMO ? Promise.resolve({ feedback: { id: 'demo', severity: input.severity } }) : req<{ feedback: { id: string; severity: FeedbackSeverity } }>('POST', '/api/v1/feedback', input)
+export const listFeedback = (status?: 'open' | 'resolved') =>
+  DEMO ? Promise.resolve({ feedback: [] as FeedbackItem[] }) : req<{ feedback: FeedbackItem[] }>('GET', `/api/v1/feedback${status ? `?status=${status}` : ''}`)
+export const feedbackCount = () =>
+  DEMO ? Promise.resolve({ open: 0, critical: 0, total: 0 }) : req<{ open: number; critical: number; total: number }>('GET', '/api/v1/feedback/count')
+export const resolveFeedback = (id: string, status: 'open' | 'resolved' = 'resolved') =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/feedback/${id}/resolve`, { status })
+export const setFeedbackSeverity = (id: string, severity: FeedbackSeverity) =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/feedback/${id}/severity`, { severity })

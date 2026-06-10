@@ -632,3 +632,40 @@ model DailySequence {
   scope     String @id // e.g. "job:AT:2026-06-08"
   lastValue Int    @default(0)
 }
+
+// In-app feedback / bug reports raised from the floating reporter button.
+enum FeedbackKind {
+  bug
+  idea
+  feedback
+}
+
+enum FeedbackSeverity {
+  low
+  normal
+  high
+  critical
+}
+
+enum FeedbackStatus {
+  open
+  resolved
+}
+
+model Feedback {
+  id            String           @id @default(uuid())
+  kind          FeedbackKind     @default(bug)
+  severity      FeedbackSeverity @default(normal)
+  status        FeedbackStatus   @default(open)
+  screen        String? // which screen it was opened from
+  remark        String // the user's description
+  context       Json             @default("{}") // captured diagnostics/log
+  screenshot    String? // optional base64 data URL of the screen
+  createdById   String?
+  createdByName String?
+  createdAt     DateTime         @default(now())
+  resolvedAt    DateTime?
+
+  @@index([status])
+  @@index([createdAt])
+}
