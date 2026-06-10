@@ -151,6 +151,26 @@
 }
 
 /* timeline */
+.jd__matlist { display: flex; flex-direction: column; gap: 8px; }
+.jd__matline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm, 6px);
+  font-size: 13px;
+}
+.jd__matline .mono-label { color: var(--text-secondary); font-size: 10px; }
+.jd__serials { display: flex; flex-wrap: wrap; gap: 6px; }
+.jd__serial {
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--surface);
+}
 .jd__section-title {
   display: block;
   padding-bottom: 10px;

@@ -94,14 +94,17 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 12px 12px;
+  padding: 12px 8px;
   border-left: 1px solid var(--border);
 }
 .stat:first-child {
   border-left: none;
 }
+/* keep every label on one line so the four stats stay symmetric */
 .stat__k {
   font-size: 9px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 .stat__v {
   font-size: 26px;
@@ -110,6 +113,28 @@
 }
 .stat__v.is-warning {
   color: var(--warning);
+}
+
+/* hovering scan FAB — sits over the footer status bar, centered */
+.admin__scanfab {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 3px solid var(--bg);
+  background: var(--brand);
+  color: var(--on-brand, #0a0a0a);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--brand) 45%, transparent), 0 2px 6px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.admin__scanfab:active {
+  transform: translateX(-50%) scale(0.94);
 }
 
 /* ====== iPad / desktop: 2x2 grid filling the height ====== */

@@ -39,6 +39,7 @@ export type Screen =
   | 'maintenance'
   | 'jobstatus'
   | 'jobdetail'
+  | 'jobscan'
   | 'notifications'
   | 'departmentdetail'
   | 'maintenancedetail'
@@ -90,7 +91,15 @@ export default function App() {
   const [selectedPpc, setSelectedPpc] = useState<PpcRequest | null>(null)
   const [reviewMode, setReviewMode] = useState<'admin' | 'ppc'>('admin')
   const [cardJobId, setCardJobId] = useState<string | null>(null)
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const [jobDetailBack, setJobDetailBack] = useState<Screen>('jobstatus')
   const go = (s: Screen) => setScreen(s)
+  // open a job's full history/detail, remembering where to return to
+  const openJob = (id: string, back: Screen) => {
+    setSelectedJobId(id)
+    setJobDetailBack(back)
+    go('jobdetail')
+  }
   // open a PPC request as a job sheet; mode decides the available actions and
   // where Back/Done return to (admin → hub, PPC → inbox).
   const openReview = (req: PpcRequest, mode: 'admin' | 'ppc') => {
@@ -207,7 +216,7 @@ export default function App() {
             onScan={() => go('scan')}
             onLock={handleLock}
             onReport={() => go('maintenance')}
-            onOpenJob={() => go('jobdetail')}
+            onOpenJob={(id) => openJob(id, 'station')}
             onExitViewAs={viewAs ? () => { setViewAs(null); go('viewas') } : undefined}
           />
         )
@@ -226,7 +235,7 @@ export default function App() {
       case 'overview':
         return <AdminOverview user={user} onBack={() => go('home')} onLock={handleLock} onOpenInsights={() => go('insights')} />
       case 'insights':
-        return <Insights user={user} onBack={() => go('overview')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
+        return <Insights user={user} onBack={() => go('overview')} onLock={handleLock} onOpenJob={() => go('jobstatus')} />
       case 'ppcrequest':
         return (
           <CreateJob
@@ -282,7 +291,7 @@ export default function App() {
       case 'departments':
         return <Departments user={user} onBack={() => go('home')} onLock={handleLock} onOpenDept={() => go('departmentdetail')} />
       case 'departmentdetail':
-        return <DepartmentDetail user={user} onBack={() => go('departments')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
+        return <DepartmentDetail user={user} onBack={() => go('departments')} onLock={handleLock} onOpenJob={() => go('jobstatus')} />
       case 'maintenance':
         return (
           <Maintenance
@@ -298,9 +307,19 @@ export default function App() {
       case 'maintenancedetail':
         return <MaintenanceDetail user={user} ticketId={maintTicketId} onBack={() => go('maintenance')} onLock={handleLock} />
       case 'jobstatus':
-        return <JobStatus user={user} onBack={() => go('home')} onLock={handleLock} onOpenJob={() => go('jobdetail')} />
+        return <JobStatus user={user} onBack={() => go(isSuper ? 'viewas' : 'home')} onLock={handleLock} onOpenJob={(id) => openJob(id, 'jobstatus')} />
       case 'jobdetail':
-        return <JobDetail user={user} onBack={() => go('jobstatus')} onLock={handleLock} />
+        return <JobDetail user={user} jobId={selectedJobId} onBack={() => go(jobDetailBack)} onLock={handleLock} />
+      case 'jobscan':
+        return (
+          <ScanPage
+            user={user}
+            mode="lookup"
+            onBack={() => go(isSuper ? 'viewas' : 'home')}
+            onLock={handleLock}
+            onLookup={(job) => openJob(job.id, 'home')}
+          />
+        )
       case 'notifications':
         return (
           <Notifications
@@ -312,7 +331,7 @@ export default function App() {
         )
       case 'home':
       default:
-        return <AdminHome user={user} onNavigate={go} onOpenOverview={() => go('overview')} onLock={handleLock} />
+        return <AdminHome user={user} onNavigate={go} onOpenOverview={() => go('overview')} onLock={handleLock} onScan={() => go('jobscan')} />
     }
   }
 

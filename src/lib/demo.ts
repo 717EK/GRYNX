@@ -253,6 +253,12 @@ export function demoGetJob(id: string) {
   if (!job) throw new ApiError(404, { error: 'not_found' })
   return delay({ job })
 }
+export function demoLookupJob(code: string) {
+  const c = code.trim().toUpperCase().replace(/^GRYNX:/, '')
+  const job = state.jobs.find((j) => j.jobNo.toUpperCase() === c || j.displayLabel.toUpperCase() === c)
+  if (!job) throw new ApiError(404, { error: 'not_found' })
+  return delay({ job })
+}
 
 // arrival-scan advance, mirroring the real engine (single station per job here)
 export function demoScan(jobNo: string, stationCode: string | null, preview: boolean): { status: number; data: ScanResult } {

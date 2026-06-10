@@ -291,6 +291,8 @@ export interface JobStepDTO {
   sequence: number
   status: string
   slaDueAt: string | null
+  acceptedAt?: string | null
+  completedAt?: string | null
   department: { code: string; name: string }
 }
 export interface JobDTO {
@@ -300,6 +302,9 @@ export interface JobDTO {
   status: string
   priority: string
   totalQty: number
+  startDate?: string | null
+  completionDate?: string | null
+  createdAt?: string
   product?: { code: string; name: string }
   steps?: JobStepDTO[]
   models?: { quantity: number; size?: string | null; model: { code: string; name: string } }[]
@@ -318,6 +323,9 @@ export const getQueue = (departmentId?: string) =>
 export const getJobs = (status?: string) =>
   DEMO ? demo.demoGetJobs() : req<{ jobs: JobDTO[] }>('GET', `/api/v1/jobs${status ? `?status=${status}` : ''}`)
 export const getJob = (id: string) => (DEMO ? demo.demoGetJob(id) : req<{ job: JobDTO }>('GET', `/api/v1/jobs/${id}`))
+// resolve a scanned code (jobNo or displayLabel) → full detail (admin history lookup)
+export const lookupJob = (code: string) =>
+  DEMO ? demo.demoLookupJob(code) : req<{ job: JobDTO }>('GET', `/api/v1/jobs/lookup?code=${encodeURIComponent(code)}`)
 
 export interface CreateJobInput {
   productId: string

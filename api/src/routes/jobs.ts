@@ -97,21 +97,30 @@ export async function jobRoutes(app: FastifyInstance) {
     return { jobs }
   })
 
+  const detailInclude = {
+    product: { select: { code: true, name: true } },
+    models: { include: { model: { select: { code: true, name: true } } } },
+    steps: { orderBy: { sequence: 'asc' }, include: { department: { select: { code: true, name: true } } } },
+    events: { orderBy: { createdAt: 'desc' }, take: 50 },
+  } satisfies Prisma.JobInclude
+
+  // ── resolve a scanned code (jobNo OR displayLabel) → full detail ─────────────
+  // Admin scans any job card to pull up its whole history (read-only lookup).
+  app.get('/lookup', async (req, reply) => {
+    const { code } = z.object({ code: z.string().min(3).max(60) }).parse(req.query)
+    const c = code.trim().toUpperCase().replace(/^GRYNX:/, '')
+    const job = await prisma.job.findFirst({
+      where: { OR: [{ jobNo: c }, { displayLabel: { equals: c, mode: 'insensitive' } }] },
+      include: detailInclude,
+    })
+    if (!job) return reply.code(404).send({ error: 'not_found' })
+    return { job }
+  })
+
   // ── detail (incl. live step states + timeline) ──────────────────────────────
   app.get('/:id', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
-    const job = await prisma.job.findUnique({
-      where: { id },
-      include: {
-        product: { select: { code: true, name: true } },
-        models: { include: { model: { select: { code: true, name: true } } } },
-        steps: {
-          orderBy: { sequence: 'asc' },
-          include: { department: { select: { code: true, name: true } } },
-        },
-        events: { orderBy: { createdAt: 'desc' }, take: 50 },
-      },
-    })
+    const job = await prisma.job.findUnique({ where: { id }, include: detailInclude })
     if (!job) return reply.code(404).send({ error: 'not_found' })
     return { job }
   })

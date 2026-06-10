@@ -1,3 +1,9 @@
+.js__empty {
+  display: block;
+  text-align: center;
+  color: var(--text-tertiary);
+  padding: 22px 10px;
+}
 .js__stages {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

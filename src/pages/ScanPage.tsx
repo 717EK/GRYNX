@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import { scan, newIdempotencyKey, type ScanResult } from '../lib/api'
+import { scan, newIdempotencyKey, lookupJob, type ScanResult, type JobDTO } from '../lib/api'
 import './ScanPage.css'
 
 type Phase = 'idle' | 'confirm' | 'result'
-type Mode = 'camera' | 'manual'
+type Entry = 'camera' | 'manual'
 
 // accept the Job ID (AT-N-050-080626-010) or the opaque code (Jxxxxxxxxxxx)
 const CODE_RE = /^[A-Z0-9-]{6,40}$/
@@ -15,6 +15,8 @@ export default function ScanPage({
   onBack,
   stationName,
   stationDepartmentId,
+  mode = 'advance',
+  onLookup,
 }: {
   user: SessionUser
   onLock: () => void
@@ -22,10 +24,13 @@ export default function ScanPage({
   /** Explicit station (View As / admin) — overrides the station derived from auth. */
   stationName?: string
   stationDepartmentId?: string
+  /** 'advance' = floor scan that moves the job · 'lookup' = admin scans to view history. */
+  mode?: 'advance' | 'lookup'
+  onLookup?: (job: JobDTO) => void
 }) {
   const [jobNo, setJobNo] = useState('')
   const [phase, setPhase] = useState<Phase>('idle')
-  const [mode, setMode] = useState<Mode>('camera')
+  const [entry, setEntry] = useState<Entry>('camera')
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState<ScanResult | null>(null)
   const [result, setResult] = useState<ScanResult | null>(null)
@@ -44,12 +49,18 @@ export default function ScanPage({
     }
     setBusy(true)
     try {
+      // Admin lookup: resolve the code → full job history (no advance).
+      if (mode === 'lookup') {
+        const { job } = await lookupJob(no)
+        onLookup?.(job)
+        return
+      }
       const { data } = await scan({ jobNo: no, idempotencyKey: newIdempotencyKey(), clientTs: new Date().toISOString(), preview: true, stationDepartmentId })
       setPreview(data)
       setPhase(data.result === 'applied' || data.result === 'forced' ? 'confirm' : 'result')
       if (data.result !== 'applied' && data.result !== 'forced') setResult(data)
     } catch {
-      setError('Network error — try again')
+      setError(mode === 'lookup' ? 'No job found for that code' : 'Network error — try again')
     } finally {
       setBusy(false)
     }
@@ -76,7 +87,7 @@ export default function ScanPage({
     setResult(null)
     setError(null)
     setPhase('idle')
-    setMode('camera')
+    setEntry('camera')
     setCamOn(true) // re-open the camera for the next scan
   }
 
@@ -94,13 +105,13 @@ export default function ScanPage({
   function toManual() {
     void stopCamera()
     setError(null)
-    setMode('manual')
+    setEntry('manual')
   }
   // Back to the live camera.
   function toCamera() {
     setError(null)
     setJobNo('')
-    setMode('camera')
+    setEntry('camera')
     setCamOn(true)
   }
 
@@ -116,7 +127,9 @@ export default function ScanPage({
         scannerRef.current = s
         await s.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: 200 },
+          // no qrbox → html5-qrcode draws no overlay; our own .scan__frame is the
+          // only viewfinder, so the corner markers stay aligned to the window
+          { fps: 10 },
           async (decoded: string) => {
             await stopCamera()
             setJobNo(clean(decoded))
@@ -127,7 +140,7 @@ export default function ScanPage({
       } catch {
         // no camera (desktop / denied) → fall back to manual entry
         setCamOn(false)
-        setMode('manual')
+        setEntry('manual')
       }
     })()
     return () => {
@@ -153,13 +166,19 @@ export default function ScanPage({
           {onBack && (
             <button className="scan__back" onClick={onBack} aria-label="Back">←</button>
           )}
-          <h1 className="scan__title display">Scan</h1>
-          <span className="scan__station mono-label">STATION · {station}</span>
+          <h1 className="scan__title display">{mode === 'lookup' ? 'History' : 'Scan'}</h1>
+          <span className="scan__station mono-label">{mode === 'lookup' ? 'SCAN ANY CARD' : `STATION · ${station}`}</span>
         </header>
 
-        {phase === 'idle' && mode === 'camera' && (
+        {phase === 'idle' && entry === 'camera' && (
           <div className="scan__panel scan__panel--cam">
-            <p className="scan__lead">Point at the job card as it <b>arrives</b> at your station.</p>
+            <p className="scan__lead">
+              {mode === 'lookup' ? (
+                <>Scan a job card to pull up its <b>full history</b>.</>
+              ) : (
+                <>Point at the job card as it <b>arrives</b> at your station.</>
+              )}
+            </p>
             <div className="scan__camwrap">
               <div id="qr-reader" className="scan__reader" />
               <span className="scan__frame" aria-hidden />
@@ -169,10 +188,11 @@ export default function ScanPage({
           </div>
         )}
 
-        {phase === 'idle' && mode === 'manual' && (
-          <div className="scan__panel scan__panel--manual">
+        {phase === 'idle' && entry === 'manual' && (
+          // tapping the empty area (outside the form) returns to the camera
+          <div className="scan__panel scan__panel--manual" onMouseDown={toCamera}>
             <button className="scan__camback mono-label" onClick={toCamera}>← Use camera</button>
-            <div className="scan__manual-hero">
+            <div className="scan__manual-hero" onMouseDown={(e) => e.stopPropagation()}>
               <span className="scan__manual-k mono-label">Enter Job Code</span>
               <input
                 className="scan__input"
