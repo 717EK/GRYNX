@@ -62,10 +62,12 @@ export default function Notifications({
     { key: 'jobs', label: 'Jobs' },
     { key: 'maint', label: 'Maintenance' },
   ]
-  const filtered = (items ?? []).filter((n) => inCat(n, cat))
+  // the feed is a live "needs attention" queue — attended (read) items clear out
+  const filtered = (items ?? []).filter((n) => !n.readAt && inCat(n, cat))
   const catUnread = (key: string) => (items ?? []).filter((n) => !n.readAt && inCat(n, key)).length
 
   async function open(n: Notification) {
+    // attend → clear: mark read (removes it from the queue) then open the target
     if (!n.readAt) {
       markNotificationRead(n.id).catch(() => {})
       setItems((xs) => xs?.map((x) => (x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x)) ?? xs)
@@ -106,7 +108,7 @@ export default function Notifications({
           {items === null ? (
             <span className="nsec__title mono-label" style={{ display: 'block', textAlign: 'center', padding: 30 }}>Loading…</span>
           ) : filtered.length === 0 ? (
-            <span className="nsec__title mono-label" style={{ display: 'block', textAlign: 'center', padding: 30 }}>No {cat === 'all' ? '' : cat + ' '}notifications.</span>
+            <span className="nsec__title mono-label" style={{ display: 'block', textAlign: 'center', padding: 30 }}>✓ All clear — no pending {cat === 'all' ? '' : cat + ' '}notifications.</span>
           ) : (
             <div className="nlist">
               {filtered.map((n) => (

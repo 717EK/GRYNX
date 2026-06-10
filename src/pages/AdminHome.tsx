@@ -1,22 +1,23 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import { getAdminStats } from '../lib/api'
+import { getAdminStats, type AdminStats } from '../lib/api'
 import type { Screen } from '../App'
 import './AdminHome.css'
 
 interface NavItem {
   title: string
   sub: string
-  badge: string
+  badgeKey: 'pendingPpc' | 'active' | 'overdue' | 'pendingUsers' | 'openTickets'
   to?: Screen
 }
 
+// badge = live count of items needing attention for that menu
 const NAV: NavItem[] = [
-  { title: 'Create Job', sub: 'New Job Initiation', badge: '02', to: 'jobhub' },
-  { title: 'Job Status', sub: 'Track. Monitor. Update.', badge: '03', to: 'jobstatus' },
-  { title: 'Departments', sub: 'Manage. Teams. Roles.', badge: '01', to: 'departments' },
-  { title: 'Users', sub: 'Accounts. Roles. PINs.', badge: '•', to: 'approvals' },
-  { title: 'Maintenance', sub: 'Maintain. Repair. Optimize.', badge: '01', to: 'maintenance' },
+  { title: 'Create Job', sub: 'New Job Initiation', badgeKey: 'pendingPpc', to: 'jobhub' },
+  { title: 'Job Status', sub: 'Track. Monitor. Update.', badgeKey: 'active', to: 'jobstatus' },
+  { title: 'Departments', sub: 'Manage. Teams. Roles.', badgeKey: 'overdue', to: 'departments' },
+  { title: 'Users', sub: 'Accounts. Roles. PINs.', badgeKey: 'pendingUsers', to: 'approvals' },
+  { title: 'Maintenance', sub: 'Maintain. Repair. Optimize.', badgeKey: 'openTickets', to: 'maintenance' },
 ]
 
 interface Stat {
@@ -39,12 +40,14 @@ export default function AdminHome({
   onScan: () => void
 }) {
   // live stats (was placeholder) — real counts from the control-centre aggregate
-  const [kpi, setKpi] = useState<{ totalJobs: number; active: number; closed: number; openTickets: number } | null>(null)
+  const [kpi, setKpi] = useState<AdminStats['kpis'] | null>(null)
   useEffect(() => {
-    getAdminStats()
-      .then((r) => setKpi({ totalJobs: r.kpis.totalJobs, active: r.kpis.active, closed: r.kpis.closed, openTickets: r.kpis.openTickets }))
-      .catch(() => {})
+    const tick = () => getAdminStats().then((r) => setKpi(r.kpis)).catch(() => {})
+    tick()
+    const h = setInterval(tick, 30_000)
+    return () => clearInterval(h)
   }, [])
+  const badge = (key: NavItem['badgeKey']) => (kpi ? (kpi[key] ?? 0) : null)
   const v = (n?: number) => (kpi ? String(n ?? 0) : '—')
   const STATS: Stat[] = [
     { k: 'Total Jobs', v: v(kpi?.totalJobs) },
@@ -57,21 +60,26 @@ export default function AdminHome({
       <TopBar user={user} onLock={onLock} />
       <main className="app__body admin">
         <nav className="admin__nav">
-          {NAV.map((item) => (
-            <button
-              key={item.title}
-              className="navrow"
-              onClick={() => item.to && onNavigate(item.to)}
-            >
-              <span className="navrow__body">
-                <span className="navrow__tick" />
-                <span className="navrow__title display">{item.title}</span>
-                <span className="navrow__sub mono-label">{item.sub}</span>
-              </span>
-              <span className="navrow__badge">[{item.badge}]</span>
-              <span className="navrow__arrow">→</span>
-            </button>
-          ))}
+          {NAV.map((item) => {
+            const n = badge(item.badgeKey)
+            return (
+              <button
+                key={item.title}
+                className="navrow"
+                onClick={() => item.to && onNavigate(item.to)}
+              >
+                <span className="navrow__body">
+                  <span className="navrow__tick" />
+                  <span className="navrow__title display">{item.title}</span>
+                  <span className="navrow__sub mono-label">{item.sub}</span>
+                </span>
+                <span className={`navrow__badge ${n && n > 0 ? 'navrow__badge--on' : ''}`}>
+                  [{n === null ? '··' : String(n).padStart(2, '0')}]
+                </span>
+                <span className="navrow__arrow">→</span>
+              </button>
+            )
+          })}
         </nav>
 
         {/* stats bar (just above the footer): stats flank a centred SCAN button.

@@ -208,6 +208,12 @@ export async function scanRoutes(app: FastifyInstance) {
             tx,
           })
 
+          // attended: scanning the job clears this scanner's pending notifications for it
+          await tx.notification.updateMany({
+            where: { userId: user.sub, jobId: job.id, readAt: null },
+            data: { readAt: body.clientTs },
+          })
+
           return { result: resultCode, label: job.displayLabel, station: scanned.department.name, completed: prior?.department.name ?? null, jobStatus: newStatus }
         },
         { timeout: 20_000, maxWait: 5_000 },

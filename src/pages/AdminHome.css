@@ -61,6 +61,10 @@
   font-size: 16px;
   color: var(--text-secondary);
 }
+.navrow__badge--on {
+  color: var(--brand);
+  font-weight: 700;
+}
 .navrow__arrow {
   font-size: 22px;
   color: var(--text);
@@ -87,24 +91,32 @@
   border-left: 1px solid var(--border);
 }
 .admin__scanbtn {
-  flex: 0 0 54px;
+  flex: 0 0 60px;
   align-self: center;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 9px 4px;
+  gap: 3px;
+  padding: 9px 6px;
   border: none;
   border-radius: 11px;
   background: var(--brand);
   color: var(--on-brand, #0a0a0a);
   cursor: pointer;
+  overflow: visible;
   box-shadow: 0 3px 12px color-mix(in srgb, var(--brand) 38%, transparent);
 }
 .admin__scanbtn:active { transform: scale(0.95); }
 .admin__scanbtn svg { width: 22px; height: 22px; }
-.admin__scanbtn-label { font-size: 9px; letter-spacing: 0.1em; color: var(--on-brand, #0a0a0a); }
+.admin__scanbtn-label {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--on-brand, #0a0a0a);
+}
 .admin__stats::after {
   content: '';
   position: absolute;

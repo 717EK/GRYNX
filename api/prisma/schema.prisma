@@ -660,7 +660,9 @@ model Feedback {
   screen        String? // which screen it was opened from
   remark        String // the user's description
   context       Json             @default("{}") // captured diagnostics/log
-  screenshot    String? // optional base64 data URL of the screen
+  screenshot    String? // optional base64 data URL of the screen capture
+  image         String? // optional user-attached image (base64 data URL)
+  audio         String? // optional voice note (base64 data URL) for later transcription
   createdById   String?
   createdByName String?
   createdAt     DateTime         @default(now())

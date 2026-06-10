@@ -46,6 +46,17 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.4.1 — dogfooding fixes
+- **Feedback form**: top-anchored (leaves room for the keyboard), no more app-zoom
+  on focus, readable fields (was black-on-black); reliable screenshot via
+  modern-screenshot; **add-image** and **voice-note** attachments (voice auto-
+  transcribes into the remark where supported).
+- **Notifications** now clear once attended — the feed is a live unread queue, and
+  scanning a job auto-clears that scanner's pending notifications for it.
+- **Admin home** menu badges show real live counts (pending PPC / active / overdue /
+  pending users / open tickets) instead of placeholder numbers.
+- Fixed the SCAN button label clipping on the admin home.
+
 ### v0.4.0 — in-app feedback / bug reporter
 - **Floating draggable reporter button** on every screen — drag it anywhere, tap to
   open a bug / idea / note form with severity, a free-text remark, an optional

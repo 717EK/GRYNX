@@ -5,7 +5,7 @@ import { APP_VERSION } from './UtilityBars'
 import './FeedbackFab.css'
 
 const POS_KEY = 'grynx-fbk-pos'
-const SIZE = 50 // button diameter, keep in sync with CSS
+const SIZE = 50
 const KINDS: { v: FeedbackKind; label: string; icon: string }[] = [
   { v: 'bug', label: 'Bug', icon: '🐞' },
   { v: 'idea', label: 'Idea', icon: '💡' },
@@ -29,9 +29,8 @@ function loadPos(): Pos {
 export default function FeedbackFab({ screen, username, role }: { screen: string; username?: string; role?: string }) {
   const [pos, setPos] = useState<Pos>(loadPos)
   const [open, setOpen] = useState(false)
-  const drag = useRef<{ dx: number; dy: number; moved: boolean } | null>(null)
+  const drag = useRef<{ ox: number; oy: number; sx: number; sy: number; moved: boolean } | null>(null)
 
-  // keep the button on-screen across rotations / resizes
   useEffect(() => {
     const onResize = () => setPos((p) => clampToView(p))
     window.addEventListener('resize', onResize)
@@ -40,21 +39,19 @@ export default function FeedbackFab({ screen, username, role }: { screen: string
 
   const onPointerDown = (e: React.PointerEvent) => {
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-    drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y, moved: false }
+    drag.current = { ox: e.clientX - pos.x, oy: e.clientY - pos.y, sx: e.clientX, sy: e.clientY, moved: false }
   }
   const onPointerMove = (e: React.PointerEvent) => {
     if (!drag.current) return
-    const nx = e.clientX - drag.current.dx
-    const ny = e.clientY - drag.current.dy
-    if (Math.abs(e.clientX - (drag.current.dx + pos.x)) > 5 || Math.abs(e.clientY - (drag.current.dy + pos.y)) > 5) drag.current.moved = true
-    setPos(clampToView({ x: nx, y: ny }))
+    if (Math.abs(e.clientX - drag.current.sx) > 5 || Math.abs(e.clientY - drag.current.sy) > 5) drag.current.moved = true
+    setPos(clampToView({ x: e.clientX - drag.current.ox, y: e.clientY - drag.current.oy }))
   }
   const onPointerUp = (e: React.PointerEvent) => {
     const wasDrag = drag.current?.moved
     if (drag.current) { try { (e.target as HTMLElement).releasePointerCapture(e.pointerId) } catch { /* ignore */ } }
     drag.current = null
-    if (wasDrag) { localStorage.setItem(POS_KEY, JSON.stringify(pos)) }
-    else setOpen(true) // a tap (not a drag) opens the form
+    if (wasDrag) localStorage.setItem(POS_KEY, JSON.stringify(pos))
+    else setOpen(true)
   }
 
   return (
@@ -70,66 +67,121 @@ export default function FeedbackFab({ screen, username, role }: { screen: string
       >
         <span aria-hidden>✦</span>
       </button>
-      {open && (
-        <ReportForm
-          screen={screen}
-          username={username}
-          role={role}
-          onClose={() => setOpen(false)}
-        />
-      )}
+      {open && <ReportForm screen={screen} username={username} role={role} onClose={() => setOpen(false)} />}
     </>
   )
 }
+
+type SpeechRec = { start: () => void; stop: () => void; lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null; onerror: (() => void) | null; onend: (() => void) | null }
 
 function ReportForm({ screen, username, role, onClose }: { screen: string; username?: string; role?: string; onClose: () => void }) {
   const [kind, setKind] = useState<FeedbackKind>('bug')
   const [severity, setSeverity] = useState<FeedbackSeverity>('normal')
   const [remark, setRemark] = useState('')
-  const [shot, setShot] = useState<string | null>(null)
+  const [shot, setShot] = useState<string | null>(null)       // screen capture
+  const [image, setImage] = useState<string | null>(null)     // attached image
+  const [audio, setAudio] = useState<string | null>(null)     // voice note
   const [capturing, setCapturing] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const [secs, setSecs] = useState(0)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
+  const recorder = useRef<MediaRecorder | null>(null)
+  const chunks = useRef<Blob[]>([])
+  const speech = useRef<SpeechRec | null>(null)
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => () => { stopRecording(); if (timer.current) clearInterval(timer.current) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── screen capture (modern-screenshot handles color-mix etc. that crash html2canvas)
   const capture = useCallback(async () => {
     setCapturing(true); setErr(null)
     try {
-      const { default: html2canvas } = await import('html2canvas')
-      const canvas = await html2canvas(document.body, {
+      const { domToJpeg } = await import('modern-screenshot')
+      const dataUrl = await domToJpeg(document.body, {
+        quality: 0.7,
+        scale: 0.5,
         backgroundColor: getComputedStyle(document.body).backgroundColor || '#111',
-        scale: Math.min(0.6, window.devicePixelRatio || 1),
-        logging: false,
-        useCORS: true,
-        ignoreElements: (el) => el.classList?.contains('fbk-ignore') || el.classList?.contains('fbk-overlay'),
+        filter: (node) => {
+          const el = node as HTMLElement
+          return !(el?.classList?.contains?.('fbk-ignore') || el?.classList?.contains?.('fbk-overlay'))
+        },
       })
-      setShot(canvas.toDataURL('image/jpeg', 0.7))
+      setShot(dataUrl)
     } catch {
-      setErr('Could not capture the screen — you can still send the report.')
+      setErr('Could not capture the screen — try “Add image” instead.')
     } finally {
       setCapturing(false)
     }
   }, [])
 
+  function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => setImage(typeof reader.result === 'string' ? reader.result : null)
+    reader.readAsDataURL(file)
+  }
+
+  async function startRecording() {
+    setErr(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      chunks.current = []
+      const mr = new MediaRecorder(stream)
+      mr.ondataavailable = (ev) => { if (ev.data.size) chunks.current.push(ev.data) }
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(chunks.current, { type: mr.mimeType || 'audio/webm' })
+        const reader = new FileReader()
+        reader.onload = () => setAudio(typeof reader.result === 'string' ? reader.result : null)
+        reader.readAsDataURL(blob)
+      }
+      mr.start()
+      recorder.current = mr
+      // live transcription where supported → drops straight into the remark
+      const SR = (window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec })
+      const Ctor = SR.SpeechRecognition || SR.webkitSpeechRecognition
+      if (Ctor) {
+        const rec = new Ctor()
+        rec.lang = 'en-IN'; rec.continuous = true; rec.interimResults = false
+        rec.onresult = (e) => {
+          let add = ''
+          for (let i = 0; i < e.results.length; i++) if (e.results[i].isFinal) add += e.results[i][0].transcript + ' '
+          if (add) setRemark((r) => (r ? r + ' ' : '') + add.trim())
+        }
+        rec.onerror = () => {}; rec.onend = () => {}
+        try { rec.start(); speech.current = rec } catch { /* ignore */ }
+      }
+      setRecording(true); setSecs(0)
+      timer.current = setInterval(() => setSecs((s) => { if (s >= 59) { stopRecording() ; return 60 } return s + 1 }), 1000)
+    } catch {
+      setErr('Microphone not available or permission denied.')
+    }
+  }
+  function stopRecording() {
+    if (timer.current) { clearInterval(timer.current); timer.current = null }
+    try { recorder.current?.state !== 'inactive' && recorder.current?.stop() } catch { /* ignore */ }
+    try { speech.current?.stop() } catch { /* ignore */ }
+    recorder.current = null; speech.current = null
+    setRecording(false)
+  }
+
   async function save() {
-    if (!remark.trim()) { setErr('Add a short remark first.'); return }
+    if (!remark.trim() && !audio) { setErr('Add a short remark (or a voice note) first.'); return }
     setBusy(true); setErr(null)
     const context = {
-      screen,
-      role: role ?? null,
-      username: username ?? null,
-      version: APP_VERSION,
-      url: typeof location !== 'undefined' ? location.href : '',
-      userAgent: navigator.userAgent,
-      viewport: `${window.innerWidth}x${window.innerHeight}`,
-      online: navigator.onLine,
-      capturedAt: new Date().toISOString(),
-      log: getLog(),
+      screen, role: role ?? null, username: username ?? null, version: APP_VERSION,
+      url: typeof location !== 'undefined' ? location.href : '', userAgent: navigator.userAgent,
+      viewport: `${window.innerWidth}x${window.innerHeight}`, online: navigator.onLine,
+      capturedAt: new Date().toISOString(), log: getLog(),
     }
     try {
-      await submitFeedback({ kind, severity, screen, remark: remark.trim(), context, screenshot: shot ?? undefined })
+      await submitFeedback({ kind, severity, screen, remark: remark.trim() || '(voice note)', context, screenshot: shot ?? undefined, image: image ?? undefined, audio: audio ?? undefined })
       setDone(true)
-      setTimeout(onClose, 850) // pop back to the button
+      setTimeout(onClose, 850)
     } catch {
       setErr('Could not send — check connection and retry.')
       setBusy(false)
@@ -153,48 +205,66 @@ function ReportForm({ screen, username, role, onClose }: { screen: string; usern
               <button className="fbk-x" onClick={onClose} aria-label="Close">×</button>
             </div>
 
-            <div className="fbk-kinds">
-              {KINDS.map((k) => (
-                <button key={k.v} className={`fbk-kind ${kind === k.v ? 'is-on' : ''}`} onClick={() => setKind(k.v)}>
-                  <span aria-hidden>{k.icon}</span> {k.label}
-                </button>
-              ))}
-            </div>
-
-            <textarea
-              className="fbk-remark"
-              placeholder={kind === 'bug' ? 'What went wrong? e.g. “notifications aren’t updating live on the dept home”' : 'What would you like to see / change?'}
-              value={remark}
-              onChange={(e) => setRemark(e.target.value)}
-              rows={4}
-              autoFocus
-            />
-
-            <div className="fbk-row">
-              <label className="mono-label fbk-sevlabel">Severity</label>
-              <div className="fbk-sevs">
-                {SEVS.map((s) => (
-                  <button key={s} className={`fbk-sev fbk-sev--${s} ${severity === s ? 'is-on' : ''}`} onClick={() => setSeverity(s)}>{s}</button>
+            <div className="fbk-scroll">
+              <div className="fbk-kinds">
+                {KINDS.map((k) => (
+                  <button key={k.v} className={`fbk-kind ${kind === k.v ? 'is-on' : ''}`} onClick={() => setKind(k.v)}>
+                    <span aria-hidden>{k.icon}</span> {k.label}
+                  </button>
                 ))}
               </div>
+
+              <textarea
+                className="fbk-remark"
+                placeholder={kind === 'bug' ? 'What went wrong? e.g. “notifications aren’t updating live on the dept home”' : 'What would you like to see / change?'}
+                value={remark}
+                onChange={(e) => setRemark(e.target.value)}
+                rows={3}
+              />
+
+              <div className="fbk-row">
+                <label className="mono-label fbk-sevlabel">Severity</label>
+                <div className="fbk-sevs">
+                  {SEVS.map((s) => (
+                    <button key={s} className={`fbk-sev fbk-sev--${s} ${severity === s ? 'is-on' : ''}`} onClick={() => setSeverity(s)}>{s}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* attachments */}
+              <div className="fbk-attachrow">
+                {shot ? (
+                  <span className="fbk-chip">📸 Screenshot <button onClick={() => setShot(null)} aria-label="remove">×</button></span>
+                ) : (
+                  <button className="fbk-attbtn" onClick={capture} disabled={capturing}>{capturing ? 'Capturing…' : '📸 Screenshot'}</button>
+                )}
+                {image ? (
+                  <span className="fbk-chip">🖼 Image <button onClick={() => setImage(null)} aria-label="remove">×</button></span>
+                ) : (
+                  <label className="fbk-attbtn">🖼 Add image
+                    <input type="file" accept="image/*" hidden onChange={onPickImage} />
+                  </label>
+                )}
+                {audio ? (
+                  <span className="fbk-chip">🎤 Voice <button onClick={() => setAudio(null)} aria-label="remove">×</button></span>
+                ) : recording ? (
+                  <button className="fbk-attbtn fbk-recording" onClick={stopRecording}>● Stop {secs}s</button>
+                ) : (
+                  <button className="fbk-attbtn" onClick={startRecording}>🎤 Voice note</button>
+                )}
+              </div>
+
+              {(shot || image) && (
+                <div className="fbk-previews">
+                  {shot && <img className="fbk-shot" src={shot} alt="screen capture" />}
+                  {image && <img className="fbk-shot" src={image} alt="attached" />}
+                </div>
+              )}
+
+              {err && <span className="fbk-err mono-label">{err}</span>}
             </div>
 
-            {shot ? (
-              <div className="fbk-shotwrap">
-                <img className="fbk-shot" src={shot} alt="screen capture" />
-                <button className="fbk-shotrm" onClick={() => setShot(null)} aria-label="Remove screenshot">Remove screenshot</button>
-              </div>
-            ) : (
-              <button className="fbk-attach" onClick={capture} disabled={capturing}>
-                {capturing ? 'Capturing…' : '📷 Attach screenshot (optional)'}
-              </button>
-            )}
-
-            {err && <span className="fbk-err mono-label">{err}</span>}
-
-            <button className="fbk-save" onClick={save} disabled={busy}>
-              {busy ? 'Sending…' : 'Save report'}
-            </button>
+            <button className="fbk-save" onClick={save} disabled={busy}>{busy ? 'Sending…' : 'Save report'}</button>
           </>
         )}
       </div>

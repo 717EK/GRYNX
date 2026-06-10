@@ -16,7 +16,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
 
-    const [statusGroups, productGroups, maintGroups, wip, openTickets, recent, products, deptGroups, departments, closureJobs, escalated, onHold, overdueCount, overdueList, completedToday, activity, overdueByDept, onHoldByDept] = await Promise.all([
+    const [statusGroups, productGroups, maintGroups, wip, openTickets, recent, products, deptGroups, departments, closureJobs, escalated, onHold, overdueCount, overdueList, completedToday, activity, overdueByDept, onHoldByDept, pendingPpc, pendingUsers] = await Promise.all([
       prisma.job.groupBy({ by: ['status'], _count: { _all: true } }),
       prisma.job.groupBy({ by: ['productId'], _count: { _all: true }, _sum: { totalQty: true } }),
       prisma.maintenanceTicket.groupBy({ by: ['status'], _count: { _all: true } }),
@@ -44,6 +44,9 @@ export async function adminRoutes(app: FastifyInstance) {
       // per-department health: overdue + on-hold step counts
       prisma.jobStep.groupBy({ by: ['departmentId'], where: { status: { in: AT_STATION }, slaDueAt: { lt: new Date() }, job: { status: { in: ACTIVE } } }, _count: { _all: true } }),
       prisma.jobStep.groupBy({ by: ['departmentId'], where: { status: 'on_hold' }, _count: { _all: true } }),
+      // menu badges
+      prisma.ppcRequest.count({ where: { status: 'submitted' } }),
+      prisma.user.count({ where: { status: 'pending' } }),
     ])
 
     const sc = (s: string) => statusGroups.find((g) => g.status === s)?._count._all ?? 0
@@ -131,6 +134,8 @@ export async function adminRoutes(app: FastifyInstance) {
         openTickets,
         overdue: overdueCount,
         completedToday,
+        pendingPpc,
+        pendingUsers,
       },
       statusMix,
       byProduct,

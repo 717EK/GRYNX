@@ -14,6 +14,8 @@ const createSchema = z.object({
   remark: z.string().min(1).max(4000),
   context: z.record(z.any()).optional(),
   screenshot: z.string().max(8_000_000).optional(), // base64 data URL, capped ~8MB
+  image: z.string().max(8_000_000).optional(), // user-attached image
+  audio: z.string().max(12_000_000).optional(), // voice note
 })
 
 // In-app feedback / bug reporter. Any signed-in user can file; admins triage.
@@ -33,6 +35,8 @@ export async function feedbackRoutes(app: FastifyInstance) {
         remark: parsed.data.remark,
         context: parsed.data.context ?? {},
         screenshot: parsed.data.screenshot ?? null,
+        image: parsed.data.image ?? null,
+        audio: parsed.data.audio ?? null,
         createdById: user.sub,
         createdByName: user.username ?? null,
       },
@@ -65,12 +69,18 @@ export async function feedbackRoutes(app: FastifyInstance) {
         screenshot: false,
       },
     })
-    // add a flag so the UI knows whether to offer "view screenshot"
+    // flag which reports carry media so the UI can offer "view" (ids only — no blobs)
     const ids = rows.map((r) => r.id)
-    const withShot = ids.length
-      ? new Set((await prisma.feedback.findMany({ where: { id: { in: ids }, NOT: { screenshot: null } }, select: { id: true } })).map((x) => x.id))
-      : new Set<string>()
-    return { feedback: rows.map((r) => ({ ...r, hasScreenshot: withShot.has(r.id) })) }
+    const idsWhere = { id: { in: ids } }
+    const [shot, img, aud] = ids.length
+      ? await Promise.all([
+          prisma.feedback.findMany({ where: { ...idsWhere, NOT: { screenshot: null } }, select: { id: true } }),
+          prisma.feedback.findMany({ where: { ...idsWhere, NOT: { image: null } }, select: { id: true } }),
+          prisma.feedback.findMany({ where: { ...idsWhere, NOT: { audio: null } }, select: { id: true } }),
+        ])
+      : [[], [], []]
+    const sShot = new Set(shot.map((x) => x.id)), sImg = new Set(img.map((x) => x.id)), sAud = new Set(aud.map((x) => x.id))
+    return { feedback: rows.map((r) => ({ ...r, hasScreenshot: sShot.has(r.id), hasImage: sImg.has(r.id), hasAudio: sAud.has(r.id) })) }
   })
 
   app.get('/:id', { preHandler: requireRole('admin') }, async (req, reply) => {

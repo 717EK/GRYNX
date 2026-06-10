@@ -345,7 +345,7 @@ export interface AttentionItem { kind: 'job' | 'ticket'; id: string; label: stri
 export interface DeptHealth { code: string; department: string; load: number; overdue: number; onHold: number; tone: 'good' | 'delay' | 'alert' }
 export interface ActivityItem { id: string; label: string; text: string; at: string }
 export interface AdminStats {
-  kpis: { totalJobs: number; active: number; inProduction: number; inQc: number; inFg: number; closureRequested: number; closed: number; unitsWip: number; openTickets: number; overdue: number; completedToday: number }
+  kpis: { totalJobs: number; active: number; inProduction: number; inQc: number; inFg: number; closureRequested: number; closed: number; unitsWip: number; openTickets: number; overdue: number; completedToday: number; pendingPpc: number; pendingUsers: number }
   statusMix: { status: string; count: number }[]
   byProduct: { product: string; code: string; count: number; units: number }[]
   byDepartment: { department: string; code: string; count: number }[]
@@ -357,7 +357,7 @@ export interface AdminStats {
 }
 export const getAdminStats = () =>
   DEMO
-    ? Promise.resolve({ kpis: { totalJobs: 0, active: 0, inProduction: 0, inQc: 0, inFg: 0, closureRequested: 0, closed: 0, unitsWip: 0, openTickets: 0, overdue: 0, completedToday: 0 }, statusMix: [], byProduct: [], byDepartment: [], departmentHealth: [], recentActivity: [], throughput: [], maintenance: [], attention: [] } as AdminStats)
+    ? Promise.resolve({ kpis: { totalJobs: 0, active: 0, inProduction: 0, inQc: 0, inFg: 0, closureRequested: 0, closed: 0, unitsWip: 0, openTickets: 0, overdue: 0, completedToday: 0, pendingPpc: 0, pendingUsers: 0 }, statusMix: [], byProduct: [], byDepartment: [], departmentHealth: [], recentActivity: [], throughput: [], maintenance: [], attention: [] } as AdminStats)
     : req<AdminStats>('GET', '/api/v1/admin/stats')
 // resolve a scanned code (jobNo or displayLabel) → full detail (admin history lookup)
 export const lookupJob = (code: string) =>
@@ -604,6 +604,8 @@ export interface FeedbackInput {
   remark: string
   context?: Record<string, unknown>
   screenshot?: string
+  image?: string
+  audio?: string
 }
 export interface FeedbackItem {
   id: string
@@ -617,6 +619,8 @@ export interface FeedbackItem {
   createdAt: string
   resolvedAt: string | null
   hasScreenshot: boolean
+  hasImage: boolean
+  hasAudio: boolean
 }
 export const submitFeedback = (input: FeedbackInput) =>
   DEMO ? Promise.resolve({ feedback: { id: 'demo', severity: input.severity } }) : req<{ feedback: { id: string; severity: FeedbackSeverity } }>('POST', '/api/v1/feedback', input)
