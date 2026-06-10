@@ -32,3 +32,13 @@ Thumbs.db
 # Large binary UI references are kept in repo intentionally (source of truth),
 # but ignore scratch exports:
 reference/**/_scratch/
+
+# Firebase Admin service account (SECRET — never commit). Provide it via the
+# FIREBASE_SERVICE_ACCOUNT env var, or GOOGLE_APPLICATION_CREDENTIALS path.
+**/serviceAccountKey.json
+**/firebase-service-account*.json
+
+# Capacitor / Android local signing + SDK config
+android/local.properties
+*.keystore
+*.jks

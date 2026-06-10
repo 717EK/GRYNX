@@ -206,6 +206,21 @@ model User {
   devices       DeviceToken[]
   scans         ScanEvent[]
   webauthnCredentials WebauthnCredential[]
+  pushTokens    PushToken[]
+}
+
+// FCM push registration token for a user's device (Capacitor Android app). Used
+// to deliver notifications when the app is backgrounded/closed.
+model PushToken {
+  id         String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  platform   String   @default("android")
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 // A registered platform authenticator (Face ID / Touch ID / fingerprint) bound

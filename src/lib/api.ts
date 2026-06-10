@@ -101,7 +101,13 @@ function applySession(data: { accessToken: string; refreshToken: string; user: A
   refresh = data.refreshToken
   user = data.user
   persist()
+  // re-send the FCM push token now that we're authed (native app only; no-op on web)
+  import('./native').then((n) => n.syncPushAfterLogin()).catch(() => {})
 }
+
+// Register this device's FCM push token against the signed-in user.
+export const registerDevice = (token: string, platform = 'android') =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', '/api/v1/devices/register', { token, platform })
 
 export async function login(username: string, pin: string): Promise<ApiUser> {
   if (DEMO) {
