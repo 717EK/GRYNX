@@ -379,6 +379,7 @@ export function demoMaintRaise(input: RaiseTicketInput) {
     etaHours: null,
     partsNeeded: null,
     closeRemark: null,
+    photoUrl: input.photo ?? null,
     reportedById: u.id,
     assignedToId: null,
     createdAt: now,

@@ -551,6 +551,7 @@ model MaintenanceTicket {
   etaHours     Int? // assignee's expected time to fix
   partsNeeded  String? // parts/replacements required
   closeRemark  String?
+  photoUrl     String? @db.Text // compressed JPEG data URL of the issue (optional)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   events       MaintenanceEvent[]

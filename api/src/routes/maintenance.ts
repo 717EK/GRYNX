@@ -14,6 +14,8 @@ const raiseSchema = z.object({
   priority: z.enum(PRIORITIES).default('normal'),
   locationText: z.string().min(1).max(120),
   description: z.string().min(1).max(1000),
+  // optional compressed JPEG data URL of the issue (client resizes to keep small)
+  photo: z.string().startsWith('data:image/').max(800_000).optional(),
 })
 
 const ticketDetail = {
@@ -27,6 +29,7 @@ const ticketDetail = {
   etaHours: true,
   partsNeeded: true,
   closeRemark: true,
+  photoUrl: true,
   reportedById: true,
   assignedToId: true,
   createdAt: true,
@@ -63,6 +66,7 @@ export async function maintenanceRoutes(app: FastifyInstance) {
           priority: input.priority,
           locationText: input.locationText,
           description: input.description,
+          photoUrl: input.photo ?? null,
           reportedById: actorId,
           events: { create: { type: 'created', actorId, body: input.description } },
         },

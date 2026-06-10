@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import { listMaintenance, raiseMaintenance, type MaintTicket } from '../lib/api'
+import { compressImage } from '../lib/image'
 import './Maintenance.css'
 
 const CATEGORIES = [
@@ -138,8 +139,26 @@ function RaiseModal({ onClose, onDone }: { onClose: () => void; onDone: () => vo
   const [priority, setPriority] = useState('normal')
   const [locationText, setLocation] = useState('')
   const [description, setDescription] = useState('')
+  const [photo, setPhoto] = useState<string | null>(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement | null>(null)
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file
+    if (!file) return
+    setPhotoBusy(true)
+    setErr(null)
+    try {
+      setPhoto(await compressImage(file))
+    } catch {
+      setErr('Could not read that image')
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
 
   async function submit() {
     if (!locationText.trim() || !description.trim()) {
@@ -148,7 +167,7 @@ function RaiseModal({ onClose, onDone }: { onClose: () => void; onDone: () => vo
     }
     setBusy(true)
     try {
-      await raiseMaintenance({ category, priority, locationText: locationText.trim(), description: description.trim() })
+      await raiseMaintenance({ category, priority, locationText: locationText.trim(), description: description.trim(), photo: photo ?? undefined })
       onDone()
     } catch {
       setErr('Could not raise the ticket')
@@ -193,6 +212,23 @@ function RaiseModal({ onClose, onDone }: { onClose: () => void; onDone: () => vo
           <span className="mono-label">What’s wrong?</span>
           <textarea className="mnt__textarea" rows={3} placeholder="Describe the issue" value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
+        <div className="mnt__field">
+          <span className="mono-label">Photo (optional)</span>
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPick} />
+          {photo ? (
+            <div className="mnt__photo">
+              <img src={photo} alt="Issue" className="mnt__photo-img" />
+              <div className="mnt__photo-actions">
+                <button className="mnt__photo-btn" onClick={() => fileRef.current?.click()}>Retake</button>
+                <button className="mnt__photo-btn mnt__photo-btn--del" onClick={() => setPhoto(null)}>Remove</button>
+              </div>
+            </div>
+          ) : (
+            <button className="mnt__photo-add" disabled={photoBusy} onClick={() => fileRef.current?.click()}>
+              {photoBusy ? 'Processing…' : '📷 Add a photo of the issue'}
+            </button>
+          )}
+        </div>
         {err && <span className="mnt__err mono-label">{err}</span>}
         <button className="btn btn--solid btn--block" disabled={busy} onClick={submit}>
           {busy ? 'Reporting…' : 'Raise Ticket'}

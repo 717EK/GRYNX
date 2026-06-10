@@ -114,6 +114,11 @@ export default function MaintenanceDetail({
           <div className="md__desc">
             <span className="jd__section-title mono-label">Issue</span>
             <p className="md__desc-text">{ticket.description}</p>
+            {ticket.photoUrl && (
+              <a className="md__photo" href={ticket.photoUrl} target="_blank" rel="noreferrer" title="Open full size">
+                <img src={ticket.photoUrl} alt="Reported issue" />
+              </a>
+            )}
           </div>
 
           {ticket.closeRemark && (

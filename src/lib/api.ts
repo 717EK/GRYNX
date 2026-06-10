@@ -392,6 +392,7 @@ export interface MaintTicket {
   etaHours: number | null
   partsNeeded: string | null
   closeRemark: string | null
+  photoUrl?: string | null
   reportedById: string
   assignedToId: string | null
   createdAt: string
@@ -406,6 +407,7 @@ export interface RaiseTicketInput {
   priority: string
   locationText: string
   description: string
+  photo?: string // compressed JPEG data URL
 }
 export interface MaintUpdateInput {
   note?: string
