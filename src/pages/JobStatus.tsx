@@ -25,6 +25,24 @@ const TONE: Record<string, 'in_progress' | 'waiting' | 'on_hold' | 'done'> = {
   closed: 'done',
   cancelled: 'done',
 }
+const STEP_LABEL: Record<string, string> = {
+  waiting_acceptance: 'Awaiting',
+  in_progress: 'In Progress',
+  on_hold: 'On Hold',
+}
+const STEP_TONE: Record<string, 'in_progress' | 'waiting' | 'on_hold'> = {
+  waiting_acceptance: 'waiting',
+  in_progress: 'in_progress',
+  on_hold: 'on_hold',
+}
+// what to show in the pill: the live station ("Design · Awaiting") when the job is
+// on the floor, else the coarse job status (Closed, Closure Requested, …)
+function statusOf(j: JobDTO): { label: string; tone: 'in_progress' | 'waiting' | 'on_hold' | 'done' } {
+  if (j.current && !['closed', 'cancelled', 'close_requested'].includes(j.status)) {
+    return { label: `${j.current.department.name} · ${STEP_LABEL[j.current.status] ?? j.current.status}`, tone: STEP_TONE[j.current.status] ?? 'in_progress' }
+  }
+  return { label: STATUS_LABEL[j.status] ?? j.status, tone: TONE[j.status] ?? 'in_progress' }
+}
 
 function fmtDate(iso?: string | null) {
   if (!iso) return ''
@@ -118,7 +136,7 @@ function Section({
           <span className="js__empty mono-label">{emptyText}</span>
         ) : (
           jobs.map((j) => {
-            const tone = TONE[j.status] ?? 'in_progress'
+            const st = statusOf(j)
             return (
               <button key={j.id} className={`jrow ${done ? 'jrow--done' : ''}`} onClick={() => onOpenJob(j.id)}>
                 <span className={`jrow__pri jrow__pri--${done ? 'done' : j.priority === 'urgent' ? 'urgent' : 'normal'}`} />
@@ -128,9 +146,9 @@ function Section({
                     {j.product?.name ?? ''} · {j.totalQty} units{done && j.completionDate ? ` · ${fmtDate(j.completionDate)}` : ''}
                   </span>
                 </span>
-                <span className={`jstatus jstatus--${tone} mono-label`}>
+                <span className={`jstatus jstatus--${st.tone} mono-label`}>
                   <span className="jstatus__dot" />
-                  {STATUS_LABEL[j.status] ?? j.status}
+                  {st.label}
                 </span>
                 <span className="jrow__arrow">→</span>
               </button>

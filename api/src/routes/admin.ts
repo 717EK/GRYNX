@@ -27,8 +27,10 @@ export async function adminRoutes(app: FastifyInstance) {
         select: { createdAt: true, completionDate: true },
       }),
       prisma.product.findMany({ select: { id: true, code: true, name: true } }),
-      // current WIP per department (the bottleneck view)
-      prisma.jobStep.groupBy({ by: ['departmentId'], where: { status: { in: AT_STATION }, job: { status: { in: ACTIVE } } }, _count: { _all: true } }),
+      // current WIP per department (the bottleneck view) — only where the job is
+      // actively being worked (in_progress), so a job isn't double-counted at both
+      // its current station and the next-armed station
+      prisma.jobStep.groupBy({ by: ['departmentId'], where: { status: StepStatus.in_progress, job: { status: { in: ACTIVE } } }, _count: { _all: true } }),
       prisma.department.findMany({ select: { id: true, code: true, name: true } }),
       // attention feed
       prisma.job.findMany({ where: { status: 'close_requested' }, select: { id: true, displayLabel: true }, orderBy: { updatedAt: 'desc' }, take: 6 }),

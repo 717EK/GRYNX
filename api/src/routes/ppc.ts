@@ -57,6 +57,16 @@ const requestSelect = {
   models: { select: { quantity: true, size: true, model: { select: { id: true, code: true, name: true } } } },
 } satisfies Prisma.PpcRequestSelect
 
+// Once a request is handled, the "review & approve" notifications (keyed by the
+// request id) are stale — clear them for everyone except the PPC submitter, whose
+// own status notice should remain.
+function clearPpcReviewNotifs(requestId: string, exceptUserId?: string) {
+  return prisma.notification.updateMany({
+    where: { entityId: requestId, readAt: null, ...(exceptUserId ? { NOT: { userId: exceptUserId } } : {}) },
+    data: { readAt: new Date() },
+  })
+}
+
 export async function ppcRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate)
 
@@ -150,6 +160,7 @@ export async function ppcRoutes(app: FastifyInstance) {
     const job = result.job
     await prisma.ppcRequest.update({ where: { id }, data: { status: 'approved', approvedJobId: job.id } })
     await writeAudit('ppc_request', id, 'approve', { actorId, after: { jobId: job.id } })
+    await clearPpcReviewNotifs(id, r.createdById) // handled → drop admins' review notifs
     // PPC gets the green light to print the job card and release it to the floor.
     await notifyUsers(prisma, [r.createdById], { type: 'ppc_approval', body: `✓ ${r.requestNo} approved — print job card & release ${job.displayLabel}`, jobId: job.id })
     return reply.code(201).send({ job: { id: job.id, jobNo: job.jobNo, displayLabel: job.displayLabel, status: job.status } })
@@ -164,6 +175,7 @@ export async function ppcRoutes(app: FastifyInstance) {
     if (!r) return reply.code(404).send({ error: 'not_found' })
     await prisma.ppcRequest.update({ where: { id }, data: { status: 'rejected', clarificationNote: body.note ?? null } })
     await writeAudit('ppc_request', id, 'reject', { actorId })
+    await clearPpcReviewNotifs(id, r.createdById)
     await notifyUsers(prisma, [r.createdById], { type: 'ppc_approval', body: `Request ${r.requestNo} sent back${body.note ? ': ' + body.note : ''}` })
     return { ok: true }
   })
@@ -178,6 +190,7 @@ export async function ppcRoutes(app: FastifyInstance) {
     if (r.status === 'approved') return reply.code(409).send({ error: 'already_approved' })
     await prisma.ppcRequest.update({ where: { id }, data: { status: 'clarification', clarificationNote: body.note } })
     await writeAudit('ppc_request', id, 'request_change', { actorId, after: { note: body.note } })
+    await clearPpcReviewNotifs(id, r.createdById)
     await notifyUsers(prisma, [r.createdById], { type: 'ppc_approval', body: `Changes requested on ${r.requestNo}: ${body.note}`, entityId: id })
     return { ok: true }
   })
@@ -198,6 +211,8 @@ export async function ppcRoutes(app: FastifyInstance) {
       if (!e.ok) return e
       await tx.ppcRequest.update({ where: { id }, data: { status: 'pending_confirm', clarificationNote: note ?? null } })
       await writeAudit('ppc_request', id, 'propose', { actorId, after: { models: parsed.data.models.length, note }, tx })
+      // admin handled it → clear admins' review notifs (keep the PPC submitter's)
+      await tx.notification.updateMany({ where: { entityId: id, readAt: null, NOT: { userId: r.createdById } }, data: { readAt: new Date() } })
       await notifyUsers(tx, [r.createdById], { type: 'ppc_approval', body: `Admin proposed changes to ${r.requestNo} — please confirm`, entityId: id })
       return { ok: true as const }
     })

@@ -73,11 +73,12 @@
 /* ---- stats bar above the footer: stats (→ overview) + SCAN button ---- */
 .admin__statsbar {
   display: flex;
-  align-items: stretch;
+  align-items: center; /* centre so the SCAN button can poke out of the panel */
   gap: 6px;
   border-top: 1px solid var(--border);
   margin-top: 6px;
   flex: none;
+  overflow: visible;
 }
 .admin__stats {
   position: relative;
@@ -91,25 +92,30 @@
   border-left: 1px solid var(--border);
 }
 .admin__scanbtn {
-  flex: 0 0 60px;
+  flex: 0 0 62px;
+  height: 62px;
   align-self: center;
   box-sizing: border-box;
+  /* lift it so it rises above the (now shorter) stats panel — the hero */
+  margin: -14px 2px -6px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 9px 6px;
-  border: none;
-  border-radius: 11px;
+  padding: 8px 6px;
+  border: 3px solid var(--bg);
+  border-radius: 16px;
   background: var(--brand);
   color: var(--on-brand, #0a0a0a);
   cursor: pointer;
   overflow: visible;
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--brand) 38%, transparent);
+  z-index: 3;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--brand) 45%, transparent);
+  transition: transform 0.1s ease;
 }
-.admin__scanbtn:active { transform: scale(0.95); }
-.admin__scanbtn svg { width: 22px; height: 22px; }
+.admin__scanbtn:active { transform: scale(0.95) translateY(2px); }
+.admin__scanbtn svg { width: 24px; height: 24px; }
 .admin__scanbtn-label {
   font-size: 9px;
   letter-spacing: 0.06em;
@@ -133,8 +139,8 @@
 .stat {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 5px;
+  gap: 3px;
+  padding: 8px 5px;
   border-left: 1px solid var(--border);
 }
 .stat:first-child {
@@ -147,7 +153,7 @@
   white-space: nowrap;
 }
 .stat__v {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: 0.02em;
 }

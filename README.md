@@ -46,6 +46,18 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.4.2 — floor-run feedback + findings
+- **Admin home**: SCAN button is now the hero — stats panel slimmed and the button
+  lifts above it.
+- **Job Status** rows show the live station + step ("Design · Awaiting", "CNC / VMC ·
+  In Progress") instead of just the coarse job status — so a freshly-approved job no
+  longer misreads as "In Production" before any scan.
+- **PPC notifications** for a request auto-clear once it's approved / rejected /
+  sent back (admins' "review & approve" notice no longer lingers).
+- **Department load** counts only the station a job is actively at (was double-
+  counting the next-armed station too).
+- Smaller notification rows.
+
 ### v0.4.1 — dogfooding fixes
 - **Feedback form**: top-anchored (leaves room for the keyboard), no more app-zoom
   on focus, readable fields (was black-on-black); reliable screenshot via

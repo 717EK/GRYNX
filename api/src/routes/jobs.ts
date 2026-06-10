@@ -30,6 +30,14 @@ const jobSummarySelect = {
   startDate: true,
   createdAt: true,
   product: { select: { code: true, name: true } },
+  // the station the job is actually at right now (so the list shows "Design · Awaiting"
+  // etc. rather than just the coarse job status)
+  steps: {
+    where: { status: { in: ['waiting_acceptance', 'in_progress', 'on_hold'] } },
+    orderBy: { sequence: 'asc' },
+    take: 1,
+    select: { status: true, department: { select: { code: true, name: true } } },
+  },
 } satisfies Prisma.JobSelect
 
 export async function jobRoutes(app: FastifyInstance) {
@@ -56,12 +64,14 @@ export async function jobRoutes(app: FastifyInstance) {
         take: z.coerce.number().int().min(1).max(100).default(50),
       })
       .parse(req.query)
-    const jobs = await prisma.job.findMany({
+    const rows = await prisma.job.findMany({
       where: q.status ? { status: q.status as Prisma.JobWhereInput['status'] } : undefined,
       orderBy: { createdAt: 'desc' },
       take: q.take,
       select: jobSummarySelect,
     })
+    // surface the live station as `current` (drops the partial steps array)
+    const jobs = rows.map(({ steps, ...j }) => ({ ...j, current: steps[0] ?? null }))
     return { jobs }
   })
 
@@ -93,7 +103,10 @@ export async function jobRoutes(app: FastifyInstance) {
         job: { select: jobSummarySelect },
       },
     })
-    const jobs = steps.map((s) => ({ ...s.job, stepStatus: s.status, slaDueAt: s.slaDueAt }))
+    const jobs = steps.map((s) => {
+      const { steps: cur, ...job } = s.job
+      return { ...job, current: cur[0] ?? null, stepStatus: s.status, slaDueAt: s.slaDueAt }
+    })
     return { jobs }
   })
 

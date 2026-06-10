@@ -323,6 +323,8 @@ export interface JobDTO {
   createdAt?: string
   product?: { code: string; name: string }
   steps?: JobStepDTO[]
+  // the live station from the jobs list (where the job actually is right now)
+  current?: { status: string; department: { code: string; name: string } } | null
   models?: { quantity: number; size?: string | null; model: { code: string; name: string } }[]
   events?: { id: string; type: string; body: string | null; createdAt: string }[]
 }

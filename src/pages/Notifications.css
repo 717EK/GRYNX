@@ -63,18 +63,18 @@
 .nlist {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .notif {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   text-align: left;
   border: 1px solid var(--border);
   border-radius: var(--r-card);
   background: var(--surface);
-  padding: 12px 13px;
+  padding: 8px 11px;
 }
 .notif:hover {
   border-color: var(--border-strong);
@@ -83,15 +83,15 @@
   border-left: 3px solid var(--brand);
 }
 .notif__icon {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: var(--surface-raised);
   border: 1px solid var(--border);
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: 13px;
   flex: none;
 }
 .notif__icon--escalation,
@@ -115,7 +115,9 @@
   letter-spacing: 0.01em;
 }
 .notif__text {
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+  font-size: 13px;
+  line-height: 1.35;
 }
 .notif__at {
   white-space: nowrap;
