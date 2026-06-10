@@ -543,8 +543,11 @@ export const getQcQueue = () =>
   DEMO ? Promise.resolve({ jobs: [] as QueueJob[] }) : req<{ jobs: QueueJob[] }>('GET', '/api/v1/qc/queue')
 export const qcApprove = (jobId: string, notes?: string) =>
   DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/qc/${jobId}/approve`, notes ? { notes } : {})
-export const qcRework = (jobId: string, notes: string) =>
-  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/qc/${jobId}/rework`, { notes })
+export interface ReworkTarget { departmentId: string; code: string; name: string }
+export const getReworkTargets = (jobId: string) =>
+  DEMO ? Promise.resolve({ targets: [] as ReworkTarget[] }) : req<{ targets: ReworkTarget[] }>('GET', `/api/v1/qc/${jobId}/rework-targets`)
+export const qcRework = (jobId: string, notes: string, toDepartmentId: string) =>
+  DEMO ? Promise.resolve({ ok: true, sentBackTo: '' }) : req<{ ok: boolean; sentBackTo: string }>('POST', `/api/v1/qc/${jobId}/rework`, { notes, toDepartmentId })
 
 // ── FG Stock ────────────────────────────────────────────────────────────────
 export interface FgJob extends QueueJob {

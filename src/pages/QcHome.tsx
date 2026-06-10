@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import { getQcQueue, qcApprove, qcRework, type QueueJob } from '../lib/api'
+import { getQcQueue, qcApprove, qcRework, getReworkTargets, type QueueJob, type ReworkTarget } from '../lib/api'
 import ReportButton from '../components/ReportButton'
 import './Maintenance.css'
 import './DeptHome.css'
@@ -76,22 +76,30 @@ function QcModal({ job, onClose, onDone }: { job: QueueJob; onClose: () => void;
   const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [mode, setMode] = useState<'choose' | 'rework'>('choose')
+  const [targets, setTargets] = useState<ReworkTarget[]>([])
+  const [reworkTo, setReworkTo] = useState('')
 
-  async function act(approve: boolean) {
+  useEffect(() => {
+    getReworkTargets(job.id).then((r) => {
+      setTargets(r.targets)
+      // default to the last production station before QC
+      if (r.targets.length) setReworkTo(r.targets[r.targets.length - 1].departmentId)
+    }).catch(() => {})
+  }, [job.id])
+
+  async function approve() {
+    setErr(null); setBusy(true)
+    try { await qcApprove(job.id, notes.trim() || undefined); onDone() }
+    catch { setErr('Action failed — try again'); setBusy(false) }
+  }
+  async function sendRework() {
     setErr(null)
-    if (!approve && !notes.trim()) {
-      setErr('Rework needs a note on what failed')
-      return
-    }
+    if (!notes.trim()) { setErr('Add a note on what failed'); return }
+    if (!reworkTo) { setErr('Pick which department to send it back to'); return }
     setBusy(true)
-    try {
-      if (approve) await qcApprove(job.id, notes.trim() || undefined)
-      else await qcRework(job.id, notes.trim())
-      onDone()
-    } catch {
-      setErr('Action failed — try again')
-      setBusy(false)
-    }
+    try { await qcRework(job.id, notes.trim(), reworkTo); onDone() }
+    catch { setErr('Action failed — try again'); setBusy(false) }
   }
 
   return (
@@ -103,14 +111,33 @@ function QcModal({ job, onClose, onDone }: { job: QueueJob; onClose: () => void;
         </div>
         <span className="mono-label" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{job.product?.name} · {job.totalQty} units</span>
         <label className="mnt__field">
-          <span className="mono-label">Notes (required for rework)</span>
+          <span className="mono-label">{mode === 'rework' ? 'What failed? (sent to the floor)' : 'Notes'}</span>
           <textarea className="mnt__textarea" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Inspection notes / defect details" />
         </label>
+
+        {mode === 'rework' && (
+          <label className="mnt__field">
+            <span className="mono-label">Send back to</span>
+            <select className="mnt__select" value={reworkTo} onChange={(e) => setReworkTo(e.target.value)}>
+              {targets.length === 0 && <option value="">— no stations —</option>}
+              {targets.map((t) => <option key={t.departmentId} value={t.departmentId}>{t.name}</option>)}
+            </select>
+          </label>
+        )}
+
         {err && <span className="mnt__err mono-label">{err}</span>}
-        <div className="dh__modal-actions">
-          <button className="btn btn--danger" disabled={busy} onClick={() => act(false)}>↩ Send Rework</button>
-          <button className="btn btn--solid" disabled={busy} onClick={() => act(true)}>{busy ? '…' : '✓ Approve → FG'}</button>
-        </div>
+
+        {mode === 'choose' ? (
+          <div className="dh__modal-actions">
+            <button className="btn btn--danger" disabled={busy} onClick={() => setMode('rework')}>↩ Send Rework</button>
+            <button className="btn btn--solid" disabled={busy} onClick={approve}>{busy ? '…' : '✓ Approve → FG'}</button>
+          </div>
+        ) : (
+          <div className="dh__modal-actions">
+            <button className="btn btn--ghost" disabled={busy} onClick={() => { setMode('choose'); setErr(null) }}>← Back</button>
+            <button className="btn btn--danger" disabled={busy} onClick={sendRework}>{busy ? '…' : '↩ Confirm rework'}</button>
+          </div>
+        )}
       </div>
     </div>
   )

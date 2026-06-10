@@ -46,6 +46,12 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.4.3 — QC rework reroute
+- **QC rework now actually moves the job.** The inspector picks which production
+  department to send a rejected job back to; that station is re-armed, every step
+  between it and QC resets, the job returns to `in_production`, and the floor
+  re-scans back up to QC. (Was previously a log/notification dead-end.)
+
 ### v0.4.2 — floor-run feedback + findings
 - **Admin home**: SCAN button is now the hero — stats panel slimmed and the button
   lifts above it.
