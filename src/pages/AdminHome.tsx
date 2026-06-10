@@ -15,7 +15,7 @@ const NAV: NavItem[] = [
   { title: 'Create Job', sub: 'New Job Initiation', badge: '02', to: 'jobhub' },
   { title: 'Job Status', sub: 'Track. Monitor. Update.', badge: '03', to: 'jobstatus' },
   { title: 'Departments', sub: 'Manage. Teams. Roles.', badge: '01', to: 'departments' },
-  { title: 'Approvals', sub: 'Approve. Account. Requests.', badge: '•', to: 'approvals' },
+  { title: 'Users', sub: 'Accounts. Roles. PINs.', badge: '•', to: 'approvals' },
   { title: 'Maintenance', sub: 'Maintain. Repair. Optimize.', badge: '01', to: 'maintenance' },
 ]
 

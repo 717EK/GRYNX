@@ -109,6 +109,20 @@ export async function scanRoutes(app: FastifyInstance) {
         hint: 'previous stations not complete — supervisor can force',
       })
     }
+    // supervisor gate: only an admin (supervisor) may force an out-of-sequence advance
+    if (!arrivable && body.force) {
+      const isSupervisor = (user.roles ?? []).some((r) => r.role === 'admin')
+      if (!isSupervisor) {
+        const result: ScanResult = 'rejected_out_of_seq'
+        if (!body.preview) await recordReject(body, job.id, stationDeptId, user.sub, result)
+        return reply.code(403).send({
+          result,
+          reason: 'force_requires_supervisor',
+          label: job.displayLabel,
+          hint: 'A supervisor must approve this force-advance',
+        })
+      }
+    }
 
     const prior = steps.find((s) => s.status === 'in_progress') ?? null
     const next = steps.find((s) => s.sequence > scanned.sequence && s.status === 'pending') ?? null

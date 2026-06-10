@@ -14,7 +14,9 @@ export async function adminRoutes(app: FastifyInstance) {
     const since = new Date(Date.now() - 13 * 86400_000)
     since.setHours(0, 0, 0, 0)
 
-    const [statusGroups, productGroups, maintGroups, wip, openTickets, recent, products, deptGroups, departments, closureJobs, escalated, onHold] = await Promise.all([
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+
+    const [statusGroups, productGroups, maintGroups, wip, openTickets, recent, products, deptGroups, departments, closureJobs, escalated, onHold, overdueCount, overdueList, completedToday, activity, overdueByDept, onHoldByDept] = await Promise.all([
       prisma.job.groupBy({ by: ['status'], _count: { _all: true } }),
       prisma.job.groupBy({ by: ['productId'], _count: { _all: true }, _sum: { totalQty: true } }),
       prisma.maintenanceTicket.groupBy({ by: ['status'], _count: { _all: true } }),
@@ -32,6 +34,16 @@ export async function adminRoutes(app: FastifyInstance) {
       prisma.job.findMany({ where: { status: 'close_requested' }, select: { id: true, displayLabel: true }, orderBy: { updatedAt: 'desc' }, take: 6 }),
       prisma.maintenanceTicket.findMany({ where: { escalationLevel: { gte: 1 }, status: { notIn: ['closed'] } }, select: { id: true, ticketNo: true, locationText: true }, orderBy: { escalationLevel: 'desc' }, take: 6 }),
       prisma.jobStep.findMany({ where: { status: 'on_hold' }, select: { job: { select: { id: true, displayLabel: true } }, department: { select: { name: true } } }, take: 6 }),
+      // SLA: active jobs whose current step is past its due time (aging/overdue)
+      prisma.jobStep.count({ where: { status: { in: AT_STATION }, slaDueAt: { lt: new Date() }, job: { status: { in: ACTIVE } } } }),
+      prisma.jobStep.findMany({ where: { status: { in: AT_STATION }, slaDueAt: { lt: new Date() }, job: { status: { in: ACTIVE } } }, select: { slaDueAt: true, job: { select: { id: true, displayLabel: true } }, department: { select: { name: true } } }, orderBy: { slaDueAt: 'asc' }, take: 6 }),
+      // jobs closed today (KPI)
+      prisma.job.count({ where: { status: 'closed', completionDate: { gte: todayStart } } }),
+      // recent activity feed — last events across the floor
+      prisma.jobEvent.findMany({ orderBy: { createdAt: 'desc' }, take: 12, select: { id: true, type: true, body: true, createdAt: true, job: { select: { displayLabel: true } } } }),
+      // per-department health: overdue + on-hold step counts
+      prisma.jobStep.groupBy({ by: ['departmentId'], where: { status: { in: AT_STATION }, slaDueAt: { lt: new Date() }, job: { status: { in: ACTIVE } } }, _count: { _all: true } }),
+      prisma.jobStep.groupBy({ by: ['departmentId'], where: { status: 'on_hold' }, _count: { _all: true } }),
     ])
 
     const sc = (s: string) => statusGroups.find((g) => g.status === s)?._count._all ?? 0
@@ -65,13 +77,43 @@ export async function adminRoutes(app: FastifyInstance) {
 
     // department load (bottleneck) — jobs currently at each station, busiest first
     const dmap = Object.fromEntries(departments.map((d) => [d.id, d]))
+    const loadOf = Object.fromEntries(deptGroups.map((g) => [g.departmentId, g._count._all]))
+    const overdueOf = Object.fromEntries(overdueByDept.map((g) => [g.departmentId, g._count._all]))
+    const holdOf = Object.fromEntries(onHoldByDept.map((g) => [g.departmentId, g._count._all]))
     const byDepartment = deptGroups
       .map((g) => ({ department: dmap[g.departmentId]?.name ?? '—', code: dmap[g.departmentId]?.code ?? '?', count: g._count._all }))
       .sort((a, b) => b.count - a.count)
 
+    // department health — every department, with load + a tone derived from exceptions
+    const departmentHealth = departments
+      .map((d) => {
+        const load = loadOf[d.id] ?? 0
+        const overdue = overdueOf[d.id] ?? 0
+        const onHoldN = holdOf[d.id] ?? 0
+        const tone: 'good' | 'delay' | 'alert' = overdue > 0 || onHoldN > 0 ? 'alert' : load >= 4 ? 'delay' : 'good'
+        return { code: d.code, department: d.name, load, overdue, onHold: onHoldN, tone }
+      })
+      .sort((a, b) => b.load - a.load)
+
+    // recent activity feed
+    const ACT_VERB: Record<string, string> = {
+      created: 'created', accepted: 'arrived at station', completed: 'completed', hold: 'put on hold', resume: 'resumed',
+      qc_result: 'QC result recorded', scan: 'scanned', cancelled: 'cancelled', closure_requested: 'closure requested',
+      closed: 'closed', forced_advance: 'force-advanced', split: 'split', merge: 'merged', note: 'noted',
+      update_request: 'change requested', update_reply: 'change answered',
+    }
+    const recentActivity = activity.map((e) => ({
+      id: e.id,
+      label: e.job?.displayLabel ?? '—',
+      text: e.body ? `${ACT_VERB[e.type] ?? e.type} · ${e.body}` : (ACT_VERB[e.type] ?? e.type),
+      at: e.createdAt.toISOString(),
+    }))
+
     // attention feed — what needs an admin's eyes, most urgent first
+    const overdueMins = (d: Date | null) => (d ? Math.max(0, Math.round((Date.now() - d.getTime()) / 60000)) : 0)
     const attention = [
       ...escalated.map((t) => ({ kind: 'ticket' as const, id: t.id, label: t.ticketNo, sub: `Escalated · ${t.locationText}` })),
+      ...overdueList.map((s) => ({ kind: 'job' as const, id: s.job.id, label: s.job.displayLabel, sub: `Overdue ${overdueMins(s.slaDueAt)}m · ${s.department.name}` })),
       ...onHold.map((s) => ({ kind: 'job' as const, id: s.job.id, label: s.job.displayLabel, sub: `On hold · ${s.department.name}` })),
       ...closureJobs.map((j) => ({ kind: 'job' as const, id: j.id, label: j.displayLabel, sub: 'Closure requested' })),
     ]
@@ -87,10 +129,14 @@ export async function adminRoutes(app: FastifyInstance) {
         closed: sc('closed'),
         unitsWip: wip._sum?.totalQty ?? 0,
         openTickets,
+        overdue: overdueCount,
+        completedToday,
       },
       statusMix,
       byProduct,
       byDepartment,
+      departmentHealth,
+      recentActivity,
       throughput: days.map((d) => ({ day: d.day, created: d.created, closed: d.closed })),
       maintenance,
       attention,

@@ -40,8 +40,25 @@ Open dev tools → device toolbar (Ctrl+Shift+M) and try: iPhone (~390px), iPad 
 Desktop (≥1200px). The admin launcher reflows from stacked rows → a 2×2 grid on tablet/desktop.
 
 ## Status
-Visual prototype: **Login + Admin Home** across iPhone/iPad/Desktop. Architecture
-docs in [docs/](docs/) await sign-off. Next screens: Admin Overview dashboard, Create Job, PPC review.
+Functional end-to-end: auth + roles, PPC requests → job creation → arrival-scan floor
+flow → QC → FG → closure, maintenance tickets with escalation, offline scan queue,
+admin user management, and a live control-centre dashboard. Backend on Render + Neon,
+web on Vercel, Android via Capacitor.
+
+## Changelog
+### v0.3.0 — app completion pass (pre-emulation)
+- **Admin user management** — create users (role + dept + starting PIN), reset PIN,
+  suspend / re-activate, replace roles; approvals folded into one Users screen.
+- **Supervisor gate** on force-advance — only an admin can force an out-of-sequence scan.
+- **SLA / aging** — per-step overdue detection; Overdue KPI + Needs-Attention feed.
+- **Live admin pages** — Admin Overview and Departments now read real `/admin/stats`
+  (department load + health, recent activity, status mix, completed-today) instead of mock data.
+- **Reset-to-zero** script (`api/scripts/reset-data.mjs`) — wipes transactional data,
+  keeps users / products / pipelines / departments / settings for clean runs.
+- Offline scan queue (localStorage, idempotent replay) shipped in the scan page.
+
+### v0.2.0
+- Visual prototype: Login + Admin Home across iPhone / iPad / Desktop.
 
 ## Deploying to Vercel
 1. Push this repo to GitHub.

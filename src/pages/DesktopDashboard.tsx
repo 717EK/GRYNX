@@ -75,6 +75,7 @@ export default function DesktopDashboard({
         <Kpi label="In Production" value={k.inProduction} onClick={() => onFilter('in_production')} />
         <Kpi label="In QC" value={k.inQc} onClick={() => onFilter('in_qc')} />
         <Kpi label="In FG Stock" value={k.inFg} onClick={() => onFilter('in_fg')} />
+        <Kpi label="Overdue (SLA)" value={k.overdue} tone={k.overdue > 0 ? 'alert' : undefined} sub="past stage time" />
         <Kpi label="Closure pending" value={k.closureRequested} tone={k.closureRequested > 0 ? 'alert' : undefined} onClick={() => onFilter('close_requested')} />
         <Kpi label="Open tickets" value={k.openTickets} tone={k.openTickets > 0 ? 'alert' : undefined} onClick={onMaint} />
       </div>

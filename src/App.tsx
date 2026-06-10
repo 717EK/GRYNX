@@ -22,7 +22,7 @@ import ScanPage from './pages/ScanPage'
 import StationHome from './pages/StationHome'
 import ViewAsPanel from './pages/ViewAsPanel'
 import SignupPage from './pages/SignupPage'
-import Approvals from './pages/Approvals'
+import UserManager from './pages/UserManager'
 import UpdatePrompt from './components/UpdatePrompt'
 import BiometricEnroll from './components/BiometricEnroll'
 import JobCardModal from './components/JobCardModal'
@@ -240,7 +240,7 @@ export default function App() {
           />
         )
       case 'approvals':
-        return <Approvals user={user} onBack={() => go('home')} onLock={handleLock} />
+        return <UserManager user={user} onBack={() => go('home')} onLock={handleLock} />
       case 'overview':
         return <AdminOverview user={user} onBack={() => go('home')} onLock={handleLock} onOpenInsights={() => go('insights')} />
       case 'insights':

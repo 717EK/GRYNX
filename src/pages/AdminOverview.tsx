@@ -1,82 +1,17 @@
+import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import { useClock } from '../lib/useClock'
+import { getAdminStats, type AdminStats } from '../lib/api'
 import './AdminOverview.css'
 
-type Tone = 'good' | 'delay' | 'alert'
+const STATUS_LABEL: Record<string, string> = {
+  approved: 'Approved', in_production: 'In Production', in_qc: 'In QC', in_fg: 'In FG Stock',
+  close_requested: 'Closure Req.', closed: 'Closed', cancelled: 'Cancelled', draft: 'Draft', pending_approval: 'Pending',
+}
 
-const KPIS: { k: string; v: string; tone?: 'warning' }[] = [
-  { k: 'Active Jobs', v: '23' },
-  { k: 'Completed Today', v: '17' },
-  { k: 'Delayed', v: '04', tone: 'warning' },
-  { k: 'Alerts', v: '07', tone: 'warning' },
-]
-
-const PIPELINE: { dept: string; count: string }[] = [
-  { dept: 'Design', count: '08' },
-  { dept: 'Purchase', count: '02' },
-  { dept: 'Laser / Cutting', count: '04' },
-  { dept: 'MS Production', count: '06' },
-  { dept: 'Alloy Production', count: '03' },
-  { dept: 'CNC / VMC', count: '02' },
-  { dept: 'MNTR', count: '05' },
-  { dept: 'Powder Coat', count: '01' },
-  { dept: 'FG Stock', count: '07' },
-]
-
-const HEALTH: { dept: string; head: string; tone: Tone }[] = [
-  { dept: 'Design', head: 'Aashish', tone: 'good' },
-  { dept: 'Purchase', head: 'Vikram', tone: 'good' },
-  { dept: 'Laser / Cutting', head: 'Javed', tone: 'delay' },
-  { dept: 'MS Production', head: 'Nilesh', tone: 'good' },
-  { dept: 'Alloy Production', head: 'Manoj', tone: 'good' },
-  { dept: 'CNC / VMC', head: 'Pratik', tone: 'alert' },
-  { dept: 'MNTR', head: 'Deepak', tone: 'good' },
-  { dept: 'Powder Coat', head: 'Sachin', tone: 'good' },
-  { dept: 'FG Stock', head: 'Anand', tone: 'good' },
-]
-
-const PRODUCTS: { name: string; count: string }[] = [
-  { name: 'Alloy Truss', count: '12' },
-  { name: 'MS Truss', count: '08' },
-  { name: 'Scaffoldings', count: '03' },
-  { name: 'Stage', count: '07' },
-  { name: 'Mojo Alloy/MS', count: '05' },
-  { name: 'Lifter Alloy/MS', count: '02' },
-  { name: 'Stacker', count: '04' },
-]
-
-const BOTTLENECKS: { label: string; meta: string }[] = [
-  { label: 'Laser / Cutting', meta: '04 Waiting' },
-  { label: 'CNC / VMC', meta: '03 Waiting' },
-  { label: 'Powder Coat', meta: '02 Waiting' },
-  { label: 'Purchase Approval', meta: '02 Pending' },
-  { label: 'Design Drawings', meta: '03 Pending' },
-]
-
-const ACTIVITY: { entity: string; text: string; time: string }[] = [
-  { entity: 'Alloy Truss', text: 'moved to CNC / VMC', time: '10:35 AM' },
-  { entity: 'MS Truss', text: 'entered MS Production', time: '10:28 AM' },
-  { entity: 'Stage', text: 'entered Powder Coat', time: '10:21 AM' },
-  { entity: 'Purchase', text: 'approved material for JOB-250503', time: '10:15 AM' },
-  { entity: 'FG Stock', text: 'dispatched JOB-250495', time: '10:08 AM' },
-  { entity: 'CNC / VMC', text: 'completed JOB-250491', time: '10:02 AM' },
-  { entity: 'Design', text: 'drawing approved for JOB-250504', time: '09:55 AM' },
-  { entity: 'MNTR', text: 'completed JOB-250488', time: '09:48 AM' },
-]
-
-const ALERTS: { label: string; meta: string }[] = [
-  { label: 'Drawings Pending Approval', meta: '03 Jobs' },
-  { label: 'Purchase Approvals Pending', meta: '02 Jobs' },
-  { label: 'CNC / VMC Machine Maintenance Due', meta: '01 Machine' },
-  { label: 'FG Stock Shortage', meta: '01 Item' },
-]
-
-const FOOTER_STATS: { k: string; v: string; tone?: 'warning' }[] = [
-  { k: 'Total Jobs', v: '1287' },
-  { k: 'Active', v: '342' },
-  { k: 'Completed', v: '945' },
-  { k: 'Alerts', v: '07', tone: 'warning' },
-]
+function timeOf(iso: string) {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+}
 
 function NodeIcon() {
   return (
@@ -96,6 +31,8 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   )
 }
 
+const pad = (n: number) => String(n).padStart(2, '0')
+
 export default function AdminOverview({
   user,
   onBack,
@@ -108,6 +45,28 @@ export default function AdminOverview({
   onOpenInsights: () => void
 }) {
   const time = useClock()
+  const [s, setS] = useState<AdminStats | null>(null)
+  useEffect(() => {
+    const tick = () => getAdminStats().then(setS).catch(() => {})
+    tick()
+    const h = setInterval(tick, 30_000)
+    return () => clearInterval(h)
+  }, [])
+
+  const k = s?.kpis
+  const kpis = [
+    { k: 'Active Jobs', v: pad(k?.active ?? 0) },
+    { k: 'Completed Today', v: pad(k?.completedToday ?? 0) },
+    { k: 'Overdue', v: pad(k?.overdue ?? 0), tone: (k?.overdue ?? 0) > 0 ? ('warning' as const) : undefined },
+    { k: 'Open Tickets', v: pad(k?.openTickets ?? 0), tone: (k?.openTickets ?? 0) > 0 ? ('warning' as const) : undefined },
+  ]
+  const totals = [
+    { k: 'Total Jobs', v: String(k?.totalJobs ?? 0) },
+    { k: 'Active', v: String(k?.active ?? 0) },
+    { k: 'Closed', v: String(k?.closed ?? 0) },
+    { k: 'Units in WIP', v: String(k?.unitsWip ?? 0) },
+  ]
+
   return (
     <div className="app">
       <TopBar user={user} onLock={onLock} />
@@ -118,7 +77,7 @@ export default function AdminOverview({
           </button>
           <div className="overview__titles">
             <h1 className="overview__title display">Admin Overview</h1>
-            <span className="mono-label">Real-time glance over all operations</span>
+            <span className="mono-label">{s ? 'Real-time glance over all operations' : 'Loading live data…'}</span>
           </div>
           <button className="overview__insights" onClick={onOpenInsights}>
             <span className="overview__insights-ico">✦</span>
@@ -131,12 +90,10 @@ export default function AdminOverview({
 
         {/* KPI row */}
         <div className="kpis">
-          {KPIS.map((s) => (
-            <div key={s.k} className="kpi">
-              <span className="kpi__k mono-label">{s.k}</span>
-              <span className={`kpi__v display ${s.tone === 'warning' ? 'is-warning' : ''}`}>
-                {s.v}
-              </span>
+          {kpis.map((x) => (
+            <div key={x.k} className="kpi">
+              <span className="kpi__k mono-label">{x.k}</span>
+              <span className={`kpi__v display ${x.tone === 'warning' ? 'is-warning' : ''}`}>{x.v}</span>
             </div>
           ))}
         </div>
@@ -144,26 +101,20 @@ export default function AdminOverview({
         {/* panel grid */}
         <div className="panels">
           <Panel title="Job Pipeline">
-            {PIPELINE.map((r) => (
-              <div key={r.dept} className="row">
-                <span className="row__lead">
-                  <NodeIcon />
-                  {r.dept}
-                </span>
-                <span className="row__num display">{r.count}</span>
+            {!s ? <Loading /> : s.byDepartment.length === 0 ? <Empty text="No jobs at any station." /> : s.byDepartment.map((r) => (
+              <div key={r.code} className="row">
+                <span className="row__lead"><NodeIcon />{r.department}</span>
+                <span className="row__num display">{pad(r.count)}</span>
               </div>
             ))}
           </Panel>
 
           <Panel title="Department Health">
-            {HEALTH.map((r) => (
-              <div key={r.dept} className="row">
-                <span className="row__lead">
-                  <NodeIcon />
-                  {r.dept}
-                </span>
+            {!s ? <Loading /> : s.departmentHealth.length === 0 ? <Empty text="No departments configured." /> : s.departmentHealth.map((r) => (
+              <div key={r.code} className="row">
+                <span className="row__lead"><NodeIcon />{r.department}</span>
                 <span className="row__right">
-                  <span className="row__head mono-label">{r.head}</span>
+                  <span className="row__head mono-label">{r.load} active{r.overdue ? ` · ${r.overdue} late` : ''}</span>
                   <span className={`chip chip--${r.tone}`}>{r.tone.toUpperCase()}</span>
                 </span>
               </div>
@@ -171,41 +122,39 @@ export default function AdminOverview({
           </Panel>
 
           <Panel title="Production Jobs Overview">
-            {PRODUCTS.map((r) => (
-              <div key={r.name} className="row">
-                <span className="row__lead row__lead--plain">{r.name}</span>
-                <span className="row__num display">{r.count}</span>
+            {!s ? <Loading /> : s.byProduct.length === 0 ? <Empty text="No active production." /> : s.byProduct.map((r) => (
+              <div key={r.code} className="row">
+                <span className="row__lead row__lead--plain">{r.product}</span>
+                <span className="row__num display">{pad(r.count)}</span>
               </div>
             ))}
           </Panel>
 
-          <Panel title="Bottlenecks">
-            {BOTTLENECKS.map((r) => (
-              <div key={r.label} className="row">
-                <span className="row__lead row__lead--plain">{r.label}</span>
-                <span className="row__meta mono-label">{r.meta}</span>
+          <Panel title="Status Mix">
+            {!s ? <Loading /> : s.statusMix.length === 0 ? <Empty text="No jobs yet." /> : s.statusMix.map((r) => (
+              <div key={r.status} className="row">
+                <span className="row__lead row__lead--plain">{STATUS_LABEL[r.status] ?? r.status}</span>
+                <span className="row__num display">{pad(r.count)}</span>
               </div>
             ))}
           </Panel>
 
           <Panel title="Recent Activity">
-            {ACTIVITY.map((r, i) => (
-              <div key={i} className="feed">
+            {!s ? <Loading /> : s.recentActivity.length === 0 ? <Empty text="No activity yet." /> : s.recentActivity.map((r) => (
+              <div key={r.id} className="feed">
                 <span className="feed__dot" />
-                <span className="feed__text">
-                  <b>{r.entity}</b> {r.text}
-                </span>
-                <span className="feed__time mono-label">{r.time}</span>
+                <span className="feed__text"><b>{r.label}</b> {r.text}</span>
+                <span className="feed__time mono-label">{timeOf(r.at)}</span>
               </div>
             ))}
           </Panel>
 
           <Panel title="Alerts & Attention">
-            {ALERTS.map((r) => (
-              <button key={r.label} className="alert">
+            {!s ? <Loading /> : s.attention.length === 0 ? <Empty text="✓ Nothing needs attention." /> : s.attention.map((r) => (
+              <button key={r.kind + r.id} className="alert">
                 <span className="alert__icon">⚠</span>
                 <span className="alert__label">{r.label}</span>
-                <span className="alert__meta mono-label">[{r.meta}]</span>
+                <span className="alert__meta mono-label">[{r.sub}]</span>
                 <span className="alert__arrow">→</span>
               </button>
             ))}
@@ -214,12 +163,10 @@ export default function AdminOverview({
 
         {/* footer big stats */}
         <div className="overview__totals">
-          {FOOTER_STATS.map((s) => (
-            <div key={s.k} className="total">
-              <span className="total__k mono-label">{s.k}</span>
-              <span className={`total__v display ${s.tone === 'warning' ? 'is-warning' : ''}`}>
-                {s.v}
-              </span>
+          {totals.map((x) => (
+            <div key={x.k} className="total">
+              <span className="total__k mono-label">{x.k}</span>
+              <span className="total__v display">{x.v}</span>
             </div>
           ))}
         </div>
@@ -227,4 +174,11 @@ export default function AdminOverview({
       <BottomBar />
     </div>
   )
+}
+
+function Loading() {
+  return <div className="row"><span className="row__lead row__lead--plain mono-label" style={{ opacity: 0.5 }}>Loading…</span></div>
+}
+function Empty({ text }: { text: string }) {
+  return <div className="row"><span className="row__lead row__lead--plain mono-label" style={{ opacity: 0.6 }}>{text}</span></div>
 }

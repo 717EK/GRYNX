@@ -275,6 +275,16 @@ export const approveUser = (id: string) =>
   DEMO ? demo.demoSetStatus(id, 'active') : req<{ ok: boolean }>('POST', `/api/v1/users/${id}/approve`)
 export const rejectUser = (id: string) =>
   DEMO ? demo.demoSetStatus(id, 'suspended') : req<{ ok: boolean }>('POST', `/api/v1/users/${id}/reject`)
+// admin user management
+export interface CreateUserInput { username: string; fullName: string; pin: string; role: string; departmentId?: string }
+export const createUser = (input: CreateUserInput) =>
+  DEMO ? Promise.resolve({ user: { id: 'u', username: input.username } }) : req<{ user: { id: string; username: string } }>('POST', '/api/v1/users', input)
+export const resetUserPin = (id: string, pin: string) =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/users/${id}/reset-pin`, { pin })
+export const setUserStatus = (id: string, status: 'active' | 'suspended') =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/users/${id}/status`, { status })
+export const setUserRoles = (id: string, roles: { role: string; departmentId?: string }[]) =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/users/${id}/roles`, { roles })
 
 // ── catalogue ───────────────────────────────────────────────────────────────
 export interface ProductDTO {
@@ -332,18 +342,22 @@ export const getJob = (id: string) => (DEMO ? demo.demoGetJob(id) : req<{ job: J
 
 // ── admin control-centre stats (aggregated server-side) ─────────────────────
 export interface AttentionItem { kind: 'job' | 'ticket'; id: string; label: string; sub: string }
+export interface DeptHealth { code: string; department: string; load: number; overdue: number; onHold: number; tone: 'good' | 'delay' | 'alert' }
+export interface ActivityItem { id: string; label: string; text: string; at: string }
 export interface AdminStats {
-  kpis: { totalJobs: number; active: number; inProduction: number; inQc: number; inFg: number; closureRequested: number; closed: number; unitsWip: number; openTickets: number }
+  kpis: { totalJobs: number; active: number; inProduction: number; inQc: number; inFg: number; closureRequested: number; closed: number; unitsWip: number; openTickets: number; overdue: number; completedToday: number }
   statusMix: { status: string; count: number }[]
   byProduct: { product: string; code: string; count: number; units: number }[]
   byDepartment: { department: string; code: string; count: number }[]
+  departmentHealth: DeptHealth[]
+  recentActivity: ActivityItem[]
   throughput: { day: string; created: number; closed: number }[]
   maintenance: { status: string; count: number }[]
   attention: AttentionItem[]
 }
 export const getAdminStats = () =>
   DEMO
-    ? Promise.resolve({ kpis: { totalJobs: 0, active: 0, inProduction: 0, inQc: 0, inFg: 0, closureRequested: 0, closed: 0, unitsWip: 0, openTickets: 0 }, statusMix: [], byProduct: [], byDepartment: [], throughput: [], maintenance: [], attention: [] } as AdminStats)
+    ? Promise.resolve({ kpis: { totalJobs: 0, active: 0, inProduction: 0, inQc: 0, inFg: 0, closureRequested: 0, closed: 0, unitsWip: 0, openTickets: 0, overdue: 0, completedToday: 0 }, statusMix: [], byProduct: [], byDepartment: [], departmentHealth: [], recentActivity: [], throughput: [], maintenance: [], attention: [] } as AdminStats)
     : req<AdminStats>('GET', '/api/v1/admin/stats')
 // resolve a scanned code (jobNo or displayLabel) → full detail (admin history lookup)
 export const lookupJob = (code: string) =>

@@ -91,7 +91,7 @@
 
 /* ── control-centre dashboard ── */
 .dkb { display: flex; flex-direction: column; }
-.dkb__kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 14px; }
+.dkb__kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
 .dkb__kpi { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .dkb__kpi-v { font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1; }
 .dkb__kpi-k { font-size: 10.5px; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; }
