@@ -204,3 +204,19 @@
 .scan__result.is-rejected_out_of_seq .scan__badge { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
 
 .btn--block { width: 100%; }
+
+/* offline scan queue banner */
+.scan__queued-bar {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 0 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+  color: var(--brand);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  flex: 0 0 auto;
+}

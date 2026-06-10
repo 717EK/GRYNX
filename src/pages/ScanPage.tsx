@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import { scan, newIdempotencyKey, lookupJob, type ScanResult, type JobDTO } from '../lib/api'
+import { enqueueScan, onScanQueueChange } from '../lib/scanQueue'
 import './ScanPage.css'
 
-type Phase = 'idle' | 'confirm' | 'result'
+type Phase = 'idle' | 'confirm' | 'result' | 'queued'
 type Entry = 'camera' | 'manual'
 
 // accept the Job ID (AT-N-050-080626-010) or the opaque code (Jxxxxxxxxxxx)
@@ -36,15 +37,30 @@ export default function ScanPage({
   const [result, setResult] = useState<ScanResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [camOn, setCamOn] = useState(false)
+  const [queuedN, setQueuedN] = useState(0)
   const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null)
 
+  useEffect(() => onScanQueueChange(setQueuedN), [])
+
   const clean = (s: string) => s.trim().toUpperCase().replace(/^GRYNX:/, '')
+  const offline = () => typeof navigator !== 'undefined' && navigator.onLine === false
+  // queue an arrival scan to sync later (offline / network drop)
+  const queueIt = (no: string, force?: boolean) => {
+    enqueueScan({ jobNo: no, stationDepartmentId, force })
+    setJobNo(no)
+    setPhase('queued')
+  }
 
   async function check(rawNo: string) {
     const no = clean(rawNo)
     setError(null)
     if (!CODE_RE.test(no)) {
       setError('Not a valid job code')
+      return
+    }
+    // offline floor scan → queue it now, sync when back online (idempotent)
+    if (mode === 'advance' && offline()) {
+      queueIt(no)
       return
     }
     setBusy(true)
@@ -60,7 +76,9 @@ export default function ScanPage({
       setPhase(data.result === 'applied' || data.result === 'forced' ? 'confirm' : 'result')
       if (data.result !== 'applied' && data.result !== 'forced') setResult(data)
     } catch {
-      setError(mode === 'lookup' ? 'No job found for that code' : 'Network error — try again')
+      // scan() only throws on a network error → queue it (advance) or report (lookup)
+      if (mode === 'advance') queueIt(no)
+      else setError('No job found for that code')
     } finally {
       setBusy(false)
     }
@@ -68,6 +86,10 @@ export default function ScanPage({
 
   async function confirm(force = false) {
     const no = clean(jobNo)
+    if (offline()) {
+      queueIt(no, force)
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -75,7 +97,7 @@ export default function ScanPage({
       setResult(data)
       setPhase('result')
     } catch {
-      setError('Network error — try again')
+      queueIt(no, force) // network dropped mid-confirm → queue, sync later
     } finally {
       setBusy(false)
     }
@@ -170,6 +192,10 @@ export default function ScanPage({
           <span className="scan__station mono-label">{mode === 'lookup' ? 'SCAN ANY CARD' : `STATION · ${station}`}</span>
         </header>
 
+        {mode === 'advance' && queuedN > 0 && (
+          <div className="scan__queued-bar mono-label">⟳ {queuedN} scan{queuedN > 1 ? 's' : ''} queued — syncing when online</div>
+        )}
+
         {phase === 'idle' && entry === 'camera' && (
           <div className="scan__panel scan__panel--cam">
             <p className="scan__lead">
@@ -210,6 +236,15 @@ export default function ScanPage({
               </button>
               {error && <span className="scan__err mono-label">{error}</span>}
             </div>
+          </div>
+        )}
+
+        {phase === 'queued' && (
+          <div className="scan__panel scan__result is-applied">
+            <span className="scan__badge">⟳ SAVED OFFLINE</span>
+            <span className="scan__rlabel display">{clean(jobNo)}</span>
+            <p className="scan__rmsg">No connection — this scan is saved on the device and will sync automatically when you’re back online.</p>
+            <button className="btn btn--primary btn--block" onClick={reset}>Scan next</button>
           </div>
         )}
 
