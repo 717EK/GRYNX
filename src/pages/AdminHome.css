@@ -88,7 +88,7 @@
   grid-template-columns: repeat(2, 1fr);
   flex: 2; /* two stat cells = two units */
   min-width: 0;
-  text-align: left;
+  text-align: center;
 }
 /* the SCAN cell — one unit, same width as a single stat cell */
 .admin__scancell {
@@ -101,10 +101,10 @@
   overflow: visible;
 }
 .admin__scanbtn {
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   box-sizing: border-box;
-  margin-top: -16px; /* slight lift above the card top */
+  margin-top: -18px; /* slight lift above the card top */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -133,6 +133,8 @@
 .stat {
   display: flex;
   flex-direction: column;
+  align-items: center; /* centre label + number in each cell */
+  justify-content: center;
   gap: 3px;
   padding: 10px 7px;
   border-left: 1px solid var(--border);
@@ -140,13 +142,11 @@
 .stat:first-child {
   border-left: none;
 }
-/* inset the outer stats so they clear the card's rounded corners */
-.admin__stats:first-child .stat:first-child { padding-left: 13px; }
-.admin__stats--r .stat:last-child { padding-right: 13px; }
-/* keep every label on one line so the cells stay symmetric */
+/* keep every label on one line so the cells stay symmetric (IN PROGRESS is the
+   longest — small, tight tracking so it fits its cell without clipping) */
 .stat__k {
-  font-size: 8.5px;
-  letter-spacing: 0.02em;
+  font-size: 8px;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 .stat__v {

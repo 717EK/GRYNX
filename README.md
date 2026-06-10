@@ -46,6 +46,12 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.4.6 — bottom-bar matches reference (verified via headless screenshot)
+- Cell content is **centre-aligned** (labels + numbers); tightened the label type so
+  "IN PROGRESS" fits without clipping; SCAN button sized to 60px in its own cell.
+- Built a Playwright screenshot harness (`api/.tmp/harness.html` + `shoot.mjs`) to
+  render the bar with real CSS/fonts/theme and verify visual changes before shipping.
+
 ### v0.4.5 — bottom-bar: even 5-cell layout
 - Reworked the admin stats card into **five even cells** (TOTAL JOBS · IN PROGRESS ·
   SCAN · COMPLETED · ALERTS). The SCAN button now lives in its own centred cell —
