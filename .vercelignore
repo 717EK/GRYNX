@@ -1,0 +1,11 @@
+# Vercel hosts ONLY the frontend (Vite PWA). The api/ folder is the Fastify
+# backend deployed separately on Render — without this, Vercel auto-detects the
+# root api/ directory as Serverless Functions and tries to compile every file
+# there (without `prisma generate`), which floods the build with TS errors and
+# can block the frontend deploy. Keep it out of the Vercel build entirely.
+api
+docs
+reference
+_shots
+.tmp
+*.tmp.*
