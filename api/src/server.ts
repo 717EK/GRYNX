@@ -6,6 +6,7 @@ import { prisma } from './lib/prisma.js'
 import { authRoutes } from './routes/auth.js'
 import { webauthnRoutes } from './routes/webauthn.js'
 import { deviceRoutes } from './routes/devices.js'
+import { startEscalationSweep } from './lib/escalation.js'
 import { catalogueRoutes } from './routes/catalogue.js'
 import { jobRoutes } from './routes/jobs.js'
 import { scanRoutes } from './routes/scan.js'
@@ -66,7 +67,10 @@ await app.register(purchaseRoutes, { prefix: '/api/v1/purchase' })
 const port = Number(process.env.PORT ?? 4000)
 app
   .listen({ port, host: '0.0.0.0' })
-  .then(() => app.log.info(`GRYNX API on :${port}`))
+  .then(() => {
+    app.log.info(`GRYNX API on :${port}`)
+    startEscalationSweep() // aggressive maintenance: re-notify/escalate stale tickets
+  })
   .catch((err) => {
     app.log.error(err)
     process.exit(1)

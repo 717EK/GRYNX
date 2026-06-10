@@ -78,13 +78,16 @@
 .admin__stats {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   flex: 1;
   min-width: 0;
   text-align: left;
 }
+.admin__stats--r .stat:first-child {
+  border-left: 1px solid var(--border);
+}
 .admin__scanbtn {
-  flex: 0 0 52px;
+  flex: 0 0 54px;
   align-self: center;
   display: flex;
   flex-direction: column;

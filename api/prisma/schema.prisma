@@ -567,6 +567,7 @@ model MaintenanceTicket {
   partsNeeded  String? // parts/replacements required
   closeRemark  String?
   photoUrl     String? @db.Text // compressed JPEG data URL of the issue (optional)
+  escalationLevel Int        @default(0) // 0=none, 1=ack-breach re-notified, 2=assign-breach escalated to admin
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   events       MaintenanceEvent[]

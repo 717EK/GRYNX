@@ -54,7 +54,7 @@ export async function notifyDepartment(
 
 /** Notify the whole maintenance crew (everyone with the maintenance role). */
 export async function notifyMaintenanceCrew(
-  tx: Prisma.TransactionClient,
+  tx: Db,
   payload: { type: NotificationType; body: string; ticketId?: string },
 ) {
   const crew = await tx.roleAssignment.findMany({

@@ -5,6 +5,7 @@ import { authenticate, requireRole, type AccessPayload } from '../lib/auth.js'
 import { writeAudit } from '../lib/audit.js'
 import { notifyMaintenanceCrew, notifyUsers } from '../lib/notify.js'
 import { nextDailySequence } from '../lib/sequence.js'
+import { runEscalationSweep } from '../lib/escalation.js'
 
 const CATEGORIES = ['electrical', 'mechanical', 'utility', 'facility', 'it_network', 'safety', 'other'] as const
 const PRIORITIES = ['critical', 'high', 'normal', 'low'] as const
@@ -226,5 +227,10 @@ export async function maintenanceRoutes(app: FastifyInstance) {
       return t
     })
     return { ticket }
+  })
+
+  // ── run the escalation sweep on demand (also fires automatically every min) ──
+  app.post('/sweep', { preHandler: requireRole('admin', 'maintenance') }, async () => {
+    return runEscalationSweep()
   })
 }

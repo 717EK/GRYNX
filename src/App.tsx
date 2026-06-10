@@ -6,6 +6,7 @@ import CreateJob from './pages/CreateJob'
 import JobHub from './pages/JobHub'
 import PpcReviewSheet from './pages/PpcReviewSheet'
 import PpcInbox from './pages/PpcInbox'
+import DesktopAdmin from './pages/DesktopAdmin'
 import Departments from './pages/Departments'
 import Maintenance from './pages/Maintenance'
 import JobStatus from './pages/JobStatus'
@@ -91,6 +92,7 @@ export default function App() {
   const [selectedPpc, setSelectedPpc] = useState<PpcRequest | null>(null)
   const [reviewMode, setReviewMode] = useState<'admin' | 'ppc'>('admin')
   const [cardJobId, setCardJobId] = useState<string | null>(null)
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [jobDetailBack, setJobDetailBack] = useState<Screen>('jobstatus')
   const go = (s: Screen) => setScreen(s)
@@ -132,6 +134,13 @@ export default function App() {
   }
 
   useEffect(() => registerNav(go), [])
+
+  // track desktop width — admins get the desktop panel on a big screen
+  useEffect(() => {
+    const onResize = () => setWide(window.innerWidth >= 1024)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   // load department names (for station labels) + restore session on refresh
   useEffect(() => {
@@ -333,6 +342,17 @@ export default function App() {
       default:
         return <AdminHome user={user} onNavigate={go} onOpenOverview={() => go('overview')} onLock={handleLock} onScan={() => go('jobscan')} />
     }
+  }
+
+  // Admins on a wide screen get the desktop panel (single page + popups);
+  // everyone else, and admins on a phone, get the mobile app.
+  if (wide && user.role === 'ADMIN') {
+    return (
+      <>
+        <DesktopAdmin user={user} onLock={handleLock} />
+        <UpdatePrompt />
+      </>
+    )
   }
 
   return (
