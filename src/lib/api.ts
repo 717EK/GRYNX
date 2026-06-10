@@ -527,8 +527,8 @@ export interface Notification {
   readAt: string | null
   createdAt: string
 }
-export const getNotifications = () =>
-  DEMO ? Promise.resolve({ notifications: [] as Notification[] }) : req<{ notifications: Notification[] }>('GET', '/api/v1/notifications')
+export const getNotifications = (unreadOnly = false) =>
+  DEMO ? Promise.resolve({ notifications: [] as Notification[] }) : req<{ notifications: Notification[] }>('GET', `/api/v1/notifications${unreadOnly ? '?unread=true' : ''}`)
 export const notificationCount = () =>
   DEMO ? Promise.resolve({ unread: 0 }) : req<{ unread: number }>('GET', '/api/v1/notifications/count')
 export const markNotificationRead = (id: string) =>

@@ -37,7 +37,7 @@ export default function Notifications({
 
   async function load() {
     try {
-      const { notifications } = await getNotifications()
+      const { notifications } = await getNotifications(true) // unread queue only
       setItems(notifications)
     } catch {
       setItems([])
@@ -71,6 +71,7 @@ export default function Notifications({
     if (!n.readAt) {
       markNotificationRead(n.id).catch(() => {})
       setItems((xs) => xs?.map((x) => (x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x)) ?? xs)
+      window.dispatchEvent(new Event('grynx-notif-changed')) // refresh the bell badge now
     }
     onOpen(n)
   }
@@ -78,6 +79,7 @@ export default function Notifications({
   async function readAll() {
     await markAllNotificationsRead().catch(() => {})
     setItems((xs) => xs?.map((x) => ({ ...x, readAt: x.readAt ?? new Date().toISOString() })) ?? xs)
+    window.dispatchEvent(new Event('grynx-notif-changed'))
   }
 
   return (

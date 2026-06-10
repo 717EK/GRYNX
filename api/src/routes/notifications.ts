@@ -8,10 +8,12 @@ export async function notificationRoutes(app: FastifyInstance) {
 
   app.get('/', async (req) => {
     const u = req.user as AccessPayload
+    const q = z.object({ unread: z.coerce.boolean().optional() }).parse(req.query)
     const notifications = await prisma.notification.findMany({
-      where: { userId: u.sub },
-      orderBy: { createdAt: 'desc' },
-      take: 60,
+      where: { userId: u.sub, ...(q.unread ? { readAt: null } : {}) },
+      // unread first (so they never fall outside the window), newest first within
+      orderBy: [{ readAt: { sort: 'asc', nulls: 'first' } }, { createdAt: 'desc' }],
+      take: 100,
     })
     return { notifications }
   })

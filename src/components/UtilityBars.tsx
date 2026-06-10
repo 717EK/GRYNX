@@ -59,9 +59,11 @@ export function TopBar({
     const tick = () => notificationCount().then((r) => alive && setUnread(r.unread)).catch(() => {})
     tick()
     const h = setInterval(tick, 30_000)
+    window.addEventListener('grynx-notif-changed', tick) // instant refresh on clear
     return () => {
       alive = false
       clearInterval(h)
+      window.removeEventListener('grynx-notif-changed', tick)
     }
   }, [user])
   return (
