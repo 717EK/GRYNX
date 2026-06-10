@@ -106,26 +106,44 @@ const CONN: Record<Conn, { label: string; cls: string }> = {
   demo: { label: 'DEMO', cls: 'conn--demo' },
 }
 
-export function BottomBar() {
+export function BottomBar({ fabNotch }: { fabNotch?: boolean } = {}) {
   const conn = useConnection()
   const { label, cls } = CONN[conn]
   // SuperUser (Administrator) uses the connection pill as a universal escape back
   // to the View As panel — so testing any department is never a dead end.
   const isSuper = (getUser()?.username ?? '').toLowerCase() === 'admin'
+  const centerPill = isSuper ? (
+    <button className={`conn conn--btn ${cls}`} onClick={() => navTo('viewas')} title="Back to View As">
+      <span className="conn__dot" />
+      {label} · VIEW AS ↩
+    </button>
+  ) : (
+    <span className={`conn ${cls}`}>
+      <span className="conn__dot" />
+      {label}
+    </span>
+  )
+  // fabNotch: a centered floating button (e.g. admin scan) lives over the footer,
+  // so keep the centre clear. The escape pill (superuser) moves to the right.
+  if (fabNotch) {
+    return (
+      <footer className="ubar ubar--bottom">
+        <span className="ubar__version">GRYNX {APP_VERSION}</span>
+        <span aria-hidden />
+        {isSuper ? (
+          <button className={`conn conn--btn ${cls}`} onClick={() => navTo('viewas')} title="Back to View As" style={{ justifySelf: 'end' }}>
+            VIEW AS ↩
+          </button>
+        ) : (
+          <span className="ubar__secure">{conn === 'demo' ? 'LOCAL DATA' : 'ENCRYPTED · TLS'}</span>
+        )}
+      </footer>
+    )
+  }
   return (
     <footer className="ubar ubar--bottom">
       <span className="ubar__version">GRYNX {APP_VERSION}</span>
-      {isSuper ? (
-        <button className={`conn conn--btn ${cls}`} onClick={() => navTo('viewas')} title="Back to View As">
-          <span className="conn__dot" />
-          {label} · VIEW AS ↩
-        </button>
-      ) : (
-        <span className={`conn ${cls}`}>
-          <span className="conn__dot" />
-          {label}
-        </span>
-      )}
+      {centerPill}
       <span className="ubar__secure">{conn === 'demo' ? 'LOCAL DATA' : 'ENCRYPTED · TLS'}</span>
     </footer>
   )
