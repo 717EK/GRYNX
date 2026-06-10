@@ -3,6 +3,9 @@ apply plugin: 'com.android.application'
 android {
     namespace = "in.dlyft.grynx"
     compileSdk = rootProject.ext.compileSdkVersion
+    // pin to the installed build-tools so Gradle doesn't try to auto-install 35.0.0
+    // into the read-only Program Files SDK
+    buildToolsVersion = "36.0.0"
     defaultConfig {
         applicationId "in.dlyft.grynx"
         minSdkVersion rootProject.ext.minSdkVersion

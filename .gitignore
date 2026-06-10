@@ -42,3 +42,7 @@ reference/**/_scratch/
 android/local.properties
 *.keystore
 *.jks
+
+# Built APK artifact (reproducible via the Capacitor build)
+GRYNX-debug.apk
+*.apk

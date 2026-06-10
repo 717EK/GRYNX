@@ -65,22 +65,29 @@ export default function AdminHome({
           ))}
         </nav>
 
-        <button
-          className="admin__stats"
-          onClick={onOpenOverview}
-          title="Open Admin Overview"
-        >
-          {STATS.map((s) => (
-            <span key={s.k} className="stat">
-              <span className="stat__k mono-label">{s.k}</span>
-              <span className={`stat__v display ${s.tone === 'warning' ? 'is-warning' : ''}`}>
-                {s.v}
+        {/* stats bar (just above the footer): the stats open the admin panel,
+            the SCAN button on the right scans a job card for its history */}
+        <div className="admin__statsbar">
+          <button className="admin__stats" onClick={onOpenOverview} title="Open Admin Overview">
+            {STATS.map((s) => (
+              <span key={s.k} className="stat">
+                <span className="stat__k mono-label">{s.k}</span>
+                <span className={`stat__v display ${s.tone === 'warning' ? 'is-warning' : ''}`}>{s.v}</span>
               </span>
-            </span>
-          ))}
-        </button>
+            ))}
+          </button>
+          <button className="admin__scanbtn" onClick={onScan} title="Scan a job card for its history" aria-label="Scan job card">
+            <svg viewBox="0 0 48 48" width="24" height="24" fill="currentColor" aria-hidden>
+              <path d="M4 4h14v14H4V4Zm3 3v8h8V7H7Zm2 2h4v4H9V9Z" />
+              <path d="M30 4h14v14H30V4Zm3 3v8h8V7h-8Zm2 2h4v4h-4V9Z" />
+              <path d="M4 30h14v14H4V30Zm3 3v8h8v-8H7Zm2 2h4v4H9v-4Z" />
+              <path d="M22 4h4v4h-4V4Zm0 8h4v8h-8v-4h4v-4Zm-8 8h4v4h-4v-4Zm14 0h4v4h-4v-4Zm6 0h4v4h-4v-4ZM22 24h4v4h-4v-4Zm8 0h4v4h-4v-4Zm6 0h8v4h-4v4h-4v-8Zm-14 6h4v4h-4v-4Zm6 0h4v8h-4v-8Zm8 4h4v4h-4v-4Zm-4 6h4v4h-4v-4Zm8 0h4v4h-4v-4Z" />
+            </svg>
+            <span className="admin__scanbtn-label mono-label">SCAN</span>
+          </button>
+        </div>
       </main>
-      <BottomBar onScan={onScan} />
+      <BottomBar />
     </div>
   )
 }

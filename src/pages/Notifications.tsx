@@ -33,6 +33,7 @@ export default function Notifications({
   onOpen: (n: Notification) => void
 }) {
   const [items, setItems] = useState<Notification[] | null>(null)
+  const [cat, setCat] = useState<string>('all')
 
   async function load() {
     try {
@@ -47,6 +48,22 @@ export default function Notifications({
   }, [])
 
   const unread = items?.filter((n) => !n.readAt).length ?? 0
+  // bifurcate the feed so it isn't one undifferentiated list
+  const inCat = (n: Notification, key: string) => {
+    if (key === 'all') return true
+    if (key === 'ppc') return n.type === 'ppc_approval'
+    if (key === 'maint') return n.type === 'maintenance_alert' || !!n.ticketId
+    if (key === 'jobs') return n.type !== 'ppc_approval' && n.type !== 'maintenance_alert' && !n.ticketId
+    return true
+  }
+  const CATS = [
+    { key: 'all', label: 'All' },
+    { key: 'ppc', label: 'PPC' },
+    { key: 'jobs', label: 'Jobs' },
+    { key: 'maint', label: 'Maintenance' },
+  ]
+  const filtered = (items ?? []).filter((n) => inCat(n, cat))
+  const catUnread = (key: string) => (items ?? []).filter((n) => !n.readAt && inCat(n, key)).length
 
   async function open(n: Notification) {
     if (!n.readAt) {
@@ -73,14 +90,26 @@ export default function Notifications({
           </div>
           <button className="notif__readall mono-label" onClick={readAll}>Mark all read</button>
         </header>
+        {items && items.length > 0 && (
+          <div className="notif__cats">
+            {CATS.map((c) => {
+              const u = catUnread(c.key)
+              return (
+                <button key={c.key} className={`notif__cat mono-label ${cat === c.key ? 'is-active' : ''}`} onClick={() => setCat(c.key)}>
+                  {c.label}{u > 0 && <span className="notif__cat-n">{u}</span>}
+                </button>
+              )
+            })}
+          </div>
+        )}
         <div className="screen__scroll">
           {items === null ? (
             <span className="nsec__title mono-label" style={{ display: 'block', textAlign: 'center', padding: 30 }}>Loading…</span>
-          ) : items.length === 0 ? (
-            <span className="nsec__title mono-label" style={{ display: 'block', textAlign: 'center', padding: 30 }}>No notifications.</span>
+          ) : filtered.length === 0 ? (
+            <span className="nsec__title mono-label" style={{ display: 'block', textAlign: 'center', padding: 30 }}>No {cat === 'all' ? '' : cat + ' '}notifications.</span>
           ) : (
             <div className="nlist">
-              {items.map((n) => (
+              {filtered.map((n) => (
                 <button key={n.id} className={`notif ${n.readAt ? '' : 'is-unread'}`} onClick={() => open(n)}>
                   <span className={`notif__icon notif__icon--${n.type}`}>{ICON[n.type] ?? '•'}</span>
                   <span className="notif__body">

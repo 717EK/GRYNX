@@ -24,6 +24,16 @@ allprojects {
     }
 }
 
+// Force every Android module to use the build-tools that are actually installed
+// (36.0.0), so Gradle never tries to auto-install 35.0.0 into the read-only SDK.
+subprojects {
+    afterEvaluate { project ->
+        if (project.extensions.findByName('android') != null) {
+            project.android.buildToolsVersion = "36.0.0"
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }

@@ -66,17 +66,42 @@
   color: var(--text);
 }
 
-/* ---- footer stat strip (tap → overview) ---- */
+/* ---- stats bar above the footer: stats (→ overview) + SCAN button ---- */
+.admin__statsbar {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  flex: none;
+}
 .admin__stats {
   position: relative;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid var(--border);
-  margin-top: 6px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   text-align: left;
-  flex: none;
 }
+.admin__scanbtn {
+  flex: 0 0 52px;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 9px 4px;
+  border: none;
+  border-radius: 11px;
+  background: var(--brand);
+  color: var(--on-brand, #0a0a0a);
+  cursor: pointer;
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--brand) 38%, transparent);
+}
+.admin__scanbtn:active { transform: scale(0.95); }
+.admin__scanbtn svg { width: 22px; height: 22px; }
+.admin__scanbtn-label { font-size: 9px; letter-spacing: 0.1em; color: var(--on-brand, #0a0a0a); }
 .admin__stats::after {
   content: '';
   position: absolute;
@@ -94,7 +119,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 12px 8px;
+  padding: 12px 5px;
   border-left: 1px solid var(--border);
 }
 .stat:first-child {
