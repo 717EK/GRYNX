@@ -30,8 +30,15 @@
 }
 .station__head {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.station__head-text {
+  display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .station__kicker {
   color: var(--brand);
@@ -41,6 +48,17 @@
 .station__title {
   font-size: 30px;
   text-transform: uppercase;
+}
+.station__report-btn {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--danger);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
 }
 .station__scan {
   display: flex;
@@ -58,11 +76,19 @@
   font-size: 20px;
   letter-spacing: 0.02em;
 }
+/* hero variant — bigger, pinned at the bottom of the station screen */
+.station__scan--hero {
+  flex: 0 0 auto;
+  padding: clamp(20px, 3.4vh, 30px) 16px;
+  box-shadow: 0 -2px 18px color-mix(in srgb, var(--brand) 22%, transparent);
+}
+.station__scan-label {
+  font-size: 22px;
+}
 .station__scan-ico {
-  font-size: 30px;
   line-height: 0;
   display: inline-flex;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .station__scan-sub {
   font-weight: 400;

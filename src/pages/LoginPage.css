@@ -129,6 +129,30 @@
   max-width: 320px;
   height: 50px;
 }
+.login__bio {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 320px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--brand);
+  border-radius: var(--r-md, 10px);
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+  color: var(--brand);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.login__bio:active {
+  transform: scale(0.98);
+}
+.login__bio:disabled {
+  opacity: 0.6;
+}
 .login__forgot {
   margin-top: 18px;
   padding-top: 18px;

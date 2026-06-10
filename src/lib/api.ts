@@ -95,13 +95,17 @@ async function req<T>(method: string, path: string, body?: unknown, _retry = tru
 }
 
 // ── auth ──────────────────────────────────────────────────────────────────
+// Store a freshly-minted session (shared by PIN and biometric sign-in).
+function applySession(data: { accessToken: string; refreshToken: string; user: ApiUser }) {
+  access = data.accessToken
+  refresh = data.refreshToken
+  user = data.user
+  persist()
+}
+
 export async function login(username: string, pin: string): Promise<ApiUser> {
   if (DEMO) {
-    const data = demo.demoLogin(username, pin) // throws ApiError on bad creds
-    access = data.accessToken
-    refresh = data.refreshToken
-    user = data.user
-    persist()
+    applySession(demo.demoLogin(username, pin)) // throws ApiError on bad creds
     return user!
   }
   const res = await fetch(`${BASE}/api/v1/auth/login`, {
@@ -112,10 +116,7 @@ export async function login(username: string, pin: string): Promise<ApiUser> {
   const text = await res.text()
   const data = text ? JSON.parse(text) : null
   if (!res.ok) throw new ApiError(res.status, data)
-  access = data.accessToken
-  refresh = data.refreshToken
-  user = data.user
-  persist()
+  applySession(data)
   return user!
 }
 
@@ -123,6 +124,113 @@ export function logout() {
   access = refresh = null
   user = null
   persist()
+}
+
+// ── Biometric login (WebAuthn passkeys: Face ID / Touch ID / fingerprint) ────
+// Credentials are domain-bound; enrolment lives on the real backend (not DEMO).
+const BIO_KEY = 'grynx-bio-users'
+export const biometricSupported = () => !DEMO && typeof window !== 'undefined' && !!window.PublicKeyCredential
+export function enrolledBiometricUsers(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(BIO_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+export function isBiometricEnrolled(username?: string) {
+  const list = enrolledBiometricUsers()
+  return username ? list.includes(username.trim().toLowerCase()) : list.length > 0
+}
+function rememberBiometricUser(username: string) {
+  const u = username.trim().toLowerCase()
+  const list = enrolledBiometricUsers()
+  if (!list.includes(u)) localStorage.setItem(BIO_KEY, JSON.stringify([...list, u]))
+}
+export function forgetBiometric(username: string) {
+  const u = username.trim().toLowerCase()
+  localStorage.setItem(BIO_KEY, JSON.stringify(enrolledBiometricUsers().filter((x) => x !== u)))
+}
+
+// Enrol this device's authenticator — must already be signed in (via PIN).
+export async function registerBiometric(label?: string): Promise<void> {
+  const { startRegistration } = await import('@simplewebauthn/browser')
+  const { options } = await req<{ options: unknown }>('POST', '/api/v1/auth/webauthn/register/options', {})
+  const att = await startRegistration({ optionsJSON: options as never })
+  await req('POST', '/api/v1/auth/webauthn/register/verify', { response: att, label })
+  if (user) rememberBiometricUser(user.username)
+}
+
+// base64url ↔ ArrayBuffer (for the raw WebAuthn assertion below)
+function abToB64u(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf)
+  let s = ''
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i])
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+function b64uToAb(str: string): ArrayBuffer {
+  const pad = '='.repeat((4 - (str.length % 4)) % 4)
+  const bin = atob((str + pad).replace(/-/g, '+').replace(/_/g, '/'))
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return bytes.buffer
+}
+
+// Sign in with biometrics (no PIN). Uses navigator.credentials.get directly —
+// @simplewebauthn/browser's startAuthentication shares a singleton abort signal
+// that stalls across the enroll→login ceremonies within one SPA session.
+export async function loginBiometric(username: string): Promise<ApiUser> {
+  const optRes = await fetch(`${BASE}/api/v1/auth/webauthn/login/options`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username }),
+  })
+  const optData = await optRes.json().catch(() => null)
+  if (!optRes.ok) throw new ApiError(optRes.status, optData)
+  const o = optData.options as {
+    challenge: string
+    rpId?: string
+    timeout?: number
+    userVerification?: UserVerificationRequirement
+    allowCredentials?: { id: string; transports?: AuthenticatorTransport[] }[]
+  }
+  const cred = (await navigator.credentials.get({
+    publicKey: {
+      challenge: b64uToAb(o.challenge),
+      rpId: o.rpId,
+      timeout: o.timeout,
+      userVerification: o.userVerification,
+      allowCredentials: (o.allowCredentials ?? []).map((c) => ({
+        type: 'public-key' as const,
+        id: b64uToAb(c.id),
+        transports: c.transports,
+      })),
+    },
+  })) as PublicKeyCredential | null
+  if (!cred) throw new ApiError(0, { error: 'cancelled' })
+  const r = cred.response as AuthenticatorAssertionResponse
+  const asr = {
+    id: cred.id,
+    rawId: abToB64u(cred.rawId),
+    type: cred.type,
+    clientExtensionResults: cred.getClientExtensionResults(),
+    authenticatorAttachment: cred.authenticatorAttachment ?? undefined,
+    response: {
+      clientDataJSON: abToB64u(r.clientDataJSON),
+      authenticatorData: abToB64u(r.authenticatorData),
+      signature: abToB64u(r.signature),
+      userHandle: r.userHandle ? abToB64u(r.userHandle) : undefined,
+    },
+  }
+  const verRes = await fetch(`${BASE}/api/v1/auth/webauthn/login/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, response: asr }),
+  })
+  const verData = await verRes.json().catch(() => null)
+  if (!verRes.ok) throw new ApiError(verRes.status, verData)
+  applySession(verData)
+  rememberBiometricUser(username)
+  return user!
 }
 
 export const me = () => (DEMO ? Promise.resolve({ user: getUser()! }) : req<{ user: ApiUser }>('GET', '/api/v1/auth/me'))

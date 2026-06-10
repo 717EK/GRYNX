@@ -25,3 +25,14 @@ services:
       # Must include your Vercel URL, e.g. https://grynx.vercel.app
       - key: CORS_ORIGINS
         sync: false
+      # Biometric login (WebAuthn). Domain-bound: must match the domain the app
+      # is served from. Defaults below target the current Vercel pilot. When you
+      # move to the Mac Mini, change these to its real domain (RP_ID = host only,
+      # no scheme/port; ORIGIN = full scheme+host, comma-separate if more than
+      # one). Credentials enrolled on one domain do NOT carry to another.
+      - key: WEBAUTHN_RP_ID
+        value: grynx-gamma.vercel.app
+      - key: WEBAUTHN_RP_NAME
+        value: GRYNX
+      - key: WEBAUTHN_ORIGIN
+        value: https://grynx-gamma.vercel.app

@@ -4,6 +4,7 @@ import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
 import { prisma } from './lib/prisma.js'
 import { authRoutes } from './routes/auth.js'
+import { webauthnRoutes } from './routes/webauthn.js'
 import { catalogueRoutes } from './routes/catalogue.js'
 import { jobRoutes } from './routes/jobs.js'
 import { scanRoutes } from './routes/scan.js'
@@ -48,6 +49,7 @@ app.get('/health', async () => {
 
 // ── routes ──────────────────────────────────────────────────────────────────
 await app.register(authRoutes, { prefix: '/api/v1/auth' })
+await app.register(webauthnRoutes, { prefix: '/api/v1/auth/webauthn' })
 await app.register(catalogueRoutes, { prefix: '/api/v1' })
 await app.register(jobRoutes, { prefix: '/api/v1/jobs' })
 await app.register(scanRoutes, { prefix: '/api/v1/scan' }) // state-machine engine (docs/10)

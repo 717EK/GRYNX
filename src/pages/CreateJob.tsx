@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import JobForm, { type JobFormSelection } from '../components/JobForm'
 import JobCardModal from '../components/JobCardModal'
+import ReportButton from '../components/ReportButton'
 import { useCatalogue } from '../lib/useCatalogue'
 import { createJob, createPpcRequest, ApiError, type JobDTO } from '../lib/api'
 
@@ -105,10 +106,15 @@ export default function CreateJob({
             <h1 className="jobscreen__title display">{meta.title}</h1>
             <span className="mono-label">{meta.sub}</span>
           </div>
-          {isPpc && onOpenInbox ? (
-            <button className="jobscreen__pill" onClick={onOpenInbox} title="My requests">
-              <span className="mono-label">My Requests →</span>
-            </button>
+          {isPpc ? (
+            <div className="jobscreen__head-actions">
+              <ReportButton />
+              {onOpenInbox && (
+                <button className="jobscreen__pill" onClick={onOpenInbox} title="My requests">
+                  <span className="mono-label">My Requests →</span>
+                </button>
+              )}
+            </div>
           ) : (
             <span />
           )}

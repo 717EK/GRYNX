@@ -27,6 +27,25 @@
           document.documentElement.style.setProperty('--on-brand', t[1]);
         } catch (e) {}
       })();
+      // Device-fit: size the whole UI to this phone's real estate, once on load
+      // and again only on rotation/resize. Baseline design = 390×844 (iPhone).
+      // --scale drives the root font + hero/spacing math so every page fits the
+      // screen it's opened on, regardless of device resolution.
+      (function () {
+        var root = document.documentElement;
+        function fit() {
+          var w = window.innerWidth, h = window.innerHeight;
+          var s = Math.min(w / 390, h / 844);
+          s = Math.max(0.85, Math.min(s, 1.4));
+          root.style.setProperty('--scale', s.toFixed(4));
+          root.style.setProperty('--vh', h / 100 + 'px');
+          root.style.setProperty('--vw', w / 100 + 'px');
+          root.style.fontSize = (16 * s).toFixed(2) + 'px';
+        }
+        fit();
+        window.addEventListener('resize', fit);
+        window.addEventListener('orientationchange', fit);
+      })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

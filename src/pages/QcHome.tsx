@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import { getQcQueue, qcApprove, qcRework, type QueueJob } from '../lib/api'
+import ReportButton from '../components/ReportButton'
 import './Maintenance.css'
 import './DeptHome.css'
 
@@ -38,7 +39,7 @@ export default function QcHome({
             <h1 className="screen__title display">QC Inspection</h1>
             <span className="mono-label">{jobs ? `${jobs.length} awaiting inspection` : 'Loading…'}</span>
           </div>
-          <span />
+          <ReportButton />
         </header>
         <div className="screen__scroll">
           {jobs === null ? (

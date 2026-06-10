@@ -53,12 +53,33 @@ function recordFail(key: string) {
 }
 const clearFails = (key: string) => FAILS.delete(key)
 
-async function loadRoles(userId: string) {
+export async function loadRoles(userId: string) {
   const rows = await prisma.roleAssignment.findMany({
     where: { userId },
     select: { role: true, departmentId: true },
   })
   return rows.map((r) => ({ role: r.role, departmentId: r.departmentId }))
+}
+
+// Mint the access + refresh tokens and the session body. Shared by PIN/password
+// login and biometric (WebAuthn) login so both paths issue identical sessions.
+export async function issueSession(
+  reply: import('fastify').FastifyReply,
+  user: { id: string; username: string; fullName: string },
+  method: string,
+) {
+  const roles = await loadRoles(user.id)
+  const accessToken = await reply.jwtSign(
+    { sub: user.id, username: user.username, roles, typ: 'access' } satisfies AccessPayload,
+    { expiresIn: ACCESS_TTL },
+  )
+  const refreshToken = await reply.jwtSign(
+    { sub: user.id, typ: 'refresh' } satisfies RefreshPayload,
+    { expiresIn: REFRESH_TTL },
+  )
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+  await writeAudit('user', user.id, 'login', { actorId: user.id, after: { method } })
+  return { accessToken, refreshToken, user: { id: user.id, username: user.username, fullName: user.fullName, roles } }
 }
 
 export async function authRoutes(app: FastifyInstance) {
@@ -98,24 +119,7 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: user.status === 'pending' ? 'account_pending' : 'account_suspended' })
     }
 
-    const roles = await loadRoles(user.id)
-    const accessToken = await reply.jwtSign(
-      { sub: user.id, username: user.username, roles, typ: 'access' } satisfies AccessPayload,
-      { expiresIn: ACCESS_TTL },
-    )
-    const refreshToken = await reply.jwtSign(
-      { sub: user.id, typ: 'refresh' } satisfies RefreshPayload,
-      { expiresIn: REFRESH_TTL },
-    )
-
-    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
-    await writeAudit('user', user.id, 'login', { actorId: user.id, after: { method: pin ? 'pin' : 'password' } })
-
-    return {
-      accessToken,
-      refreshToken,
-      user: { id: user.id, username: user.username, fullName: user.fullName, roles },
-    }
+    return reply.send(await issueSession(reply, user, pin ? 'pin' : 'password'))
   })
 
   app.post('/refresh', async (req, reply) => {

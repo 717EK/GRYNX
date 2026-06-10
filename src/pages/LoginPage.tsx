@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { TopBar, BottomBar } from '../components/UtilityBars'
-import { login as apiLogin, ApiError, DEMO, type ApiUser } from '../lib/api'
+import { login as apiLogin, loginBiometric, biometricSupported, isBiometricEnrolled, ApiError, DEMO, type ApiUser } from '../lib/api'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark.png'
 import dlyftWordmarkLight from '../assets/dlyft-wordmark-light.png'
@@ -45,6 +45,23 @@ export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUs
       setError(msg)
       setDigits(Array(PIN_LENGTH).fill(''))
       inputs.current[0]?.focus()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Biometric fast-path — only for a returning user who enrolled on this device.
+  const canBio = !editingUser && biometricSupported() && isBiometricEnrolled(remembered)
+  async function bioLogin() {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const u = await loginBiometric(remembered)
+      localStorage.setItem(LAST_USER_KEY, u.username)
+      onLogin(u)
+    } catch (e) {
+      setError(e instanceof ApiError ? 'Biometric sign-in failed — use your PIN' : 'Biometric cancelled — use your PIN')
     } finally {
       setBusy(false)
     }
@@ -155,6 +172,18 @@ export default function LoginPage({ onLogin, onSignup }: { onLogin: (user: ApiUs
             <span>{busy ? 'Signing in…' : 'Enter'}</span>
             <span className="btn__arrow">→</span>
           </button>
+
+          {canBio && (
+            <button className="login__bio" disabled={busy} onClick={bioLogin}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
+                <path d="M12 4.5c-2.5 0-4.7 1-6.2 2.6M18.2 7.1A8.3 8.3 0 0 0 16 5.4" />
+                <path d="M5 11a7 7 0 0 1 14 0v1.5M5 13.5V12" />
+                <path d="M8.5 12a3.5 3.5 0 0 1 7 0v2.5M8.5 14.5V12" />
+                <path d="M12 12v4.5M9.2 17.5a6 6 0 0 0 .5 2M14.8 16.5q.2 1.6 1 3" />
+              </svg>
+              <span>Sign in with {remembered.toUpperCase()}’s biometrics</span>
+            </button>
+          )}
 
           {!editingUser ? (
             <button className="login__signup mono-label" onClick={switchUser}>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import { getFgQueue, getSerials, addSerials, requestClosure, type FgJob } from '../lib/api'
+import ReportButton from '../components/ReportButton'
 import './Maintenance.css'
 import './DeptHome.css'
 
@@ -30,7 +31,7 @@ export default function FgHome({ user, onBack, onLock }: { user: SessionUser; on
             <h1 className="screen__title display">FG Stock</h1>
             <span className="mono-label">{jobs ? `${jobs.length} to receive / serialise` : 'Loading…'}</span>
           </div>
-          <span />
+          <ReportButton />
         </header>
         <div className="screen__scroll">
           {jobs === null ? (

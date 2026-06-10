@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import { getPurchaseJobs, getMaterials, logMaterial, type QueueJob, type MaterialLine } from '../lib/api'
+import ReportButton from '../components/ReportButton'
 import './Maintenance.css'
 import './DeptHome.css'
 
@@ -32,7 +33,7 @@ export default function PurchaseHome({ user, onBack, onLock }: { user: SessionUs
             <h1 className="screen__title display">Purchase</h1>
             <span className="mono-label">{jobs ? `${jobs.length} active jobs` : 'Loading…'}</span>
           </div>
-          <span />
+          <ReportButton />
         </header>
         <div className="screen__scroll">
           {jobs === null ? (

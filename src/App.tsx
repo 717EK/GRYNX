@@ -23,6 +23,7 @@ import ViewAsPanel from './pages/ViewAsPanel'
 import SignupPage from './pages/SignupPage'
 import Approvals from './pages/Approvals'
 import UpdatePrompt from './components/UpdatePrompt'
+import BiometricEnroll from './components/BiometricEnroll'
 import JobCardModal from './components/JobCardModal'
 import { registerNav } from './lib/nav'
 import type { SessionUser } from './components/UtilityBars'
@@ -164,6 +165,12 @@ export default function App() {
   // SuperUser (Administrator) returns to the View As panel; everyone else home.
   const isSuper = (getUser()?.username ?? '').toLowerCase() === 'admin'
   const deptBack = () => go(isSuper ? 'viewas' : 'home')
+  // The current user's natural landing — used by shared screens (e.g. the
+  // Report/Maintenance screen reachable from any home) to return correctly.
+  const myLanding = (): Screen => {
+    const u = getUser()
+    return isSuper ? 'viewas' : u ? landingFor(u) : 'home'
+  }
 
   if (!user) {
     return (
@@ -280,7 +287,7 @@ export default function App() {
         return (
           <Maintenance
             user={user}
-            onBack={() => go('home')}
+            onBack={() => go(myLanding())}
             onLock={handleLock}
             onOpenTicket={(id) => {
               setMaintTicketId(id)
@@ -313,6 +320,7 @@ export default function App() {
     <>
       {renderScreen()}
       {cardJobId && <JobCardModal jobId={cardJobId} onClose={() => setCardJobId(null)} />}
+      <BiometricEnroll />
       <UpdatePrompt />
     </>
   )

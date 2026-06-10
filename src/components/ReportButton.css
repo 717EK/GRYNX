@@ -1,0 +1,15 @@
+.reportbtn {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--danger);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.reportbtn:active {
+  transform: scale(0.96);
+}

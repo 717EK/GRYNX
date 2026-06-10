@@ -53,23 +53,12 @@ export default function StationHome({
       )}
       <main className="app__body station">
         <header className="station__head">
-          <span className="mono-label station__kicker">STATION</span>
-          <h1 className="station__title display">{stationName}</h1>
+          <div className="station__head-text">
+            <span className="mono-label station__kicker">STATION</span>
+            <h1 className="station__title display">{stationName}</h1>
+          </div>
+          <button className="station__report-btn mono-label" onClick={onReport} title="Report an issue">⚠ REPORT</button>
         </header>
-
-        <button className="station__scan" onClick={onScan}>
-          <span className="station__scan-ico" aria-hidden>
-            <svg viewBox="0 0 48 48" width="46" height="46" fill="currentColor">
-              {/* QR finder patterns + modules — reads as "scan me" at a glance */}
-              <path d="M4 4h14v14H4V4Zm3 3v8h8V7H7Zm2 2h4v4H9V9Z" />
-              <path d="M30 4h14v14H30V4Zm3 3v8h8V7h-8Zm2 2h4v4h-4V9Z" />
-              <path d="M4 30h14v14H4V30Zm3 3v8h8v-8H7Zm2 2h4v4H9v-4Z" />
-              <path d="M22 4h4v4h-4V4Zm0 8h4v8h-8v-4h4v-4Zm-8 8h4v4h-4v-4Zm14 0h4v4h-4v-4Zm6 0h4v4h-4v-4ZM22 24h4v4h-4v-4Zm8 0h4v4h-4v-4Zm6 0h8v4h-4v4h-4v-8Zm-14 6h4v4h-4v-4Zm6 0h4v8h-4v-8Zm8 4h4v4h-4v-4Zm-4 6h4v4h-4v-4Zm8 0h4v4h-4v-4Z" />
-            </svg>
-          </span>
-          <span>Scan Job Card</span>
-          <span className="station__scan-sub mono-label">camera opens — point at the QR</span>
-        </button>
 
         <div className="station__scroll">
           {jobs === null ? (
@@ -88,8 +77,18 @@ export default function StationHome({
           )}
         </div>
 
-        <button className="station__report" onClick={onReport}>
-          ⚠ Report an issue
+        {/* Scan is the hero — pinned at the bottom, thumb-reachable. */}
+        <button className="station__scan station__scan--hero" onClick={onScan}>
+          <span className="station__scan-ico" aria-hidden>
+            <svg viewBox="0 0 48 48" width="44" height="44" fill="currentColor">
+              <path d="M4 4h14v14H4V4Zm3 3v8h8V7H7Zm2 2h4v4H9V9Z" />
+              <path d="M30 4h14v14H30V4Zm3 3v8h8V7h-8Zm2 2h4v4h-4V9Z" />
+              <path d="M4 30h14v14H4V30Zm3 3v8h8v-8H7Zm2 2h4v4H9v-4Z" />
+              <path d="M22 4h4v4h-4V4Zm0 8h4v8h-8v-4h4v-4Zm-8 8h4v4h-4v-4Zm14 0h4v4h-4v-4Zm6 0h4v4h-4v-4ZM22 24h4v4h-4v-4Zm8 0h4v4h-4v-4Zm6 0h8v4h-4v4h-4v-8Zm-14 6h4v4h-4v-4Zm6 0h4v8h-4v-8Zm8 4h4v4h-4v-4Zm-4 6h4v4h-4v-4Zm8 0h4v4h-4v-4Z" />
+            </svg>
+          </span>
+          <span className="station__scan-label">Scan Job Card</span>
+          <span className="station__scan-sub mono-label">camera opens — point at the QR</span>
         </button>
       </main>
       <BottomBar />

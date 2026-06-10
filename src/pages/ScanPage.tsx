@@ -4,6 +4,7 @@ import { scan, newIdempotencyKey, type ScanResult } from '../lib/api'
 import './ScanPage.css'
 
 type Phase = 'idle' | 'confirm' | 'result'
+type Mode = 'camera' | 'manual'
 
 // accept the Job ID (AT-N-050-080626-010) or the opaque code (Jxxxxxxxxxxx)
 const CODE_RE = /^[A-Z0-9-]{6,40}$/
@@ -24,6 +25,7 @@ export default function ScanPage({
 }) {
   const [jobNo, setJobNo] = useState('')
   const [phase, setPhase] = useState<Phase>('idle')
+  const [mode, setMode] = useState<Mode>('camera')
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState<ScanResult | null>(null)
   const [result, setResult] = useState<ScanResult | null>(null)
@@ -74,6 +76,8 @@ export default function ScanPage({
     setResult(null)
     setError(null)
     setPhase('idle')
+    setMode('camera')
+    setCamOn(true) // re-open the camera for the next scan
   }
 
   async function stopCamera() {
@@ -86,13 +90,21 @@ export default function ScanPage({
     setCamOn(false)
   }
 
-  // Just flip the flag — the effect below mounts the reader once the #qr-reader
-  // element is in the DOM (avoids "element not found" from racing the render).
-  const startCamera = () => {
+  // Switch to manual code entry — kill the camera so it isn't running behind the form.
+  function toManual() {
+    void stopCamera()
     setError(null)
+    setMode('manual')
+  }
+  // Back to the live camera.
+  function toCamera() {
+    setError(null)
+    setJobNo('')
+    setMode('camera')
     setCamOn(true)
   }
 
+  // Mount the reader once #qr-reader is in the DOM (avoids racing the render).
   useEffect(() => {
     if (!camOn || scannerRef.current) return
     let cancelled = false
@@ -104,7 +116,7 @@ export default function ScanPage({
         scannerRef.current = s
         await s.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: 230 },
+          { fps: 10, qrbox: 200 },
           async (decoded: string) => {
             await stopCamera()
             setJobNo(clean(decoded))
@@ -113,8 +125,9 @@ export default function ScanPage({
           () => {},
         )
       } catch {
-        setError('Camera unavailable — enter the code manually')
+        // no camera (desktop / denied) → fall back to manual entry
         setCamOn(false)
+        setMode('manual')
       }
     })()
     return () => {
@@ -125,7 +138,7 @@ export default function ScanPage({
 
   // Open the camera straight away when the operator lands on Scan.
   useEffect(() => {
-    startCamera()
+    setCamOn(true)
     return () => void stopCamera()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -144,38 +157,39 @@ export default function ScanPage({
           <span className="scan__station mono-label">STATION · {station}</span>
         </header>
 
-        {phase === 'idle' && (
-          <div className="scan__panel">
-            <p className="scan__lead">Scan a job card as it <b>arrives</b> at your station.</p>
+        {phase === 'idle' && mode === 'camera' && (
+          <div className="scan__panel scan__panel--cam">
+            <p className="scan__lead">Point at the job card as it <b>arrives</b> at your station.</p>
+            <div className="scan__camwrap">
+              <div id="qr-reader" className="scan__reader" />
+              <span className="scan__frame" aria-hidden />
+            </div>
+            <button className="scan__manual-link mono-label" onClick={toManual}>⌨ Enter code manually</button>
+            {error && <span className="scan__err mono-label">{error}</span>}
+          </div>
+        )}
 
-            {camOn ? (
-              <div className="scan__cam">
-                <div id="qr-reader" className="scan__reader" />
-                <button className="btn btn--ghost" onClick={stopCamera}>Stop camera</button>
-              </div>
-            ) : (
-              <button className="btn btn--solid btn--block scan__cambtn" onClick={startCamera}>
-                <span>▣</span> Scan with camera
-              </button>
-            )}
-
-            <div className="scan__or mono-label">or enter code</div>
-            <div className="scan__manual">
+        {phase === 'idle' && mode === 'manual' && (
+          <div className="scan__panel scan__panel--manual">
+            <button className="scan__camback mono-label" onClick={toCamera}>← Use camera</button>
+            <div className="scan__manual-hero">
+              <span className="scan__manual-k mono-label">Enter Job Code</span>
               <input
                 className="scan__input"
                 placeholder="AT-N-050-080626-010"
                 value={jobNo}
+                autoFocus
                 onChange={(e) => setJobNo(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === 'Enter' && check(jobNo)}
                 autoCapitalize="characters"
                 autoCorrect="off"
                 spellCheck={false}
               />
-              <button className="btn btn--primary" disabled={busy || !jobNo} onClick={() => check(jobNo)}>
-                {busy ? '…' : 'Check'}
+              <button className="btn btn--solid btn--block" disabled={busy || !jobNo} onClick={() => check(jobNo)}>
+                {busy ? 'Checking…' : 'Check job'}
               </button>
+              {error && <span className="scan__err mono-label">{error}</span>}
             </div>
-            {error && <span className="scan__err mono-label">{error}</span>}
           </div>
         )}
 

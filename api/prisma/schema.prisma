@@ -198,12 +198,32 @@ model User {
   pinHash       String? // floor users (argon2)
   status        UserStatus @default(active)
   lastLoginAt   DateTime?
+  webauthnChallenge String? // short-lived challenge for the in-flight ceremony
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   roles         RoleAssignment[]
   devices       DeviceToken[]
   scans         ScanEvent[]
+  webauthnCredentials WebauthnCredential[]
+}
+
+// A registered platform authenticator (Face ID / Touch ID / fingerprint) bound
+// to a device. credentialId/publicKey are base64url. Domain-bound: credentials
+// only work on the rpID (origin) they were registered on.
+model WebauthnCredential {
+  id           String    @id @default(uuid())
+  userId       String
+  credentialId String    @unique
+  publicKey    String
+  counter      Int       @default(0)
+  transports   String? // comma-joined hints (internal, hybrid, …)
+  label        String? // human device label
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Department {
