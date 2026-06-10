@@ -106,13 +106,13 @@ const CONN: Record<Conn, { label: string; cls: string }> = {
   demo: { label: 'DEMO', cls: 'conn--demo' },
 }
 
-export function BottomBar({ fabNotch }: { fabNotch?: boolean } = {}) {
+export function BottomBar({ onScan }: { onScan?: () => void } = {}) {
   const conn = useConnection()
   const { label, cls } = CONN[conn]
   // SuperUser (Administrator) uses the connection pill as a universal escape back
   // to the View As panel — so testing any department is never a dead end.
   const isSuper = (getUser()?.username ?? '').toLowerCase() === 'admin'
-  const centerPill = isSuper ? (
+  const connPill = isSuper ? (
     <button className={`conn conn--btn ${cls}`} onClick={() => navTo('viewas')} title="Back to View As">
       <span className="conn__dot" />
       {label} · VIEW AS ↩
@@ -123,27 +123,29 @@ export function BottomBar({ fabNotch }: { fabNotch?: boolean } = {}) {
       {label}
     </span>
   )
-  // fabNotch: a centered floating button (e.g. admin scan) lives over the footer,
-  // so keep the centre clear. The escape pill (superuser) moves to the right.
-  if (fabNotch) {
+  // onScan: the scanner is the hero of the bar — a rounded-rectangle button in
+  // the centre (admin scans a job card to pull its history). Status sits right.
+  if (onScan) {
     return (
-      <footer className="ubar ubar--bottom">
+      <footer className="ubar ubar--bottom ubar--bottom-scan">
         <span className="ubar__version">GRYNX {APP_VERSION}</span>
-        <span aria-hidden />
-        {isSuper ? (
-          <button className={`conn conn--btn ${cls}`} onClick={() => navTo('viewas')} title="Back to View As" style={{ justifySelf: 'end' }}>
-            VIEW AS ↩
-          </button>
-        ) : (
-          <span className="ubar__secure">{conn === 'demo' ? 'LOCAL DATA' : 'ENCRYPTED · TLS'}</span>
-        )}
+        <button className="bbar__scan" onClick={onScan} title="Scan a job card for its history" aria-label="Scan job card">
+          <svg viewBox="0 0 48 48" width="20" height="20" fill="currentColor" aria-hidden>
+            <path d="M4 4h14v14H4V4Zm3 3v8h8V7H7Zm2 2h4v4H9V9Z" />
+            <path d="M30 4h14v14H30V4Zm3 3v8h8V7h-8Zm2 2h4v4h-4V9Z" />
+            <path d="M4 30h14v14H4V30Zm3 3v8h8v-8H7Zm2 2h4v4H9v-4Z" />
+            <path d="M22 4h4v4h-4V4Zm0 8h4v8h-8v-4h4v-4Zm-8 8h4v4h-4v-4Zm14 0h4v4h-4v-4Zm6 0h4v4h-4v-4ZM22 24h4v4h-4v-4Zm8 0h4v4h-4v-4Zm6 0h8v4h-4v4h-4v-8Zm-14 6h4v4h-4v-4Zm6 0h4v8h-4v-8Zm8 4h4v4h-4v-4Zm-4 6h4v4h-4v-4Zm8 0h4v4h-4v-4Z" />
+          </svg>
+          <span className="bbar__scan-label">SCAN</span>
+        </button>
+        <span className="bbar__right">{connPill}</span>
       </footer>
     )
   }
   return (
     <footer className="ubar ubar--bottom">
       <span className="ubar__version">GRYNX {APP_VERSION}</span>
-      {centerPill}
+      {connPill}
       <span className="ubar__secure">{conn === 'demo' ? 'LOCAL DATA' : 'ENCRYPTED · TLS'}</span>
     </footer>
   )

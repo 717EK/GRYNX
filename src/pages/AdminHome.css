@@ -115,37 +115,6 @@
   color: var(--warning);
 }
 
-/* hovering scan FAB — vertically centred on the footer status bar (~10% taller
-   than it), with a thick page-coloured ring that notches the footer so its
-   content reads around the button instead of being clipped behind it. */
-.admin__scanfab {
-  --footer-h: 48px;
-  position: absolute;
-  left: 50%;
-  /* sit on the footer band, raised just enough to hover and notch it cleanly */
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
-  transform: translateX(-50%);
-  z-index: 30;
-  width: var(--fab, 53px);
-  height: var(--fab, 53px);
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 5px solid var(--bg);
-  background: var(--brand);
-  color: var(--on-brand, #0a0a0a);
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--brand) 45%, transparent), 0 2px 6px rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-}
-.admin__scanfab svg { width: 26px; height: 26px; }
-.admin__scanfab:active {
-  transform: translateX(-50%) scale(0.94);
-}
-/* lift the stats a little so the FAB never overlaps the numbers */
-.admin__stats {
-  margin-bottom: 12px;
-}
-
 /* ====== iPad / desktop: 2x2 grid filling the height ====== */
 @media (min-width: 760px) {
   .admin {

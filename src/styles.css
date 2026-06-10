@@ -219,6 +219,40 @@ button {
 .conn--btn:active {
   transform: scale(0.96);
 }
+
+/* Scanner integrated as the hero of the footer (admin home) */
+.ubar--bottom-scan {
+  min-height: 56px;
+  align-items: center;
+}
+.bbar__scan {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 22px;
+  border: none;
+  border-radius: 12px;
+  background: var(--brand);
+  color: var(--on-brand, #0a0a0a);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--brand) 40%, transparent), 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+.bbar__scan:active {
+  transform: scale(0.96);
+}
+.bbar__scan-label {
+  line-height: 1;
+}
+.bbar__right {
+  justify-self: end;
+  min-width: 0;
+  overflow: hidden;
+}
 @media (max-width: 560px) {
   .ubar--bottom {
     font-size: 9px;
