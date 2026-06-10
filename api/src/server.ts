@@ -20,7 +20,9 @@ import { fgRoutes } from './routes/fg.js'
 import { purchaseRoutes } from './routes/purchase.js'
 import { feedbackRoutes } from './routes/feedback.js'
 
-const app = Fastify({ logger: true })
+// bodyLimit raised from Fastify's 1 MB default so feedback reports can carry a
+// screenshot + image + short voice note (base64). Client compresses images first.
+const app = Fastify({ logger: true, bodyLimit: 20 * 1024 * 1024 })
 
 // CORS_ORIGINS is a comma list; entries may use a wildcard, e.g.
 // "https://grynx.vercel.app,https://*.vercel.app" so Vercel preview deploys work.

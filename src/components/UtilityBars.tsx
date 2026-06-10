@@ -14,7 +14,7 @@ export interface SessionUser {
   id: string
 }
 
-export const APP_VERSION = 'v0.4.3'
+export const APP_VERSION = 'v0.4.4'
 
 function Brand({ inApp }: { inApp?: boolean }) {
   return (

@@ -120,8 +120,29 @@ function ReportForm({ screen, username, role, onClose }: { screen: string; usern
   function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    setErr(null)
     const reader = new FileReader()
-    reader.onload = () => setImage(typeof reader.result === 'string' ? reader.result : null)
+    reader.onload = () => {
+      const src = typeof reader.result === 'string' ? reader.result : ''
+      // downscale a full-res gallery photo so the payload stays small enough to send
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 1600
+        let { width, height } = img
+        if (Math.max(width, height) > MAX) {
+          const s = MAX / Math.max(width, height)
+          width = Math.round(width * s); height = Math.round(height * s)
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width; canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { setImage(src); return }
+        ctx.drawImage(img, 0, 0, width, height)
+        try { setImage(canvas.toDataURL('image/jpeg', 0.72)) } catch { setImage(src) }
+      }
+      img.onerror = () => setImage(src || null)
+      img.src = src
+    }
     reader.readAsDataURL(file)
   }
 

@@ -46,6 +46,14 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.4.4 — feedback image upload fix + bottom-bar polish
+- **Fixed:** attaching a gallery image to a feedback report failed to send ("could
+  not send" / stuck on "sending"). Cause was payload size — Fastify's 1 MB default
+  body limit. Raised the API limit to 20 MB **and** the client now downscales images
+  to ≤1600px / JPEG before attaching, so payloads stay small.
+- Admin home stats strip is now a **bordered rounded card** with the SCAN button
+  sized up as the hero poking out of the top.
+
 ### v0.4.3 — QC rework reroute
 - **QC rework now actually moves the job.** The inspector picks which production
   department to send a rejected job back to; that station is re-armed, every step
