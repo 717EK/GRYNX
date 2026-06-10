@@ -70,12 +70,12 @@
   color: var(--text);
 }
 
-/* ---- stats bar above the footer: a bordered card with stats flanking a
-   centred SCAN button that pokes out of the top ---- */
+/* ---- stats bar above the footer: a bordered card of 5 even cells —
+   TOTAL JOBS | IN PROGRESS | SCAN | COMPLETED | ALERTS — the SCAN button sits
+   in its own centred cell and pokes a little above the top ---- */
 .admin__statsbar {
   display: flex;
-  align-items: center; /* centre so the SCAN button can poke out of the panel */
-  gap: 6px;
+  align-items: stretch; /* full-height cells so the dividers run top-to-bottom */
   border: 1px solid var(--border);
   border-radius: 16px;
   margin: 16px 0 8px;
@@ -86,75 +86,67 @@
   position: relative;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  flex: 1;
+  flex: 2; /* two stat cells = two units */
   min-width: 0;
   text-align: left;
 }
-.admin__stats--r .stat:first-child {
+/* the SCAN cell — one unit, same width as a single stat cell */
+.admin__scancell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  overflow: visible;
 }
 .admin__scanbtn {
-  flex: 0 0 72px;
-  height: 72px;
-  align-self: center;
+  width: 56px;
+  height: 56px;
   box-sizing: border-box;
-  /* lift it so it rises above the card — the hero (bottom sits ~card bottom) */
-  margin: -20px 6px -2px;
+  margin-top: -16px; /* slight lift above the card top */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 8px 6px;
+  padding: 7px 6px;
   border: 3px solid var(--bg);
-  border-radius: 16px;
+  border-radius: 15px;
   background: var(--brand);
   color: var(--on-brand, #0a0a0a);
   cursor: pointer;
   overflow: visible;
   z-index: 3;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--brand) 45%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--brand) 32%, transparent);
   transition: transform 0.1s ease;
 }
 .admin__scanbtn:active { transform: scale(0.95) translateY(2px); }
-.admin__scanbtn svg { width: 27px; height: 27px; }
+.admin__scanbtn svg { width: 23px; height: 23px; }
 .admin__scanbtn-label {
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
+  font-size: 9px;
+  letter-spacing: 0.06em;
   line-height: 1;
   white-space: nowrap;
   color: var(--on-brand, #0a0a0a);
-}
-.admin__stats::after {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--brand);
-  transition: width 0.18s ease;
-}
-.admin__stats:hover::after {
-  width: 120px;
 }
 .stat {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 10px 8px;
+  padding: 10px 7px;
   border-left: 1px solid var(--border);
 }
 .stat:first-child {
   border-left: none;
 }
 /* inset the outer stats so they clear the card's rounded corners */
-.admin__stats:first-child .stat:first-child { padding-left: 14px; }
-.admin__stats--r .stat:last-child { padding-right: 14px; }
-/* keep every label on one line so the four stats stay symmetric */
+.admin__stats:first-child .stat:first-child { padding-left: 13px; }
+.admin__stats--r .stat:last-child { padding-right: 13px; }
+/* keep every label on one line so the cells stay symmetric */
 .stat__k {
-  font-size: 9px;
-  letter-spacing: 0.04em;
+  font-size: 8.5px;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 .stat__v {

@@ -46,6 +46,12 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.4.5 — bottom-bar: even 5-cell layout
+- Reworked the admin stats card into **five even cells** (TOTAL JOBS · IN PROGRESS ·
+  SCAN · COMPLETED · ALERTS). The SCAN button now lives in its own centred cell —
+  smaller, contained, protruding just slightly — so it no longer overlaps/clips
+  "IN PROGRESS". Dividers between every cell; subtler glow.
+
 ### v0.4.4 — feedback image upload fix + bottom-bar polish
 - **Fixed:** attaching a gallery image to a feedback report failed to send ("could
   not send" / stuck on "sending"). Cause was payload size — Fastify's 1 MB default
