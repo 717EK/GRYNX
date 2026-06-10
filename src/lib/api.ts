@@ -329,6 +329,19 @@ export const getQueue = (departmentId?: string) =>
 export const getJobs = (status?: string) =>
   DEMO ? demo.demoGetJobs() : req<{ jobs: JobDTO[] }>('GET', `/api/v1/jobs${status ? `?status=${status}` : ''}`)
 export const getJob = (id: string) => (DEMO ? demo.demoGetJob(id) : req<{ job: JobDTO }>('GET', `/api/v1/jobs/${id}`))
+
+// ── admin control-centre stats (aggregated server-side) ─────────────────────
+export interface AdminStats {
+  kpis: { totalJobs: number; active: number; inProduction: number; inQc: number; inFg: number; closureRequested: number; closed: number; unitsWip: number; openTickets: number }
+  statusMix: { status: string; count: number }[]
+  byProduct: { product: string; code: string; count: number; units: number }[]
+  throughput: { day: string; created: number; closed: number }[]
+  maintenance: { status: string; count: number }[]
+}
+export const getAdminStats = () =>
+  DEMO
+    ? Promise.resolve({ kpis: { totalJobs: 0, active: 0, inProduction: 0, inQc: 0, inFg: 0, closureRequested: 0, closed: 0, unitsWip: 0, openTickets: 0 }, statusMix: [], byProduct: [], throughput: [], maintenance: [] } as AdminStats)
+    : req<AdminStats>('GET', '/api/v1/admin/stats')
 // resolve a scanned code (jobNo or displayLabel) → full detail (admin history lookup)
 export const lookupJob = (code: string) =>
   DEMO ? demo.demoLookupJob(code) : req<{ job: JobDTO }>('GET', `/api/v1/jobs/lookup?code=${encodeURIComponent(code)}`)

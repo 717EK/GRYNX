@@ -6,6 +6,7 @@ import { prisma } from './lib/prisma.js'
 import { authRoutes } from './routes/auth.js'
 import { webauthnRoutes } from './routes/webauthn.js'
 import { deviceRoutes } from './routes/devices.js'
+import { adminRoutes } from './routes/admin.js'
 import { startEscalationSweep } from './lib/escalation.js'
 import { catalogueRoutes } from './routes/catalogue.js'
 import { jobRoutes } from './routes/jobs.js'
@@ -53,6 +54,7 @@ app.get('/health', async () => {
 await app.register(authRoutes, { prefix: '/api/v1/auth' })
 await app.register(webauthnRoutes, { prefix: '/api/v1/auth/webauthn' })
 await app.register(deviceRoutes, { prefix: '/api/v1/devices' })
+await app.register(adminRoutes, { prefix: '/api/v1/admin' })
 await app.register(catalogueRoutes, { prefix: '/api/v1' })
 await app.register(jobRoutes, { prefix: '/api/v1/jobs' })
 await app.register(scanRoutes, { prefix: '/api/v1/scan' }) // state-machine engine (docs/10)

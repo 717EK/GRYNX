@@ -6,6 +6,7 @@ import JobDetail from './JobDetail'
 import Maintenance from './Maintenance'
 import MaintenanceDetail from './MaintenanceDetail'
 import Notifications from './Notifications'
+import DesktopDashboard from './DesktopDashboard'
 import { getJobs, listPpcRequests, notificationCount, type JobDTO, type PpcRequest } from '../lib/api'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import './DesktopAdmin.css'
@@ -16,7 +17,7 @@ const STATUS_LABEL: Record<string, string> = {
 }
 const fmt = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) : '—')
 
-type Nav = 'jobs' | 'ppc'
+type Nav = 'dashboard' | 'jobs' | 'ppc'
 type Popup =
   | null
   | { kind: 'create' }
@@ -29,7 +30,7 @@ type Popup =
 // The single-page desktop admin panel: a live job board with everything else as
 // popups/drawers over it. Reuses the existing mobile screens as popup bodies.
 export default function DesktopAdmin({ user, onLock }: { user: SessionUser; onLock: () => void }) {
-  const [nav, setNav] = useState<Nav>('jobs')
+  const [nav, setNav] = useState<Nav>('dashboard')
   const [jobs, setJobs] = useState<JobDTO[] | null>(null)
   const [ppc, setPpc] = useState<PpcRequest[] | null>(null)
   const [statusFilter, setStatusFilter] = useState('active')
@@ -74,6 +75,7 @@ export default function DesktopAdmin({ user, onLock }: { user: SessionUser; onLo
       <div className="dk__body">
         {/* left nav */}
         <nav className="dk__nav">
+          <button className={`dk__navrow ${nav === 'dashboard' ? 'is-active' : ''}`} onClick={() => setNav('dashboard')}>Control Centre<span>◴</span></button>
           <button className={`dk__navrow ${nav === 'jobs' ? 'is-active' : ''}`} onClick={() => setNav('jobs')}>Job Board<span>{jobs?.length ?? ''}</span></button>
           <button className={`dk__navrow ${nav === 'ppc' ? 'is-active' : ''}`} onClick={() => setNav('ppc')}>PPC Requests<span>{ppc?.length ?? ''}</span></button>
           <button className="dk__navrow" onClick={() => setPopup({ kind: 'maintenance' })}>Maintenance<span>›</span></button>
@@ -83,7 +85,9 @@ export default function DesktopAdmin({ user, onLock }: { user: SessionUser; onLo
 
         {/* center work surface */}
         <main className="dk__main">
-          {nav === 'jobs' ? (
+          {nav === 'dashboard' ? (
+            <DesktopDashboard onOpenBoard={() => setNav('jobs')} />
+          ) : nav === 'jobs' ? (
             <>
               <div className="dk__toolbar">
                 <h1 className="dk__h1">Job Board</h1>
