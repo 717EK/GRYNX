@@ -86,7 +86,11 @@ export default function DesktopAdmin({ user, onLock }: { user: SessionUser; onLo
         {/* center work surface */}
         <main className="dk__main">
           {nav === 'dashboard' ? (
-            <DesktopDashboard onOpenBoard={() => setNav('jobs')} />
+            <DesktopDashboard
+              onFilter={(st) => { setStatusFilter(st); setNav('jobs') }}
+              onOpenItem={(i) => (i.kind === 'job' ? setPopup({ kind: 'history', jobId: i.id }) : setPopup({ kind: 'maintdetail', id: i.id }))}
+              onMaint={() => setPopup({ kind: 'maintenance' })}
+            />
           ) : nav === 'jobs' ? (
             <>
               <div className="dk__toolbar">

@@ -123,3 +123,21 @@
 .dkb__bartrack { height: 12px; background: var(--bg); border-radius: 6px; overflow: hidden; }
 .dkb__barfill { display: block; height: 100%; border-radius: 6px; }
 .dkb__barval { font-family: var(--font-display); font-weight: 700; font-size: 13px; text-align: right; }
+
+/* clickable KPI/chip buttons + attention feed */
+.dkb__kpi { text-align: left; cursor: pointer; font-family: inherit; transition: border-color 0.12s; }
+.dkb__kpi:hover:not(:disabled) { border-color: var(--brand); }
+.dkb__kpi:disabled { cursor: default; }
+.dkb__chip2 { border: none; background: transparent; cursor: pointer; font-family: inherit; padding: 2px 0; }
+.dkb__chip2:hover b { color: var(--brand); }
+.dkb__h3 small { color: var(--text-tertiary); font-weight: 400; font-size: 11px; letter-spacing: 0; text-transform: none; }
+.dkb__attn { display: flex; flex-direction: column; gap: 6px; }
+.dkb__attn-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); cursor: pointer; text-align: left; }
+.dkb__attn-row:hover { border-color: var(--brand); }
+.dkb__attn-ico { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 7px; font-size: 13px; }
+.dkb__attn-row--ticket .dkb__attn-ico { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.dkb__attn-row--job .dkb__attn-ico { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
+.dkb__attn-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.dkb__attn-main b { font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+.dkb__attn-main span { font-size: 11px; color: var(--text-secondary); }
+.dkb__attn-go { color: var(--text-tertiary); font-size: 18px; }

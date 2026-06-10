@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
+import { getAdminStats } from '../lib/api'
 import type { Screen } from '../App'
 import './AdminHome.css'
 
@@ -23,13 +25,6 @@ interface Stat {
   tone?: 'default' | 'warning'
 }
 
-const STATS: Stat[] = [
-  { k: 'Total Jobs', v: '1287' },
-  { k: 'In Progress', v: '342' },
-  { k: 'Completed', v: '945' },
-  { k: 'Alerts', v: '07', tone: 'warning' },
-]
-
 export default function AdminHome({
   user,
   onLock,
@@ -43,6 +38,20 @@ export default function AdminHome({
   onNavigate: (s: Screen) => void
   onScan: () => void
 }) {
+  // live stats (was placeholder) — real counts from the control-centre aggregate
+  const [kpi, setKpi] = useState<{ totalJobs: number; active: number; closed: number; openTickets: number } | null>(null)
+  useEffect(() => {
+    getAdminStats()
+      .then((r) => setKpi({ totalJobs: r.kpis.totalJobs, active: r.kpis.active, closed: r.kpis.closed, openTickets: r.kpis.openTickets }))
+      .catch(() => {})
+  }, [])
+  const v = (n?: number) => (kpi ? String(n ?? 0) : '—')
+  const STATS: Stat[] = [
+    { k: 'Total Jobs', v: v(kpi?.totalJobs) },
+    { k: 'In Progress', v: v(kpi?.active) },
+    { k: 'Completed', v: v(kpi?.closed) },
+    { k: 'Alerts', v: kpi ? String(kpi.openTickets).padStart(2, '0') : '—', tone: kpi && kpi.openTickets > 0 ? 'warning' : 'default' },
+  ]
   return (
     <div className="app">
       <TopBar user={user} onLock={onLock} />
