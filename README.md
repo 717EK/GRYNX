@@ -46,6 +46,12 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.6.8 — trim desktop content scale ~7% on 4K
+- On very large (4K, ~3072px) screens the dashboard fills (logo, numerals, text)
+  read a touch oversized. Trimmed every fluid **max cap** by ~7% — the `vw` ramp and
+  mins are untouched, so laptop screens (~1680px, governed by the `vw` term) are
+  pixel-identical; only the 4K end shrinks. Verified at 3072px and 1680px.
+
 ### v0.6.7 — name the job + Show Job Card
 - **Optional order name** on every job. PPC (and admins) can label a job in plain
   language — "Dubai order — 1600 sqft stage", a vendor name, etc. — so the floor
