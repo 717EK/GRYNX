@@ -252,3 +252,69 @@
 .dwm__intel .dwm__act{flex:none;}
 .dwm__rail .dwcal__list{overflow-y:auto;min-height:0;}
 .dwm .dw__c > .dwm__ttl, .dwm .dw__c > .dw__lbl{flex:none;}
+
+/* ════════ fluid content scaling ════════
+   text / numerals / graphs / padding / gaps grow with the viewport width so big
+   (4K) screens don't leave widgets looking empty. Baseline ≈ 1440px (1vw≈14.4px);
+   scales up to ~2.6× on 4K, clamped. The grid still fills edge-to-edge. */
+.dw__hi{font-size:clamp(22px,2.1vw,54px);}
+.dw__sub{font-size:clamp(12px,0.95vw,22px);margin-top:clamp(5px,0.5vw,12px);}
+.dw__search{height:clamp(40px,3.1vw,64px);width:clamp(200px,17vw,360px);padding:0 clamp(14px,1.1vw,24px);}
+.dw__search input{font-size:clamp(12px,0.95vw,20px);}
+.dw__pill{height:clamp(40px,3.1vw,64px);font-size:clamp(12px,0.95vw,20px);padding:0 clamp(16px,1.4vw,30px);}
+.dw__ic,.dw__av{width:clamp(40px,3.1vw,64px);height:clamp(40px,3.1vw,64px);}
+.dw__rail{gap:clamp(8px,0.7vw,16px);}
+.dw__i{width:clamp(38px,3vw,58px);height:clamp(38px,3vw,58px);border-radius:clamp(11px,0.9vw,18px);font-size:clamp(16px,1.3vw,26px);}
+.dw__logo{width:clamp(50px,4vw,84px);}
+
+.dwm{gap:clamp(12px,1.05vw,26px);grid-template-columns:1fr clamp(244px,19vw,420px);}
+.dwm__col{gap:clamp(10px,0.95vw,22px);}
+.dwm .dw__c{padding:clamp(13px,1.15vw,30px) clamp(14px,1.25vw,34px);border-radius:clamp(16px,1.3vw,30px);}
+.dwm__ttl,.dw__c h3{font-size:clamp(13px,1.0vw,24px);}
+.dwm .dw__lbl{font-size:clamp(8.5px,0.66vw,16px);}
+
+.dwm__intel .dwm__ttl{font-size:clamp(15px,1.12vw,30px);}
+.dwm__ins{gap:clamp(8px,0.65vw,16px);margin:clamp(11px,0.95vw,22px) 0;}
+.dwm__in{font-size:clamp(13px,0.95vw,23px);}
+.dwm__in i{width:clamp(8px,0.6vw,14px);height:clamp(8px,0.6vw,14px);}
+.dwm__act{padding:clamp(11px,0.9vw,22px) clamp(12px,1vw,24px);border-radius:clamp(11px,0.9vw,18px);}
+.dwm__act-t{font-size:clamp(9px,0.64vw,15px);}
+.dwm__act-m{font-size:clamp(13px,1.0vw,25px);}
+.dwm__act-b,.dwm__ab,.dwm__qb{font-size:clamp(11px,0.85vw,19px);padding:clamp(5px,0.5vw,11px) clamp(10px,0.95vw,22px);}
+
+.dwm__snap{gap:clamp(8px,0.7vw,18px);margin-top:clamp(10px,0.85vw,20px);}
+.dwm__si .n{font-size:clamp(34px,2.6vw,72px);}
+.dwm__si .k,.dwm__ti .k,.dwm__stg-k{font-size:clamp(8px,0.62vw,15px);}
+
+.dwm__ar{padding:clamp(9px,0.75vw,18px) 0;font-size:clamp(12px,0.92vw,22px);}
+.dwm__an{font-size:clamp(20px,1.6vw,42px);}
+
+.dwm__stg-n{font-size:clamp(24px,2.05vw,54px);}
+.dwm__stg-h{font-size:clamp(9px,0.64vw,16px);}
+.dwm__stg-k{height:auto;}
+
+.dwm__fr{font-size:clamp(12px,0.92vw,22px);padding:clamp(8px,0.65vw,16px) 0;}
+.dwm__fr time{font-size:clamp(11px,0.8vw,19px);}
+.dwm__agr{font-size:clamp(12px,0.92vw,23px);padding:clamp(9px,0.7vw,18px) 0;}
+.dwm__agd{font-size:clamp(16px,1.3vw,34px);}
+.dwm__hb{font-size:clamp(11px,0.85vw,21px);gap:clamp(8px,0.7vw,16px);}
+.dwm__hbt{height:clamp(8px,0.6vw,14px);}
+.dwm__today{gap:clamp(8px,0.6vw,16px);margin-top:clamp(10px,0.85vw,20px);}
+.dwm__ti .n{font-size:clamp(28px,2.3vw,62px);}
+.dwm__uc{font-size:clamp(11px,0.82vw,20px);padding:clamp(6px,0.55vw,13px) clamp(9px,0.8vw,18px);}
+.dwm__col svg{width:100%;height:clamp(56px,11vh,210px);}
+
+.dwm__att{}
+.dwm__attr{padding:clamp(9px,0.7vw,18px) 0;gap:clamp(9px,0.8vw,18px);}
+.dwm__atm{font-size:clamp(12px,0.92vw,23px);}
+.dwm__ats{font-size:clamp(11px,0.8vw,19px);}
+.dwm__ati{width:clamp(8px,0.65vw,15px);height:clamp(8px,0.65vw,15px);}
+.dwm__q{padding:clamp(8px,0.7vw,17px) 0;font-size:clamp(12px,0.9vw,22px);}
+.dwm__q b{font-size:clamp(16px,1.3vw,34px);}
+.dwm__ask p{font-size:clamp(12px,0.9vw,22px);}
+
+.dwm__rail .dwcal{padding:clamp(14px,1.2vw,30px);}
+.dwm__rail .dwcal__m{font-size:clamp(18px,1.45vw,38px);}
+.dwm__rail .dwcal__d{font-size:clamp(12px,0.95vw,24px);}
+.dwm__rail .dwcal__h{font-size:clamp(9px,0.66vw,16px);}
+.dwm__rail .dwcal__evt,.dwm__rail .dwcal__day{font-size:clamp(11px,0.85vw,20px);}
