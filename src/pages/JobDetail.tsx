@@ -9,7 +9,7 @@ const STATUS_LABEL: Record<string, string> = {
   close_requested: 'Closure Requested', closed: 'Closed', cancelled: 'Cancelled', draft: 'Draft', pending_approval: 'Pending',
 }
 const stepState = (s: string) =>
-  s === 'completed' ? 'done' : s === 'in_progress' || s === 'waiting_acceptance' ? 'current' : s === 'on_hold' ? 'hold' : 'pending'
+  s === 'completed' ? 'done' : s === 'skipped' ? 'skipped' : s === 'in_progress' || s === 'waiting_acceptance' ? 'current' : s === 'on_hold' ? 'hold' : 'pending'
 
 function stamp(iso?: string | null) {
   if (!iso) return ''
@@ -113,7 +113,7 @@ export default function JobDetail({
                     const st = stepState(s.status)
                     return (
                       <div key={s.id} className={`step step--${st}`}>
-                        <span className="step__node">{st === 'done' ? '✓' : i + 1}</span>
+                        <span className="step__node">{st === 'done' ? '✓' : st === 'skipped' ? '✕' : i + 1}</span>
                         <span className="step__label mono-label">{s.department.name}</span>
                       </div>
                     )

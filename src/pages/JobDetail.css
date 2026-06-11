@@ -96,6 +96,19 @@
   border-color: var(--warning);
   color: var(--warning);
 }
+/* skipped (forced past) — red ✕ marker */
+.step--skipped .step__node {
+  background: color-mix(in srgb, var(--danger, #e5503a) 14%, transparent);
+  border-color: var(--danger, #e5503a);
+  color: var(--danger, #e5503a);
+}
+.step--skipped .step__label {
+  color: var(--danger, #e5503a);
+}
+.step--skipped::before {
+  background: var(--danger, #e5503a);
+  opacity: 0.5;
+}
 
 /* meta cells */
 .jd__meta {

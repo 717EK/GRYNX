@@ -163,14 +163,23 @@ export async function scanRoutes(app: FastifyInstance) {
             if (r.count !== 1) throw new ConflictError() // a concurrent scan won
           }
 
-          // complete the prior in-progress step (attributed to this scanner, at scan time)
-          if (prior) {
-            await bump(prior.id, prior.version, {
-              status: 'completed',
-              completedAt: body.clientTs,
-              completedById: user.sub,
-            })
-            await tx.jobEvent.create({ data: { jobId: job.id, jobStepId: prior.id, type: 'completed', actorId: user.sub, body: prior.department.name } })
+          if (arrivable) {
+            // normal advance — just complete the prior in-progress step
+            if (prior) {
+              await bump(prior.id, prior.version, { status: 'completed', completedAt: body.clientTs, completedById: user.sub })
+              await tx.jobEvent.create({ data: { jobId: job.id, jobStepId: prior.id, type: 'completed', actorId: user.sub, body: prior.department.name } })
+            }
+          } else {
+            // forced (out-of-sequence) advance — settle EVERY earlier unfinished step:
+            // the station the job was actually at → completed (green); the jumped-over
+            // stations → skipped (red ✗). Otherwise the job's "current" would still
+            // resolve to the earliest unfinished step (looked stuck at Design).
+            for (const s of steps) {
+              if (s.sequence >= scanned.sequence || s.status === 'completed' || s.status === 'skipped') continue
+              const skipped = s.status === 'pending'
+              await bump(s.id, s.version, { status: skipped ? 'skipped' : 'completed', completedAt: body.clientTs, completedById: user.sub })
+              await tx.jobEvent.create({ data: { jobId: job.id, jobStepId: s.id, type: skipped ? 'forced_advance' : 'completed', actorId: user.sub, body: skipped ? `Skipped · ${s.department.name}` : s.department.name } })
+            }
           }
 
           // start the scanned step
