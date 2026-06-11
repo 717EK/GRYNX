@@ -346,6 +346,7 @@ export interface StationVisit {
 export interface QueueJob extends JobDTO {
   stepStatus?: string
   slaDueAt?: string | null
+  atProduction?: boolean // QC queue: job still in Production, QC can receive it
 }
 export const getQueue = (departmentId?: string) =>
   DEMO
@@ -637,6 +638,8 @@ export const getQcQueue = () =>
   DEMO ? Promise.resolve({ jobs: [] as QueueJob[] }) : req<{ jobs: QueueJob[] }>('GET', '/api/v1/qc/queue')
 export const qcApprove = (jobId: string, notes?: string) =>
   DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/qc/${jobId}/approve`, notes ? { notes } : {})
+export const qcReceive = (jobId: string) =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/qc/${jobId}/receive`)
 // pipeline-v2: rework targets are production STATIONS (or none = back to Production)
 export const getReworkTargets = (jobId: string) =>
   DEMO ? Promise.resolve({ stations: [] as Station[] }) : req<{ stations: Station[] }>('GET', `/api/v1/qc/${jobId}/rework-targets`)

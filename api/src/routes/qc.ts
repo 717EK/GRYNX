@@ -19,18 +19,53 @@ const jobBrief = {
 export async function qcRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate)
 
-  // jobs at QC (arrived / in progress)
+  // jobs QC can act on: already at QC, plus jobs still IN PRODUCTION (so QC can
+  // receive them in when they physically arrive — pipeline-v2 has no QC arm-scan).
   app.get('/queue', async () => {
     const steps = await prisma.jobStep.findMany({
       where: {
-        department: { code: 'QC' },
-        status: { in: ['waiting_acceptance', 'in_progress'] },
+        OR: [
+          { department: { code: 'QC' }, status: { in: ['waiting_acceptance', 'in_progress'] } },
+          { department: { code: 'PRODUCTION' }, status: 'in_progress' },
+        ],
         job: { status: { notIn: ['closed', 'cancelled'] } },
       },
-      orderBy: [{ status: 'asc' }, { slaDueAt: 'asc' }],
-      select: { status: true, job: { select: jobBrief } },
+      orderBy: [{ slaDueAt: 'asc' }],
+      select: { status: true, department: { select: { code: true } }, job: { select: jobBrief } },
     })
-    return { jobs: steps.map((s) => ({ ...s.job, stepStatus: s.status })) }
+    return { jobs: steps.map((s) => ({ ...s.job, stepStatus: s.status, atProduction: s.department.code === 'PRODUCTION' })) }
+  })
+
+  // QC receives a job out of Production → completes Production (auto-outs any open
+  // station visits) and opens QC. (Equivalent to a QC arrival gate-scan.)
+  app.post('/:jobId/receive', { preHandler: requireRole('admin', 'qc') }, async (req, reply) => {
+    const { jobId } = z.object({ jobId: z.string().uuid() }).parse(req.params)
+    const actorId = (req.user as AccessPayload).sub
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      select: {
+        steps: { orderBy: { sequence: 'asc' }, select: { id: true, status: true, department: { select: { code: true } } } },
+        stationVisits: { where: { scanOutAt: null }, select: { id: true } },
+      },
+    })
+    if (!job) return reply.code(404).send({ error: 'not_found' })
+    const prod = job.steps.find((s) => s.department.code === 'PRODUCTION')
+    const qcStep = job.steps.find((s) => s.department.code === 'QC')
+    if (!prod || prod.status !== 'in_progress') return reply.code(409).send({ error: 'not_in_production' })
+    const now = new Date()
+    const dueAt = await acceptanceDueAt()
+    await prisma.$transaction(async (tx) => {
+      for (const v of job.stationVisits) {
+        await tx.stationVisit.updateMany({ where: { id: v.id, scanOutAt: null }, data: { scanOutAt: now, scanOutMode: 'auto', version: { increment: 1 } } })
+      }
+      if (job.stationVisits.length) await tx.jobEvent.create({ data: { jobId, type: 'station_out', actorId, body: '★ auto-out on QC receive' } })
+      await tx.jobStep.update({ where: { id: prod.id }, data: { status: 'completed', completedAt: now, completedById: actorId, version: { increment: 1 } } })
+      if (qcStep) await tx.jobStep.update({ where: { id: qcStep.id }, data: { status: 'in_progress', acceptedAt: now, acceptedById: actorId, slaDueAt: dueAt, version: { increment: 1 } } })
+      await tx.job.update({ where: { id: jobId }, data: { status: 'in_qc', version: { increment: 1 } } })
+      await tx.jobEvent.create({ data: { jobId, jobStepId: prod.id, type: 'completed', actorId, body: 'Production' } })
+      await writeAudit('job', jobId, 'qc_receive', { actorId, after: { status: 'in_qc' }, tx })
+    })
+    return { ok: true }
   })
 
   // approve → completes QC, arms FG, records the inspection

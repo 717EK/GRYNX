@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import { getQcQueue, qcApprove, qcRework, getReworkTargets, type QueueJob, type Station } from '../lib/api'
+import { getQcQueue, qcApprove, qcRework, qcReceive, getReworkTargets, type QueueJob, type Station } from '../lib/api'
 import ReportButton from '../components/ReportButton'
 import './Maintenance.css'
 import './DeptHome.css'
@@ -16,6 +16,7 @@ export default function QcHome({
 }) {
   const [jobs, setJobs] = useState<QueueJob[] | null>(null)
   const [active, setActive] = useState<QueueJob | null>(null)
+  const [recv, setRecv] = useState<string | null>(null)
 
   async function load() {
     try {
@@ -28,6 +29,11 @@ export default function QcHome({
   useEffect(() => {
     void load()
   }, [])
+
+  async function receive(j: QueueJob) {
+    setRecv(j.id)
+    try { await qcReceive(j.id); await load() } catch { /* ignore */ } finally { setRecv(null) }
+  }
 
   return (
     <div className="app">
@@ -50,16 +56,31 @@ export default function QcHome({
             <ul className="dh__list">
               {jobs.map((j) => (
                 <li key={j.id}>
-                  <button className="dh__row" onClick={() => setActive(j)}>
-                    <span className="dh__main">
-                      <span className="dh__label display">{j.displayLabel}</span>
-                      <span className="dh__meta mono-label">{j.product?.name} · {j.totalQty} units</span>
-                    </span>
-                    <span className="dh__right">
-                      {j.priority === 'urgent' && <span className="dh__tag dh__tag--urgent mono-label">URGENT</span>}
-                      <span className="dh__tag dh__tag--info mono-label">{j.stepStatus === 'in_progress' ? 'HERE' : 'ARRIVING'}</span>
-                    </span>
-                  </button>
+                  {j.atProduction ? (
+                    <div className="dh__row">
+                      <span className="dh__main">
+                        <span className="dh__label display">{j.name || j.displayLabel}</span>
+                        <span className="dh__meta mono-label">{j.product?.name} · {j.totalQty} units · in production</span>
+                      </span>
+                      <span className="dh__right">
+                        {j.priority === 'urgent' && <span className="dh__tag dh__tag--urgent mono-label">URGENT</span>}
+                        <button className="btn btn--solid" style={{ padding: '6px 12px', fontSize: 12 }} disabled={recv === j.id} onClick={() => receive(j)}>
+                          {recv === j.id ? '…' : '↓ Receive'}
+                        </button>
+                      </span>
+                    </div>
+                  ) : (
+                    <button className="dh__row" onClick={() => setActive(j)}>
+                      <span className="dh__main">
+                        <span className="dh__label display">{j.name || j.displayLabel}</span>
+                        <span className="dh__meta mono-label">{j.product?.name} · {j.totalQty} units</span>
+                      </span>
+                      <span className="dh__right">
+                        {j.priority === 'urgent' && <span className="dh__tag dh__tag--urgent mono-label">URGENT</span>}
+                        <span className="dh__tag dh__tag--info mono-label">AT QC</span>
+                      </span>
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
