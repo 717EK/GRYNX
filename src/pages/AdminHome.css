@@ -75,11 +75,13 @@
    in its own centred cell and pokes a little above the top ---- */
 /* exact spec: 780px bar (4×160 blocks + 140 centre) · 64px tall · 16px radius ·
    SCAN 108×88 protruding 24px from the centre · 42px dividers · 10px to footer */
+/* Responsive: fills the screen width (never the old fixed-780 overflow). 5 parts —
+   4 equal stat sections (flex 2 = two each) + a centre scan reserve (flex 1.2 ≈ 23%). */
 .admin__statsbar {
   display: flex;
-  align-items: stretch;       /* full-height cells (64px) so SCAN can anchor to the bottom */
-  width: 780px;
-  max-width: 100%;
+  align-items: stretch;       /* full-height cells so SCAN can anchor to the bottom */
+  width: 100%;
+  max-width: 520px;
   height: 64px;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -91,7 +93,7 @@
   position: relative;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  flex: 1 1 320px;            /* two 160px blocks */
+  flex: 2;                    /* two equal stat sections */
   min-width: 0;
   text-align: center;
   background: none;           /* kill the default <button> chrome */
@@ -101,16 +103,16 @@
   color: inherit;
   cursor: pointer;
 }
-/* reserved 140px centre for the SCAN button */
+/* centre reserve for the SCAN button — ~1.2× a stat section */
 .admin__scancell {
   position: relative;
-  flex: 0 0 140px;
+  flex: 1.2;
   display: flex;
-  align-items: flex-end;     /* button bottom sits on the bar bottom → top protrudes */
+  align-items: flex-end;     /* button bottom on the bar bottom → top protrudes */
   justify-content: center;
   overflow: visible;
 }
-/* 42px dividers, vertically centred */
+/* 38px dividers, vertically centred */
 .stat { position: relative; }
 .stat:not(:first-child)::before,
 .admin__scancell::before,
@@ -120,7 +122,7 @@
   top: 50%;
   transform: translateY(-50%);
   width: 1px;
-  height: 42px;
+  height: 38px;
   background: var(--border);
 }
 .stat:not(:first-child)::before { left: 0; }
@@ -128,15 +130,15 @@
 .admin__scancell::after { right: 0; }
 
 .admin__scanbtn {
-  width: 108px;
-  height: 88px;
+  width: 74px;
+  height: 80px;              /* taller than the 64px bar → protrudes ~16px */
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 8px;
+  gap: 3px;
+  padding: 7px 5px;
   border: 3px solid var(--bg);
   border-radius: 14px;
   background: var(--brand);
@@ -148,10 +150,10 @@
   transition: transform 0.1s ease;
 }
 .admin__scanbtn:active { transform: scale(0.96) translateY(2px); }
-.admin__scanbtn svg { width: 30px; height: 30px; }
+.admin__scanbtn svg { width: 26px; height: 26px; }
 .admin__scanbtn-label {
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: 9px;
+  letter-spacing: 0.06em;
   line-height: 1;
   white-space: nowrap;
   color: var(--on-brand, #0a0a0a);
@@ -162,16 +164,16 @@
   align-items: center;        /* value centred directly beneath label */
   justify-content: center;
   gap: 4px;
-  padding: 10px 7px;
+  padding: 9px 4px;
 }
-/* labels 10px / 2px tracking · values 22px / 700 */
+/* labels 8px so the longest ("IN PROGRESS") fits the ~69px phone section · value 20px */
 .stat__k {
-  font-size: 10px;
-  letter-spacing: 2px;
+  font-size: 8px;
+  letter-spacing: 0.3px;
   white-space: nowrap;
 }
 .stat__v {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
