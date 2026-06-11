@@ -316,7 +316,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
 
       {popup && (
         <div className="dw__overlay" onMouseDown={closePopup}>
-          <div className={`dw__frame ${popup.kind === 'history' ? 'dw__frame--drawer' : (popup.kind === 'create' || popup.kind === 'review') ? 'dw__frame--wide' : ''}`} onMouseDown={(e) => e.stopPropagation()}>
+          <div className="dw__frame dw__frame--wide" onMouseDown={(e) => e.stopPropagation()}>
             <button className="dw__close" onClick={closePopup} aria-label="Close">×</button>
             {popup.kind === 'create' && <CreateJob user={user} onBack={closePopup} onLock={onLock} />}
             {popup.kind === 'review' && <PpcReviewSheet user={user} request={popup.req} mode="admin" onBack={closePopup} onLock={onLock} onDone={closePopup} />}
