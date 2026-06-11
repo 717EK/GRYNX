@@ -320,3 +320,11 @@
 .dwm__rail .dwcal__d{font-size:clamp(12px,0.95vw,22px);}
 .dwm__rail .dwcal__h{font-size:clamp(9px,0.66vw,15px);}
 .dwm__rail .dwcal__evt,.dwm__rail .dwcal__day{font-size:clamp(11px,0.85vw,19px);}
+
+/* pipeline-v2: production-station occupancy strip under Live Pipeline */
+.dwm__stations { margin-top: clamp(10px, 0.9vw, 18px); border-top: 1px solid var(--line, #e7e1d3); padding-top: clamp(8px, 0.7vw, 14px); }
+.dwm__strow { display: grid; grid-template-columns: repeat(6, 1fr); gap: clamp(6px, 0.5vw, 12px); }
+.dwm__stcell { text-align: center; padding: clamp(6px, 0.5vw, 12px) 4px; border-radius: clamp(8px, 0.7vw, 14px); background: color-mix(in srgb, var(--ink, #2a2a2a) 4%, transparent); }
+.dwm__stcell.is-busy { background: color-mix(in srgb, var(--lime, #84cc16) 18%, transparent); }
+.dwm__stcell-n { font-size: clamp(18px, 1.5vw, 34px); font-weight: 800; font-family: var(--display, inherit); line-height: 1; }
+.dwm__stcell-k { font-size: clamp(8px, 0.6vw, 13px); color: var(--ink-soft, #6b6453); margin-top: 3px; letter-spacing: .02em; }

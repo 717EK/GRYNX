@@ -135,6 +135,16 @@ export async function adminRoutes(app: FastifyInstance) {
     const holds = holdGroups.map((g) => ({ code: g.reasonCode, label: HOLD_LABEL[g.reasonCode] ?? g.reasonCode, count: g._count._all })).sort((a, b) => b.count - a.count)
     const urgent = urgentJobs.map((j) => ({ id: j.id, label: j.displayLabel }))
 
+    // pipeline-v2: live production-station occupancy (jobs with an OPEN visit)
+    const openVisits = await prisma.stationVisit.groupBy({
+      by: ['stationId'],
+      where: { scanOutAt: null, job: { status: { notIn: ['closed', 'cancelled'] } } },
+      _count: { _all: true },
+    })
+    const visitCountOf = Object.fromEntries(openVisits.map((g) => [g.stationId, g._count._all]))
+    const stationRows = await prisma.station.findMany({ orderBy: { sortOrder: 'asc' }, select: { id: true, name: true } })
+    const stations = stationRows.map((s) => ({ name: s.name, wip: visitCountOf[s.id] ?? 0 }))
+
     // attention feed — what needs an admin's eyes, most urgent first
     const overdueMins = (d: Date | null) => (d ? Math.max(0, Math.round((Date.now() - d.getTime()) / 60000)) : 0)
     const attention = [
@@ -170,6 +180,7 @@ export async function adminRoutes(app: FastifyInstance) {
       attention,
       snapshot,
       pipeline,
+      stations,
       aging,
       holds,
       urgent,

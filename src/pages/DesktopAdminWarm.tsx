@@ -75,6 +75,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
   const maxDept = Math.max(...(stats?.byDepartment ?? []).map((d) => d.count), 1)
   const snap = stats?.snapshot
   const pipeline = stats?.pipeline ?? []
+  const stations = stats?.stations ?? []
   const maxPipe = Math.max(...pipeline.map((p) => p.count), 1)
   const bottleneck = [...pipeline].sort((a, b) => b.count - a.count)[0]
   const maxHold = Math.max(...(stats?.holds ?? []).map((h) => h.count), 1)
@@ -166,6 +167,19 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
                         <div className="dwm__stg-h">{s.hold > 0 ? `${s.hold} hold` : ' '}</div>
                       </button>
                     ))}
+                  </div>
+                )}
+                {stations.length > 0 && (
+                  <div className="dwm__stations">
+                    <div className="dw__lbl" style={{ marginBottom: 6 }}>Production stations · live (open scans)</div>
+                    <div className="dwm__strow">
+                      {stations.map((s) => (
+                        <div key={s.name} className={`dwm__stcell ${s.wip > 0 ? 'is-busy' : ''}`}>
+                          <div className="dwm__stcell-n">{s.wip}</div>
+                          <div className="dwm__stcell-k">{s.name}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
