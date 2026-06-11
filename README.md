@@ -46,6 +46,12 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.6.1 — fit-to-viewport desktop (single page, no scroll)
+- The desktop admin is now a **fixed 1440×812 reference design scaled as one unit**
+  to fill any screen — identical layout on every desktop (no more per-screen
+  reflow), one page, **no scroll**. Removed the viewport media queries that fought
+  the scaling; fixed the header wrap/overlap. Verified at 840px and 1536px.
+
 ### v0.6.0 — mission-control desktop dashboard
 - Rebuilt the desktop admin dashboard as a dense **"Factory Mission Control"** —
   GRYNX Intelligence (synthesized insights + suggested action), Production Snapshot,

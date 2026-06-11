@@ -10,9 +10,17 @@
   --disp:"Saira Condensed",sans-serif; --mono:"Space Mono",monospace; --sans:"Inter",system-ui,sans-serif;
 
   position:fixed; inset:0; background:var(--paper); color:var(--ink);
-  font-family:var(--sans); display:grid; grid-template-columns:72px 1fr; overflow:hidden;
+  font-family:var(--sans); overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
 }
 .dw *{box-sizing:border-box;}
+/* fixed reference design — scaled as one unit to fill any screen (single page, no
+   scroll, identical layout everywhere). REF must match REF_W/REF_H in the component. */
+.dw__stage{
+  width:1440px; height:812px; flex:none;
+  display:grid; grid-template-columns:72px 1fr;
+  transform-origin:center center;
+}
 
 /* icon rail */
 .dw__rail{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 0;}
@@ -23,10 +31,10 @@
 .dw__i .pip{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--red);}
 .dw__rail-sp{flex:1;}
 
-/* main */
-.dw__main{padding:24px 28px 8px 6px;overflow-y:auto;}
-.dw__head{display:flex;align-items:flex-start;gap:18px;margin-bottom:20px;}
-.dw__hi{font-family:var(--disp);font-weight:800;font-size:34px;line-height:1;letter-spacing:-.01em;}
+/* main — fills the stage height, no scroll */
+.dw__main{height:812px;padding:20px 26px 18px 8px;overflow:hidden;display:flex;flex-direction:column;}
+.dw__head{display:flex;align-items:center;gap:18px;margin-bottom:16px;flex:none;}
+.dw__hi{font-family:var(--disp);font-weight:800;font-size:30px;line-height:1.05;letter-spacing:-.01em;white-space:nowrap;}
 .dw__sub{color:var(--ink2);font-size:13px;margin-top:7px;}
 .dw__sub b{color:var(--ink);} .dw__red{color:var(--red);font-weight:700;}
 .dw__head-r{margin-left:auto;display:flex;align-items:center;gap:11px;}
@@ -148,12 +156,12 @@
 .dw__frame .app{height:100%;}
 .dw__frame--drawer{width:520px;}
 .dw__close{position:absolute;top:10px;right:12px;z-index:5;width:30px;height:30px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;font-size:18px;cursor:pointer;}
-@media (max-width:1180px){ .dw__bento{grid-template-columns:1fr 1fr;} .dwcal{grid-column:span 2;grid-row:auto;} .dw__hero,.dw__chart{grid-column:span 2;} }
 
 /* ════════ mission control dashboard ════════ */
-.dwm{display:grid;grid-template-columns:1fr 296px;gap:16px;align-items:start;padding-bottom:24px;}
-.dwm__col{display:grid;grid-template-columns:1.55fr 1fr 1fr;gap:14px;align-items:start;}
+.dwm{flex:1;min-height:0;display:grid;grid-template-columns:1fr 300px;gap:14px;align-items:stretch;}
+.dwm__col{display:grid;grid-template-columns:1.55fr 1fr 1fr;grid-template-rows:1.25fr 0.78fr 1.32fr 1.05fr;gap:12px;min-height:0;}
 .dwm__s3{grid-column:1 / -1;}
+.dwm .dw__c{padding:14px 16px;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
 .dwm__ttl{font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;margin:0;}
 
 /* intelligence (dark signature) */
@@ -221,7 +229,10 @@
 .dwm__uc{background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);border:1px solid color-mix(in srgb,var(--red) 30%,transparent);border-radius:9px;padding:7px 10px;font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;}
 
 /* right rail */
-.dwm__rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:0;}
+.dwm__rail{display:flex;flex-direction:column;gap:12px;min-height:0;}
+.dwm__rail .dw__c{overflow:hidden;}
+.dwm__rail .dwcal{flex:1;min-height:0;display:flex;flex-direction:column;}
+.dwm__rail .dwcal__list{flex:1;}
 .dwm__att{display:flex;flex-direction:column;margin-top:8px;}
 .dwm__attr{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);background:none;border-left:none;border-right:none;border-bottom:none;width:100%;cursor:pointer;text-align:left;font-family:var(--sans);}
 .dwm__attr:first-of-type{border-top:none;}
@@ -233,4 +244,7 @@
 .dwm__ask{background:var(--dark);color:#efe9dc;border:none;}
 .dwm__ask .dwm__ttl{color:#fff;}
 .dwm__ask p{font-size:12px;color:#bdb6a6;margin:8px 0 0;line-height:1.6;}
-@media (max-width:1180px){ .dwm{grid-template-columns:1fr;} .dwm__col{grid-template-columns:1fr 1fr;} .dwm__intel,.dwm__pipe-card{grid-column:1 / -1;} }
+/* no viewport media queries inside the stage — it's a fixed 1440px design scaled to fit */
+
+/* job board / ppc views scroll within the fixed-height stage */
+.dw__view{flex:1;min-height:0;overflow-y:auto;}
