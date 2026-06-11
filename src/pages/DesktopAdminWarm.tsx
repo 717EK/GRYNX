@@ -73,6 +73,12 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
   const prevWk = tp.slice(-14, -7).reduce((s, d) => s + d.created, 0)
   const delta = prevWk ? Math.round(((wk - prevWk) / prevWk) * 100) : 0
   const maxDept = Math.max(...(stats?.byDepartment ?? []).map((d) => d.count), 1)
+  const snap = stats?.snapshot
+  const pipeline = stats?.pipeline ?? []
+  const maxPipe = Math.max(...pipeline.map((p) => p.count), 1)
+  const bottleneck = [...pipeline].sort((a, b) => b.count - a.count)[0]
+  const maxHold = Math.max(...(stats?.holds ?? []).map((h) => h.count), 1)
+  const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 
   return (
     <div className="dw">
@@ -106,78 +112,152 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         </header>
 
         {nav === 'dashboard' && (
-          <section className="dw__bento">
-            {/* HERO */}
-            <div className="dw__c dw__hero">
-              <div className="dw__hero-main">
-                <span className="dw__lbl">Floor status · live</span>
-                <div className="dw__num" onClick={() => { setStatusFilter('active'); setNav('jobs') }}>{k?.active ?? '—'}<small>active jobs</small></div>
-                <div className="dw__chips">
-                  <button className="dw__chip" onClick={() => { setStatusFilter('in_production'); setNav('jobs') }}><b>{k?.inProduction ?? 0}</b>In Production</button>
-                  <button className="dw__chip" onClick={() => { setStatusFilter('in_qc'); setNav('jobs') }}><b>{k?.inQc ?? 0}</b>In QC</button>
-                  <button className="dw__chip" onClick={() => { setStatusFilter('in_fg'); setNav('jobs') }}><b>{k?.inFg ?? 0}</b>In FG Stock</button>
-                  <span className="dw__chip"><b>{k?.unitsWip ?? 0}</b>units WIP</span>
+          <section className="dwm">
+            <div className="dwm__col">
+              {/* GRYNX INTELLIGENCE */}
+              <div className="dw__c dwm__intel">
+                <h3 className="dwm__ttl">✦ GRYNX Intelligence <span className="dw__lbl" style={{ color: '#a59e8e' }}>live</span></h3>
+                <div className="dwm__ins">
+                  {(k?.overdue ?? 0) > 0 && <div className="dwm__in"><i style={{ background: '#e5503a' }} /><span><b>{k!.overdue} job{k!.overdue > 1 ? 's' : ''} overdue</b> — past stage SLA on the floor</span></div>}
+                  {bottleneck && bottleneck.count >= 4 && <div className="dwm__in"><i style={{ background: '#e6962b' }} /><span><b>{bottleneck.department} overloaded</b> — {bottleneck.count} jobs (bottleneck forming)</span></div>}
+                  {(snap?.onHold ?? 0) > 0 && <div className="dwm__in"><i style={{ background: '#e6962b' }} /><span><b>{snap!.onHold} on hold</b> — awaiting material / machine / approval</span></div>}
+                  {((k?.pendingPpc ?? 0) > 0 || (k?.closureRequested ?? 0) > 0) && <div className="dwm__in"><i style={{ background: '#84cc16' }} /><span>{k!.pendingPpc} awaiting approval · {k!.closureRequested} closure{k!.closureRequested === 1 ? '' : 's'} pending sign-off</span></div>}
+                  {stats && (k?.overdue ?? 0) === 0 && (snap?.onHold ?? 0) === 0 && (!bottleneck || bottleneck.count < 4) && <div className="dwm__in"><i style={{ background: '#84cc16' }} /><span>Floor running clean — nothing flagged right now.</span></div>}
+                </div>
+                {stats?.attention?.[0] && (
+                  <div className="dwm__act">
+                    <div><div className="dwm__act-t">Suggested action</div><div className="dwm__act-m">{stats.attention[0].label} — {stats.attention[0].sub}</div></div>
+                    <button className="dwm__act-b" onClick={() => openAttn(stats.attention[0])}>Open ›</button>
+                  </div>
+                )}
+              </div>
+
+              {/* PRODUCTION SNAPSHOT */}
+              <div className="dw__c">
+                <span className="dw__lbl">Production snapshot</span>
+                <div className="dwm__snap">
+                  <button className="dwm__si" style={{ background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0 }} onClick={() => { setStatusFilter('active'); setNav('jobs') }}><div className="n">{snap?.active ?? '—'}</div><div className="k">Active</div></button>
+                  <div className="dwm__si hold"><div className="n">{snap?.onHold ?? 0}</div><div className="k">On Hold</div></div>
+                  <div className="dwm__si urg"><div className="n">{snap?.urgent ?? 0}</div><div className="k">Urgent</div></div>
+                  <button className="dwm__si" style={{ background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0 }} onClick={() => { setStatusFilter('in_qc'); setNav('jobs') }}><div className="n">{snap?.inQc ?? 0}</div><div className="k">In QC</div></button>
                 </div>
               </div>
-              <div className="dw__spark">
-                <span className="dw__delta" style={delta < 0 ? { background: 'rgba(229,80,58,.16)', color: '#a3271a' } : undefined}>{delta >= 0 ? '▲' : '▼'} {Math.abs(delta)}% wk</span>
-                <svg width="150" height="74" viewBox="0 0 150 74" style={{ marginTop: 10 }}>
-                  <defs><linearGradient id="dwg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#84cc16" stopOpacity=".35" /><stop offset="1" stopColor="#84cc16" stopOpacity="0" /></linearGradient></defs>
-                  <path d={linePath(tp.map((d) => d.created), 150, 74) + ' L150,74 L0,74 Z'} fill="url(#dwg)" stroke="none" />
-                  <path d={linePath(tp.map((d) => d.created), 150, 74)} fill="none" stroke="#84cc16" strokeWidth="2.5" />
+
+              {/* PENDING APPROVALS */}
+              <div className="dw__c">
+                <span className="dw__lbl">Pending approvals</span>
+                <div className="dwm__apr">
+                  <div className="dwm__ar"><span>PPC Requests</span><span className="dwm__av"><span className="dwm__an">{k?.pendingPpc ?? 0}</span><button className="dwm__ab" onClick={() => setNav('ppc')}>Review ›</button></span></div>
+                  <div className="dwm__ar"><span>Closures</span><span className="dwm__av"><span className="dwm__an">{k?.closureRequested ?? 0}</span><button className="dwm__ab" onClick={() => { setStatusFilter('close_requested'); setNav('jobs') }}>Sign ›</button></span></div>
+                  <div className="dwm__ar"><span>Maintenance</span><span className="dwm__av"><span className="dwm__an">{k?.openTickets ?? 0}</span><button className="dwm__ab" onClick={() => setPopup({ kind: 'maintenance' })}>Open ›</button></span></div>
+                </div>
+              </div>
+
+              {/* LIVE PIPELINE */}
+              <div className="dw__c dwm__s3 dwm__pipe-card">
+                <h3 className="dwm__ttl">Live Pipeline <span className="dw__lbl">jobs at each stage · click to open</span></h3>
+                {pipeline.length === 0 ? <div className="dw__empty">No pipeline data.</div> : (
+                  <div className="dwm__pipe">
+                    {pipeline.map((s) => (
+                      <button key={s.code} className={`dwm__stg ${bottleneck && s.code === bottleneck.code && s.count >= 4 ? 'bot' : ''}`} onClick={() => { setStatusFilter('active'); setNav('jobs') }}>
+                        <div className="dwm__stg-k">{s.department}</div>
+                        <div className="dwm__stg-n">{s.count}</div>
+                        <div className="dwm__stg-h">{s.hold > 0 ? `${s.hold} hold` : ' '}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* FACTORY FEED */}
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Live Factory Feed</h3>
+                <div className="dwm__feed">
+                  {!stats ? <div className="dw__empty">Loading…</div> : stats.recentActivity.length === 0 ? <div className="dw__empty">No activity yet.</div> : stats.recentActivity.slice(0, 5).map((a) => (
+                    <div key={a.id} className="dwm__fr"><time>{fmtTime(a.at)}</time><span><b>{a.label}</b> {a.text}</span></div>
+                  ))}
+                </div>
+              </div>
+
+              {/* AGING */}
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Aging Jobs <span className="dw__lbl">longest at station</span></h3>
+                <div className="dwm__age">
+                  {!stats ? <div className="dw__empty">Loading…</div> : stats.aging.length === 0 ? <div className="dw__empty">Nothing aging.</div> : stats.aging.slice(0, 4).map((a) => (
+                    <button key={a.id} className="dwm__agr" onClick={() => openJob(a.id)}><span>{a.label} · {a.dept}</span><span className="dwm__agd">{a.days}d</span></button>
+                  ))}
+                </div>
+              </div>
+
+              {/* HOLD ANALYSIS */}
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Hold Analysis</h3>
+                {!stats || stats.holds.length === 0 ? <div className="dw__empty">No active holds.</div> : (
+                  <div className="dwm__hold">
+                    {stats.holds.map((h) => {
+                      const col = h.code === 'material' ? '#e6962b' : h.code === 'breakdown' ? '#e5503a' : h.code === 'resource' ? '#3b82c4' : '#9a9384'
+                      return <div key={h.code} className="dwm__hb"><span>{h.label}</span><span className="dwm__hbt"><span className="dwm__hbf" style={{ width: `${(h.count / maxHold) * 100}%`, background: col }} /></span><span className="dwm__hbn">{h.count}</span></div>
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* TODAY */}
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Today <span className="dw__lbl">on the floor</span></h3>
+                <div className="dwm__today">
+                  <div className="dwm__ti"><div className="n">{k?.closureRequested ?? 0}</div><div className="k">Closures</div></div>
+                  <div className="dwm__ti"><div className="n">{k?.inQc ?? 0}</div><div className="k">In QC</div></div>
+                  <div className="dwm__ti"><div className="n">{k?.completedToday ?? 0}</div><div className="k">Done</div></div>
+                </div>
+              </div>
+
+              {/* URGENT */}
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Urgent Jobs <span className="dw__lbl">always visible</span></h3>
+                {!stats || stats.urgent.length === 0 ? <div className="dw__empty">No urgent jobs.</div> : (
+                  <div className="dwm__urg">{stats.urgent.map((u) => <button key={u.id} className="dwm__uc" onClick={() => openJob(u.id)}>{u.label}</button>)}</div>
+                )}
+              </div>
+
+              {/* THROUGHPUT mini */}
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Throughput <span className="dw__lbl">14d · {delta >= 0 ? '▲' : '▼'}{Math.abs(delta)}%</span></h3>
+                <div className="dw__legend" style={{ marginTop: 6 }}><span><i style={{ background: '#84cc16' }} />Created</span><span><i style={{ background: '#15605a' }} />Closed</span></div>
+                <svg width="100%" height="64" viewBox="0 0 300 64" preserveAspectRatio="none" style={{ marginTop: 6 }}>
+                  <path d={linePath(tp.map((d) => d.created), 300, 64)} fill="none" stroke="#84cc16" strokeWidth="2.5" />
+                  <path d={linePath(tp.map((d) => d.closed), 300, 64)} fill="none" stroke="#15605a" strokeWidth="2.5" />
                 </svg>
               </div>
             </div>
 
-            {/* CALENDAR */}
-            <CalendarWidget onOpenJob={openJob} />
-
-            {/* KPI minis */}
-            <div className="dw__c"><span className="dw__lbl">Completed today</span><div className="dw__kv">{k?.completedToday ?? '—'}</div><div className="dw__ksub">jobs closed today</div></div>
-            <div className={`dw__c ${(k?.overdue ?? 0) > 0 ? 'alert' : ''}`}><span className="dw__lbl">Overdue (SLA)</span><div className="dw__kv">{k?.overdue ?? '—'}</div><div className="dw__ksub">past stage time</div></div>
-
-            {/* THROUGHPUT */}
-            <div className="dw__c dw__chart">
-              <div className="dw__hd"><h3>Throughput — created vs closed</h3><span className="dw__lbl">14 days</span></div>
-              <div className="dw__legend"><span><i style={{ background: '#84cc16' }} />Created</span><span><i style={{ background: '#15605a' }} />Closed</span></div>
-              <svg width="100%" height="120" viewBox="0 0 560 120" preserveAspectRatio="none" style={{ marginTop: 8 }}>
-                <path d={linePath(tp.map((d) => d.created), 560, 120)} fill="none" stroke="#84cc16" strokeWidth="2.5" />
-                <path d={linePath(tp.map((d) => d.closed), 560, 120)} fill="none" stroke="#15605a" strokeWidth="2.5" />
-              </svg>
-            </div>
-
-            {/* ATTENTION */}
-            <div className="dw__c dw__attn">
-              <div className="dw__hd"><h3>Needs attention</h3><span className="dw__lbl">{stats?.attention.length ?? 0}</span></div>
-              <div style={{ marginTop: 10 }}>
-                {!stats ? <div className="dw__empty">Loading…</div> : stats.attention.length === 0 ? <div className="dw__empty">✓ Nothing needs you.</div> : stats.attention.slice(0, 5).map((a) => (
-                  <button key={a.kind + a.id} className="dw__arow" onClick={() => openAttn(a)}>
-                    <span className={`dw__ai ${a.kind === 'ticket' ? 'r' : 'a'}`}>{a.kind === 'ticket' ? '⚠' : '◷'}</span>
-                    <span><div className="dw__am">{a.label}</div><div className="dw__as">{a.sub}</div></span>
-                    <span className="dw__ago">›</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* DEPT LOAD */}
-            <div className="dw__c dw__chart">
-              <div className="dw__hd"><h3>Department load</h3><span className="dw__lbl">jobs at station now</span></div>
-              {!stats || stats.byDepartment.length === 0 ? <div className="dw__empty">No jobs at stations.</div> : (
-                <div className="dw__bars">
-                  {stats.byDepartment.slice(0, 6).map((d) => (
-                    <div key={d.code} className="dw__bar" onClick={() => { setStatusFilter('active'); setNav('jobs') }}>
-                      <span>{d.department}</span>
-                      <span className="dw__bart"><span className="dw__barf" style={{ width: `${(d.count / maxDept) * 100}%` }} /></span>
-                      <span className="dw__barn">{d.count}</span>
-                    </div>
+            {/* RIGHT RAIL */}
+            <aside className="dwm__rail">
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Needs Attention <span className="dw__lbl">{stats?.attention.length ?? 0}</span></h3>
+                <div className="dwm__att">
+                  {!stats ? <div className="dw__empty">Loading…</div> : stats.attention.length === 0 ? <div className="dw__empty">✓ Nothing needs you.</div> : stats.attention.slice(0, 6).map((a) => (
+                    <button key={a.kind + a.id} className="dwm__attr" onClick={() => openAttn(a)}>
+                      <span className="dwm__ati" style={{ background: a.kind === 'ticket' ? '#e5503a' : '#e6962b' }} />
+                      <span><div className="dwm__atm">{a.label}</div><div className="dwm__ats">{a.sub}</div></span>
+                    </button>
                   ))}
                 </div>
-              )}
-            </div>
-
-            {/* OPEN TICKETS */}
-            <div className="dw__c kpi" onClick={() => setPopup({ kind: 'maintenance' })}><span className="dw__lbl">Open tickets</span><div className="dw__kv">{k?.openTickets ?? '—'}</div><div className="dw__ksub">maintenance · tap to open</div></div>
+              </div>
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Admin Queue</h3>
+                <div style={{ marginTop: 6 }}>
+                  <div className="dwm__q"><span>PPC Requests<b>{k?.pendingPpc ?? 0}</b></span><button className="dwm__qb" onClick={() => setNav('ppc')}>Review</button></div>
+                  <div className="dwm__q"><span>Closures<b>{k?.closureRequested ?? 0}</b></span><button className="dwm__qb" onClick={() => { setStatusFilter('close_requested'); setNav('jobs') }}>Sign off</button></div>
+                  <div className="dwm__q"><span>Maintenance<b>{k?.openTickets ?? 0}</b></span><button className="dwm__qb" onClick={() => setPopup({ kind: 'maintenance' })}>Open</button></div>
+                </div>
+              </div>
+              <div className="dw__c dwm__ask">
+                <h3 className="dwm__ttl">✦ Ask GRYNX <span className="dw__lbl" style={{ color: '#a59e8e' }}>soon</span></h3>
+                <p>"Which jobs are waiting for QC?"<br />"What should I review today?"<br />"Which department causes most holds?"</p>
+              </div>
+              <CalendarWidget onOpenJob={openJob} />
+            </aside>
           </section>
         )}
 

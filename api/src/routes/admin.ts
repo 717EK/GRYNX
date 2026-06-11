@@ -17,7 +17,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
 
-    const [statusGroups, productGroups, maintGroups, wip, openTickets, recent, products, deptGroups, departments, closureJobs, escalated, onHold, overdueCount, overdueList, completedToday, activity, overdueByDept, onHoldByDept, pendingPpc, pendingUsers] = await Promise.all([
+    const [statusGroups, productGroups, maintGroups, wip, openTickets, recent, products, deptGroups, departments, closureJobs, escalated, onHold, overdueCount, overdueList, completedToday, activity, overdueByDept, onHoldByDept, urgentJobs, agingSteps, holdGroups, pendingPpc, pendingUsers] = await Promise.all([
       prisma.job.groupBy({ by: ['status'], _count: { _all: true } }),
       prisma.job.groupBy({ by: ['productId'], _count: { _all: true }, _sum: { totalQty: true } }),
       prisma.maintenanceTicket.groupBy({ by: ['status'], _count: { _all: true } }),
@@ -32,7 +32,7 @@ export async function adminRoutes(app: FastifyInstance) {
       // actively being worked (in_progress), so a job isn't double-counted at both
       // its current station and the next-armed station
       prisma.jobStep.groupBy({ by: ['departmentId'], where: { status: StepStatus.in_progress, job: { status: { in: ACTIVE } } }, _count: { _all: true } }),
-      prisma.department.findMany({ select: { id: true, code: true, name: true } }),
+      prisma.department.findMany({ select: { id: true, code: true, name: true, sortOrder: true } }),
       // attention feed
       prisma.job.findMany({ where: { status: 'close_requested' }, select: { id: true, displayLabel: true }, orderBy: { updatedAt: 'desc' }, take: 6 }),
       prisma.maintenanceTicket.findMany({ where: { escalationLevel: { gte: 1 }, status: { notIn: ['closed'] } }, select: { id: true, ticketNo: true, locationText: true }, orderBy: { escalationLevel: 'desc' }, take: 6 }),
@@ -47,6 +47,10 @@ export async function adminRoutes(app: FastifyInstance) {
       // per-department health: overdue + on-hold step counts
       prisma.jobStep.groupBy({ by: ['departmentId'], where: { status: { in: AT_STATION }, slaDueAt: { lt: new Date() }, job: { status: { in: ACTIVE } } }, _count: { _all: true } }),
       prisma.jobStep.groupBy({ by: ['departmentId'], where: { status: 'on_hold' }, _count: { _all: true } }),
+      // mission-control: urgent active jobs, aging (longest at current station), hold reasons
+      prisma.job.findMany({ where: { priority: 'urgent', status: { in: ACTIVE } }, select: { id: true, displayLabel: true }, orderBy: { createdAt: 'asc' }, take: 8 }),
+      prisma.jobStep.findMany({ where: { status: StepStatus.in_progress, job: { status: { in: ACTIVE } } }, select: { acceptedAt: true, job: { select: { id: true, displayLabel: true } }, department: { select: { name: true } } }, orderBy: { acceptedAt: 'asc' }, take: 6 }),
+      prisma.hold.groupBy({ by: ['reasonCode'], where: { resolvedAt: null }, _count: { _all: true } }),
       // menu badges
       prisma.ppcRequest.count({ where: { status: 'submitted' } }),
       prisma.user.count({ where: { status: 'pending' } }),
@@ -115,6 +119,22 @@ export async function adminRoutes(app: FastifyInstance) {
       at: e.createdAt.toISOString(),
     }))
 
+    // ── mission-control widgets ───────────────────────────────────────────────
+    const onHoldTotal = onHoldByDept.reduce((n, g) => n + g._count._all, 0)
+    const snapshot = { active, onHold: onHoldTotal, urgent: urgentJobs.length, inQc: sc('in_qc') }
+    // live pipeline — every stage in flow order, with WIP + holds
+    const pipeline = [...departments]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((d) => ({ code: d.code, department: d.name, count: loadOf[d.id] ?? 0, hold: holdOf[d.id] ?? 0 }))
+    // aging — active jobs sitting longest at their current station
+    const ageDays = (d: Date | null) => (d ? Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400_000)) : 0)
+    const aging = agingSteps
+      .map((s) => ({ id: s.job.id, label: s.job.displayLabel, dept: s.department.name, days: ageDays(s.acceptedAt) }))
+      .sort((a, b) => b.days - a.days)
+    const HOLD_LABEL: Record<string, string> = { material: 'Material Wait', breakdown: 'Machine Issue', approval: 'Approval', resource: 'Manpower', other: 'Other' }
+    const holds = holdGroups.map((g) => ({ code: g.reasonCode, label: HOLD_LABEL[g.reasonCode] ?? g.reasonCode, count: g._count._all })).sort((a, b) => b.count - a.count)
+    const urgent = urgentJobs.map((j) => ({ id: j.id, label: j.displayLabel }))
+
     // attention feed — what needs an admin's eyes, most urgent first
     const overdueMins = (d: Date | null) => (d ? Math.max(0, Math.round((Date.now() - d.getTime()) / 60000)) : 0)
     const attention = [
@@ -148,6 +168,11 @@ export async function adminRoutes(app: FastifyInstance) {
       throughput: days.map((d) => ({ day: d.day, created: d.created, closed: d.closed })),
       maintenance,
       attention,
+      snapshot,
+      pipeline,
+      aging,
+      holds,
+      urgent,
     }
   })
 

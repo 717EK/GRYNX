@@ -46,6 +46,16 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.6.0 — mission-control desktop dashboard
+- Rebuilt the desktop admin dashboard as a dense **"Factory Mission Control"** —
+  GRYNX Intelligence (synthesized insights + suggested action), Production Snapshot,
+  Pending Approvals, **Live Pipeline** (stage flow with auto-flagged bottleneck),
+  Factory Feed, Aging Jobs, Hold Analysis, Today, Urgent, plus a persistent
+  Needs-Attention / Admin-Queue / Ask-GRYNX rail + demoted calendar. Fills the space.
+- `/admin/stats` extended with snapshot / pipeline / aging / hold-by-reason / urgent.
+
+### v0.5.2 — bottom-bar responsive 5-part layout (fits phone width)
+
 ### v0.5.1 — bottom-bar exact spec + D-LYFT logo
 - Statistics bar refined to spec: 780px bar / 64px tall / 16px radius, 160px stat
   blocks, 22px·700 values centred under 10px·2px labels, 42px dividers, SCAN button

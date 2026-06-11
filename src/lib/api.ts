@@ -356,10 +356,15 @@ export interface AdminStats {
   throughput: { day: string; created: number; closed: number }[]
   maintenance: { status: string; count: number }[]
   attention: AttentionItem[]
+  snapshot: { active: number; onHold: number; urgent: number; inQc: number }
+  pipeline: { code: string; department: string; count: number; hold: number }[]
+  aging: { id: string; label: string; dept: string; days: number }[]
+  holds: { code: string; label: string; count: number }[]
+  urgent: { id: string; label: string }[]
 }
 export const getAdminStats = () =>
   DEMO
-    ? Promise.resolve({ kpis: { totalJobs: 0, active: 0, inProduction: 0, inQc: 0, inFg: 0, closureRequested: 0, closed: 0, unitsWip: 0, openTickets: 0, overdue: 0, completedToday: 0, pendingPpc: 0, pendingUsers: 0 }, statusMix: [], byProduct: [], byDepartment: [], departmentHealth: [], recentActivity: [], throughput: [], maintenance: [], attention: [] } as AdminStats)
+    ? Promise.resolve({ kpis: { totalJobs: 0, active: 0, inProduction: 0, inQc: 0, inFg: 0, closureRequested: 0, closed: 0, unitsWip: 0, openTickets: 0, overdue: 0, completedToday: 0, pendingPpc: 0, pendingUsers: 0 }, statusMix: [], byProduct: [], byDepartment: [], departmentHealth: [], recentActivity: [], throughput: [], maintenance: [], attention: [], snapshot: { active: 0, onHold: 0, urgent: 0, inQc: 0 }, pipeline: [], aging: [], holds: [], urgent: [] } as AdminStats)
     : req<AdminStats>('GET', '/api/v1/admin/stats')
 
 export interface CalendarDay { active: number; closed: number; jobs: { id: string; label: string; status: string; kind: 'active' | 'closed' }[] }
