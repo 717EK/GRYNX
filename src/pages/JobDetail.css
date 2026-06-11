@@ -284,3 +284,28 @@
     white-space: normal;
   }
 }
+
+/* ── pipeline-v2: production station trail + material need tags ── */
+.jd__trail { display: flex; flex-direction: column; gap: 8px; }
+.jd__visit {
+  border: 1px solid var(--border, #e5e0d2);
+  border-left: 3px solid var(--brand, #84cc16);
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: var(--card, #fff);
+}
+.jd__visit--open { border-left-color: var(--warn, #e6962b); }
+.jd__visit-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.jd__visit-head b { font-size: 14px; }
+.jd__visit-remark { display: block; margin-top: 4px; font-size: 13px; color: var(--text-secondary, #6b6453); }
+.jd__visit-photo { margin-top: 6px; max-height: 120px; border-radius: 8px; }
+.jd__mtag {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  padding: 1px 7px; border-radius: 999px; vertical-align: middle;
+  background: color-mix(in srgb, var(--brand, #84cc16) 16%, transparent);
+  color: var(--brand-ink, #4d7c0f);
+}
+.jd__mtag--needed { background: color-mix(in srgb, #e6962b 18%, transparent); color: #b4690e; }
+.jd__mtag--ordered { background: color-mix(in srgb, #3b82f6 16%, transparent); color: #2563eb; }
+.jd__mtag--received { background: color-mix(in srgb, #84cc16 18%, transparent); color: #4d7c0f; }
+.jd__mtag--cancelled { background: #eee; color: #888; }

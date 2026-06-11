@@ -138,6 +138,44 @@ export default function JobDetail({
                 <span className="jd__scannote mono-label">ⓘ Stations advance this job by scanning its barcode — admins don’t complete steps.</span>
               </div>
 
+              {/* pipeline-v2: production station trail (free / parallel scans) */}
+              {(job.stationVisits?.length ?? 0) > 0 && (
+                <div className="jd__section">
+                  <span className="jd__section-title mono-label">Production Trail ({job.stationVisits!.length})</span>
+                  <div className="jd__trail">
+                    {job.stationVisits!.map((v) => (
+                      <div key={v.id} className={`jd__visit ${v.scanOutAt ? '' : 'jd__visit--open'}`}>
+                        <div className="jd__visit-head">
+                          <b>{v.station.name}</b>
+                          <span className="mono-label">
+                            {stamp(v.scanInAt)?.split(' ').slice(2).join(' ')}
+                            {v.scanOutAt ? ` → ${stamp(v.scanOutAt)?.split(' ').slice(2).join(' ')}${v.scanOutMode === 'auto' ? ' ★' : ''}` : ' · open'}
+                          </span>
+                        </div>
+                        {v.remark && <span className="jd__visit-remark">{v.remark}</span>}
+                        {v.photoUrl && <img className="jd__visit-photo" src={v.photoUrl} alt="" />}
+                      </div>
+                    ))}
+                  </div>
+                  <span className="jd__scannote mono-label">★ = station never scanned out (auto-closed).</span>
+                </div>
+              )}
+
+              {/* pipeline-v2: parallel material / purchase needs */}
+              {(job.materialRequests?.length ?? 0) > 0 && (
+                <div className="jd__section">
+                  <span className="jd__section-title mono-label">Material Needs ({job.materialRequests!.length})</span>
+                  <div className="jd__matlist">
+                    {job.materialRequests!.map((m) => (
+                      <div key={m.id} className="jd__matline">
+                        <b>{m.item}{m.quantity ? ` · ${m.quantity}` : ''} <span className={`jd__mtag jd__mtag--${m.status}`}>{m.status}</span></b>
+                        <span className="mono-label">{[m.vendor && `vendor: ${m.vendor}`, m.note].filter(Boolean).join(' · ') || '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* raw-material genealogy */}
               {materials.length > 0 && (
                 <div className="jd__section">
