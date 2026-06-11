@@ -9,7 +9,7 @@ const RAW_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
 export const DEMO = !RAW_BASE
 const BASE = (RAW_BASE ?? '').replace(/\/$/, '')
 
-export type RoleName = 'admin' | 'ppc' | 'dept_head' | 'qc' | 'fg_stock' | 'maintenance'
+export type RoleName = 'admin' | 'ppc' | 'sales' | 'dept_head' | 'qc' | 'fg_stock' | 'maintenance'
 export interface Role {
   role: RoleName
   departmentId: string | null
