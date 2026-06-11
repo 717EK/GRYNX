@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma.js'
 import { authenticate, requireRole, type AccessPayload } from '../lib/auth.js'
 import { writeAudit } from '../lib/audit.js'
 import { notifyDepartment, notifyAdmins } from '../lib/notify.js'
-import { acceptanceDueAt } from '../lib/sla.js'
+import { acceptanceDueAt, stationDueAt } from '../lib/sla.js'
 
 const jobBrief = {
   id: true,
@@ -63,62 +63,68 @@ export async function qcRoutes(app: FastifyInstance) {
     return { ok: true }
   })
 
-  // production departments a job can be sent back to on rework (steps before QC)
-  app.get('/:jobId/rework-targets', { preHandler: requireRole('admin', 'qc') }, async (req, reply) => {
-    const { jobId } = z.object({ jobId: z.string().uuid() }).parse(req.params)
-    const job = await prisma.job.findUnique({
-      where: { id: jobId },
-      select: { steps: { orderBy: { sequence: 'asc' }, select: { sequence: true, departmentId: true, department: { select: { code: true, name: true } } } } },
-    })
-    if (!job) return reply.code(404).send({ error: 'not_found' })
-    const qcSeq = job.steps.find((s) => s.department.code === 'QC')?.sequence ?? Infinity
-    const targets = job.steps
-      .filter((s) => s.sequence < qcSeq && s.department.code !== 'FG_STOCK')
-      .map((s) => ({ departmentId: s.departmentId, code: s.department.code, name: s.department.name }))
-    return { targets }
+  // pipeline-v2: rework goes back to PRODUCTION. QC may aim it at a specific
+  // station (reworkStationId) or leave it for the production head to route.
+  app.get('/:jobId/rework-targets', { preHandler: requireRole('admin', 'qc') }, async (_req, reply) => {
+    const stations = await prisma.station.findMany({ orderBy: { sortOrder: 'asc' }, select: { id: true, code: true, name: true } })
+    // null target = "back to Production — head decides which station"
+    return { stations }
   })
 
-  // rework → reroute the job back to a chosen production department, then it
-  // re-flows up to QC. Resets the target station (re-armed) + everything between
-  // it and QC; records the inspection; notifies the floor + admins.
+  // rework → reopen PRODUCTION (the job re-flows: stations re-scan, then QC pulls it
+  // back). Records the inspection with the issue note + optional defect photo and an
+  // optional target station; notifies the floor + admins.
   app.post('/:jobId/rework', { preHandler: requireRole('admin', 'qc') }, async (req, reply) => {
     const { jobId } = z.object({ jobId: z.string().uuid() }).parse(req.params)
-    const body = z.object({ notes: z.string().min(1).max(500), toDepartmentId: z.string().uuid() }).safeParse(req.body)
-    if (!body.success) return reply.code(400).send({ error: 'bad_request', detail: 'notes + toDepartmentId required' })
+    const body = z
+      .object({
+        notes: z.string().min(1).max(500),
+        reworkStationId: z.string().uuid().optional(), // specific station, else back to Production
+        photoUrl: z.string().max(3_000_000).optional(), // defect photo (data URL)
+      })
+      .safeParse(req.body)
+    if (!body.success) return reply.code(400).send({ error: 'bad_request', detail: 'notes required' })
     const actorId = (req.user as AccessPayload).sub
     const job = await prisma.job.findUnique({
       where: { id: jobId },
       select: {
-        displayLabel: true, version: true,
-        steps: { orderBy: { sequence: 'asc' }, select: { id: true, sequence: true, status: true, version: true, departmentId: true, department: { select: { code: true, name: true } } } },
+        displayLabel: true,
+        totalQty: true,
+        steps: { orderBy: { sequence: 'asc' }, select: { id: true, status: true, version: true, departmentId: true, department: { select: { code: true, name: true } } } },
       },
     })
     if (!job) return reply.code(404).send({ error: 'not_found' })
     const qcStep = job.steps.find((s) => s.department.code === 'QC')
+    const prodStep = job.steps.find((s) => s.department.code === 'PRODUCTION')
     if (!qcStep || (qcStep.status !== 'in_progress' && qcStep.status !== 'waiting_acceptance'))
       return reply.code(409).send({ error: 'not_at_qc' })
-    const target = job.steps.find((s) => s.departmentId === body.data.toDepartmentId && s.sequence < qcStep.sequence)
-    if (!target) return reply.code(400).send({ error: 'invalid_target_department' })
+    if (!prodStep) return reply.code(409).send({ error: 'no_production_step' })
 
-    const dueAt = await acceptanceDueAt()
+    let targetStation: { id: string; name: string } | null = null
+    if (body.data.reworkStationId) {
+      targetStation = await prisma.station.findUnique({ where: { id: body.data.reworkStationId }, select: { id: true, name: true } })
+      if (!targetStation) return reply.code(400).send({ error: 'invalid_target_station' })
+    }
+    const where = targetStation ? ` → ${targetStation.name}` : ' → Production (head decides)'
+
+    const dueAt = await stationDueAt(job.totalQty)
     await prisma.$transaction(async (tx) => {
-      // re-arm the target station; reset every step between it and QC (inclusive) to pending
-      for (const s of job.steps) {
-        if (s.sequence < target.sequence || s.sequence > qcStep.sequence) continue
-        const reset = { acceptedAt: null, acceptedById: null, completedAt: null, completedById: null }
-        if (s.id === target.id) {
-          await tx.jobStep.update({ where: { id: s.id }, data: { ...reset, status: 'waiting_acceptance', slaDueAt: dueAt, version: { increment: 1 } } })
-        } else {
-          await tx.jobStep.update({ where: { id: s.id }, data: { ...reset, status: 'pending', slaDueAt: null, version: { increment: 1 } } })
-        }
-      }
+      // reopen PRODUCTION, reset QC back to pending
+      await tx.jobStep.update({
+        where: { id: prodStep.id },
+        data: { status: 'in_progress', completedAt: null, completedById: null, slaDueAt: dueAt, version: { increment: 1 } },
+      })
+      await tx.jobStep.update({
+        where: { id: qcStep.id },
+        data: { status: 'pending', acceptedAt: null, acceptedById: null, completedAt: null, completedById: null, slaDueAt: null, version: { increment: 1 } },
+      })
       await tx.job.update({ where: { id: jobId }, data: { status: 'in_production', version: { increment: 1 } } })
-      await tx.qcInspection.create({ data: { jobId, result: 'rework', inspectorId: actorId, notes: body.data.notes } })
-      await tx.jobEvent.create({ data: { jobId, jobStepId: qcStep.id, type: 'qc_result', actorId, body: `rework → ${target.department.name}: ${body.data.notes}` } })
-      await notifyDepartment(tx, target.departmentId, { type: 'new_job', jobId, body: `Rework: ${job.displayLabel} sent back to ${target.department.name} — ${body.data.notes}` })
-      await notifyAdmins(tx, { type: 'escalation', body: `QC rework on ${job.displayLabel} → ${target.department.name}: ${body.data.notes}`, jobId })
-      await writeAudit('job', jobId, 'qc_rework', { actorId, after: { sentBackTo: target.department.code, notes: body.data.notes }, tx })
+      await tx.qcInspection.create({ data: { jobId, result: 'rework', inspectorId: actorId, notes: body.data.notes, photoUrl: body.data.photoUrl ?? null, reworkStationId: targetStation?.id ?? null } })
+      await tx.jobEvent.create({ data: { jobId, jobStepId: qcStep.id, type: 'qc_result', actorId, body: `rework${where}: ${body.data.notes}` } })
+      await notifyDepartment(tx, prodStep.departmentId, { type: 'new_job', jobId, body: `Rework: ${job.displayLabel} back to Production${targetStation ? ` (${targetStation.name})` : ''} — ${body.data.notes}` })
+      await notifyAdmins(tx, { type: 'escalation', body: `QC rework on ${job.displayLabel}${where}: ${body.data.notes}`, jobId })
+      await writeAudit('job', jobId, 'qc_rework', { actorId, after: { reworkStation: targetStation?.name ?? null, notes: body.data.notes }, tx })
     })
-    return { ok: true, sentBackTo: target.department.name }
+    return { ok: true, sentBackTo: targetStation?.name ?? 'Production' }
   })
 }
