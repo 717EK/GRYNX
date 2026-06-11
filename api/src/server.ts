@@ -18,6 +18,7 @@ import { notificationRoutes } from './routes/notifications.js'
 import { qcRoutes } from './routes/qc.js'
 import { fgRoutes } from './routes/fg.js'
 import { purchaseRoutes } from './routes/purchase.js'
+import { salesRoutes } from './routes/sales.js'
 import { feedbackRoutes } from './routes/feedback.js'
 
 // bodyLimit raised from Fastify's 1 MB default so feedback reports can carry a
@@ -68,6 +69,7 @@ await app.register(notificationRoutes, { prefix: '/api/v1/notifications' })
 await app.register(qcRoutes, { prefix: '/api/v1/qc' })
 await app.register(fgRoutes, { prefix: '/api/v1/fg' })
 await app.register(purchaseRoutes, { prefix: '/api/v1/purchase' })
+await app.register(salesRoutes, { prefix: '/api/v1/sales' })
 await app.register(feedbackRoutes, { prefix: '/api/v1/feedback' })
 
 const port = Number(process.env.PORT ?? 4000)
