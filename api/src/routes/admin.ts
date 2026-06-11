@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { z } from 'zod'
 import { JobStatus, StepStatus } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { authenticate, requireRole } from '../lib/auth.js'
@@ -148,5 +149,38 @@ export async function adminRoutes(app: FastifyInstance) {
       maintenance,
       attention,
     }
+  })
+
+  // Calendar: active jobs on their start date, closed jobs on completion date.
+  app.get('/calendar', { preHandler: requireRole('admin') }, async (req) => {
+    const q = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/).optional() }).parse(req.query)
+    const now = new Date()
+    const [y, m] = q.month ? q.month.split('-').map(Number) : [now.getUTCFullYear(), now.getUTCMonth() + 1]
+    const start = new Date(Date.UTC(y, m - 1, 1))
+    const end = new Date(Date.UTC(y, m, 1))
+
+    const [active, closed] = await Promise.all([
+      prisma.job.findMany({
+        where: { status: { in: ACTIVE }, OR: [{ startDate: { gte: start, lt: end } }, { startDate: null, createdAt: { gte: start, lt: end } }] },
+        select: { id: true, displayLabel: true, status: true, startDate: true, createdAt: true },
+      }),
+      prisma.job.findMany({
+        where: { status: 'closed', completionDate: { gte: start, lt: end } },
+        select: { id: true, displayLabel: true, completionDate: true },
+      }),
+    ])
+
+    type Day = { active: number; closed: number; jobs: { id: string; label: string; status: string; kind: 'active' | 'closed' }[] }
+    const days: Record<string, Day> = {}
+    const key = (d: Date) => d.toISOString().slice(0, 10)
+    const add = (dateStr: string, job: { id: string; displayLabel: string; status?: string }, kind: 'active' | 'closed') => {
+      const day = (days[dateStr] ??= { active: 0, closed: 0, jobs: [] })
+      day[kind]++
+      if (day.jobs.length < 16) day.jobs.push({ id: job.id, label: job.displayLabel, status: job.status ?? 'closed', kind })
+    }
+    for (const j of active) add(key(j.startDate ?? j.createdAt), j, 'active')
+    for (const j of closed) if (j.completionDate) add(key(j.completionDate), j, 'closed')
+
+    return { month: `${y}-${String(m).padStart(2, '0')}`, days }
   })
 }

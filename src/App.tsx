@@ -6,7 +6,6 @@ import CreateJob from './pages/CreateJob'
 import JobHub from './pages/JobHub'
 import PpcReviewSheet from './pages/PpcReviewSheet'
 import PpcInbox from './pages/PpcInbox'
-import DesktopAdmin from './pages/DesktopAdmin'
 import Departments from './pages/Departments'
 import Maintenance from './pages/Maintenance'
 import JobStatus from './pages/JobStatus'
@@ -28,6 +27,7 @@ import BiometricEnroll from './components/BiometricEnroll'
 import JobCardModal from './components/JobCardModal'
 import { registerNav } from './lib/nav'
 import FeedbackFab from './components/FeedbackFab'
+import DesktopAdminWarm from './pages/DesktopAdminWarm'
 import type { SessionUser } from './components/UtilityBars'
 import { getUser, isAuthed, logout, getDepartments, getPpcRequest, type ApiUser, type PpcRequest, type Notification } from './lib/api'
 
@@ -350,7 +350,7 @@ export default function App() {
   if (wide && user.role === 'ADMIN') {
     return (
       <>
-        <DesktopAdmin user={user} onLock={handleLock} />
+        <DesktopAdminWarm user={user} onLock={handleLock} />
         <FeedbackFab screen="desktop-admin" username={getUser()?.username} role={user.role} />
         <UpdatePrompt />
       </>

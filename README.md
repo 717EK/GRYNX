@@ -46,6 +46,16 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.5.0 — warm "Work OS" desktop admin + calendar
+- New **desktop admin console** (`DesktopAdminWarm`) in a warm-paper bento theme
+  (scoped to desktop admin only; the floor/mobile app stays dark): slim icon rail,
+  greeting header, hero "Floor status" numeral, KPI tiles, throughput + department-
+  load widgets, and a live **Needs-attention** feed — all wired to `/admin/stats`.
+- **Calendar widget** — month grid marking **active jobs** (start date) and **closed
+  jobs** (completion date); month navigation + click a day to list/open that day's
+  jobs. Backed by a new `/admin/calendar` endpoint.
+- Verified the layout with the headless screenshot harness before shipping.
+
 ### v0.4.6 — bottom-bar matches reference (verified via headless screenshot)
 - Cell content is **centre-aligned** (labels + numbers); tightened the label type so
   "IN PROGRESS" fits without clipping; SCAN button sized to 60px in its own cell.

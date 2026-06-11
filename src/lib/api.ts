@@ -361,6 +361,12 @@ export const getAdminStats = () =>
   DEMO
     ? Promise.resolve({ kpis: { totalJobs: 0, active: 0, inProduction: 0, inQc: 0, inFg: 0, closureRequested: 0, closed: 0, unitsWip: 0, openTickets: 0, overdue: 0, completedToday: 0, pendingPpc: 0, pendingUsers: 0 }, statusMix: [], byProduct: [], byDepartment: [], departmentHealth: [], recentActivity: [], throughput: [], maintenance: [], attention: [] } as AdminStats)
     : req<AdminStats>('GET', '/api/v1/admin/stats')
+
+export interface CalendarDay { active: number; closed: number; jobs: { id: string; label: string; status: string; kind: 'active' | 'closed' }[] }
+export interface CalendarData { month: string; days: Record<string, CalendarDay> }
+export const getCalendar = (month?: string) =>
+  DEMO ? Promise.resolve({ month: month ?? '', days: {} } as CalendarData)
+       : req<CalendarData>('GET', `/api/v1/admin/calendar${month ? `?month=${month}` : ''}`)
 // resolve a scanned code (jobNo or displayLabel) → full detail (admin history lookup)
 export const lookupJob = (code: string) =>
   DEMO ? demo.demoLookupJob(code) : req<{ job: JobDTO }>('GET', `/api/v1/jobs/lookup?code=${encodeURIComponent(code)}`)
