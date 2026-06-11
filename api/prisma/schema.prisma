@@ -344,6 +344,7 @@ model Setting {
 model PpcRequest {
   id                 String            @id @default(uuid())
   requestNo          String            @unique // PR-0001
+  name               String? // optional human label, e.g. "Dubai order — 1600 sqft stage"
   productId          String
   priority           Priority          @default(normal)
   pipelineTemplateId String?
@@ -374,6 +375,7 @@ model Job {
   id                     String            @id @default(uuid())
   jobNo                  String            @unique // opaque immutable key
   displayLabel           String // AT-U-045-060626-001 (regenerable)
+  name                   String? // optional human label carried from the PPC request
   jobType                JobType           @default(production)
   productId              String
   priority               Priority          @default(normal)

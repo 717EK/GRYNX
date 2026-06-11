@@ -10,6 +10,7 @@ import { createJobFromInput } from '../lib/jobCreate.js'
 
 const createSchema = z.object({
   productId: z.string().uuid(),
+  name: z.string().max(120).optional(),
   priority: z.enum(['normal', 'urgent']).default('normal'),
   startDate: z.coerce.date().optional(),
   targetDate: z.coerce.date().optional(),
@@ -33,6 +34,7 @@ async function applyEdit(tx: Prisma.TransactionClient, id: string, input: z.infe
     where: { id },
     data: {
       productId: input.productId,
+      name: input.name?.trim() || null,
       priority: input.priority,
       startDate: input.startDate ?? null,
       targetDate: input.targetDate ?? null,
@@ -45,6 +47,7 @@ async function applyEdit(tx: Prisma.TransactionClient, id: string, input: z.infe
 const requestSelect = {
   id: true,
   requestNo: true,
+  name: true,
   priority: true,
   status: true,
   startDate: true,
@@ -87,6 +90,7 @@ export async function ppcRoutes(app: FastifyInstance) {
       const r = await tx.ppcRequest.create({
         data: {
           requestNo: `PR-${String(seq).padStart(4, '0')}`,
+          name: input.name?.trim() || null,
           productId: product.id,
           priority: input.priority,
           startDate: input.startDate ?? null,
@@ -153,7 +157,7 @@ export async function ppcRoutes(app: FastifyInstance) {
     if (r.status !== 'submitted') return reply.code(409).send({ error: 'awaiting_ppc', status: r.status })
 
     const result = await createJobFromInput(
-      { productId: r.productId, priority: r.priority, startDate: r.startDate, models: r.models.map((m) => ({ modelId: m.modelId, size: m.size, quantity: m.quantity })) },
+      { productId: r.productId, name: r.name, priority: r.priority, startDate: r.startDate, models: r.models.map((m) => ({ modelId: m.modelId, size: m.size, quantity: m.quantity })) },
       { actorId, source: 'ppc', ppcRequestId: id },
     )
     if (!result.ok) return reply.code(result.status).send({ error: result.error })

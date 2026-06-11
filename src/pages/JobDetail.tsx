@@ -87,8 +87,8 @@ export default function JobDetail({
         <header className="screen__head">
           <button className="screen__back" onClick={onBack} aria-label="Back">←</button>
           <div className="screen__titles">
-            <h1 className="jd__id display">{job?.displayLabel ?? 'Loading…'}</h1>
-            <span className="mono-label">{job ? `${job.product?.name ?? ''} · ${job.totalQty} units` : ''}</span>
+            <h1 className="jd__id display">{job?.name || job?.displayLabel || 'Loading…'}</h1>
+            <span className="mono-label">{job ? `${job.name ? job.displayLabel + ' · ' : ''}${job.product?.name ?? ''} · ${job.totalQty} units` : ''}</span>
           </div>
           {job && (
             <span className={`chip ${closed ? 'chip--good' : onHold ? 'chip--delay' : 'chip--good'}`}>
@@ -130,7 +130,7 @@ export default function JobDetail({
               </div>
 
               <div className="jd__actions">
-                <button className="btn btn--solid btn--block" onClick={() => setShowCard(true)}>▦ Print Job Card</button>
+                <button className="btn btn--solid btn--block" onClick={() => setShowCard(true)}>▦ Show Job Card</button>
                 {user.role === 'ADMIN' && !closed && job.status !== 'cancelled' && (
                   <button className="btn btn--ghost btn--block" disabled={reqBusy} onClick={askUpdate}>{reqBusy ? 'Requesting…' : '↻ Request update from station'}</button>
                 )}

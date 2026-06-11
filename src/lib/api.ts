@@ -315,6 +315,7 @@ export interface JobDTO {
   id: string
   jobNo: string
   displayLabel: string
+  name?: string | null
   status: string
   priority: string
   totalQty: number
@@ -380,6 +381,7 @@ export const lookupJob = (code: string) =>
 
 export interface CreateJobInput {
   productId: string
+  name?: string
   priority: 'normal' | 'urgent'
   jobType?: 'production' | 'rework'
   startDate?: string
@@ -493,6 +495,7 @@ export const closeMaintenance = (id: string, remark: string) =>
 export interface PpcRequest {
   id: string
   requestNo: string
+  name: string | null
   priority: string
   status: string
   startDate: string | null

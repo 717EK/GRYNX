@@ -10,6 +10,7 @@ import { writeAudit } from '../lib/audit.js'
 
 const createSchema = z.object({
   productId: z.string().uuid(),
+  name: z.string().max(120).optional(),
   priority: z.enum(['normal', 'urgent']).default('normal'),
   jobType: z.enum(['production', 'rework']).default('production'),
   pipelineTemplateId: z.string().uuid().optional(),
@@ -25,6 +26,7 @@ const jobSummarySelect = {
   id: true,
   jobNo: true,
   displayLabel: true,
+  name: true,
   status: true,
   priority: true,
   jobType: true,

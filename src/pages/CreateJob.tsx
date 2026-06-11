@@ -35,6 +35,7 @@ export default function CreateJob({
   const loadErr = catErr ? 'Could not load the product catalogue' : null
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [name, setName] = useState('')
   const [created, setCreated] = useState<JobDTO | null>(null)
   const [cardJobId, setCardJobId] = useState<string | null>(null)
   const sel = useRef<JobFormSelection | null>(null)
@@ -73,7 +74,7 @@ export default function CreateJob({
       return
     }
     const startDate = s.startDate ? new Date(`${s.startDate}T${s.startTime || '09:00'}`).toISOString() : undefined
-    const input = { productId: product.id, priority: s.priority, models, startDate }
+    const input = { productId: product.id, name: name.trim() || undefined, priority: s.priority, models, startDate }
 
     setBusy(true)
     try {
@@ -165,6 +166,17 @@ export default function CreateJob({
                 initial={savedDraft}
                 onChange={onFormChange}
               />
+              <label className="cj__name">
+                <span className="mono-label">Order name <span style={{ opacity: 0.6 }}>· optional</span></span>
+                <input
+                  className="cj__name-input"
+                  type="text"
+                  maxLength={120}
+                  placeholder="e.g. Dubai order — 1600 sqft stage"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </label>
               <div className="jobscreen__actions">
                 <button className="btn btn--solid btn--block" disabled={busy} onClick={submit}>
                   <span>{isPpc ? '✓' : '📄'}</span> {busy ? 'Submitting…' : submitLabel}

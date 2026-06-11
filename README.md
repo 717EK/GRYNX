@@ -46,6 +46,21 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.6.7 — name the job + Show Job Card
+- **Optional order name** on every job. PPC (and admins) can label a job in plain
+  language — "Dubai order — 1600 sqft stage", a vendor name, etc. — so the floor
+  reads *what the job is*, not just an opaque code. Surfaces as the primary label in
+  Job Status, Job Detail, the desktop job board, PPC cards, and the review sheet,
+  with the system `displayLabel` kept as the secondary line. New nullable `name`
+  column on `Job` and `PpcRequest` (migration `20260611201630_job_name`).
+- **Show Job Card** everywhere (was "Print Job Card") — the card opens for viewing
+  first, with **Print** available inside the card once you've reviewed it.
+
+### v0.6.6 — supervisor force-advance settles skipped stations
+- Forcing a job out of sequence now settles **every** earlier unfinished step:
+  completes ones that were in progress, marks untouched ones **skipped** (red ✕ in
+  the stepper) — no more half-open pipelines. Admin-gated.
+
 ### v0.6.1 — fit-to-viewport desktop (single page, no scroll)
 - The desktop admin is now a **fixed 1440×812 reference design scaled as one unit**
   to fill any screen — identical layout on every desktop (no more per-screen

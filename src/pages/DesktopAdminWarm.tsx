@@ -280,7 +280,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
                     : filtered.length === 0 ? <tr><td colSpan={7} className="dw__empty">No jobs match.</td></tr>
                     : filtered.map((j) => (
                       <tr key={j.id} onClick={() => openJob(j.id)}>
-                        <td className="dw__mono">{j.displayLabel}</td>
+                        <td className="dw__mono">{j.displayLabel}{j.name && <div style={{ fontFamily: 'var(--sans)', fontSize: 'clamp(11px,0.85vw,18px)', color: 'var(--ink)', fontWeight: 600, marginTop: 2 }}>{j.name}</div>}</td>
                         <td>{j.product?.name ?? '—'}</td>
                         <td>{j.totalQty}</td>
                         <td>{j.priority === 'urgent' ? <span className="dw__urgent">URGENT</span> : 'Normal'}</td>
@@ -303,8 +303,8 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
                 const qty = r.models.reduce((s, m) => s + m.quantity, 0)
                 return (
                   <button key={r.id} className="dw__pcard" onClick={() => setPopup({ kind: 'review', req: r })}>
-                    <span className="dw__pcard-no">{r.requestNo}{r.priority === 'urgent' && <span className="dw__urgent">URGENT</span>}</span>
-                    <span className="dw__pcard-meta">{r.product.name} · {qty} units · {r.models.length} line{r.models.length > 1 ? 's' : ''}</span>
+                    <span className="dw__pcard-no">{r.name || r.requestNo}{r.priority === 'urgent' && <span className="dw__urgent">URGENT</span>}</span>
+                    <span className="dw__pcard-meta">{r.name ? `${r.requestNo} · ` : ''}{r.product.name} · {qty} units · {r.models.length} line{r.models.length > 1 ? 's' : ''}</span>
                   </button>
                 )
               })}

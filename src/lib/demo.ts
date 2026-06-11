@@ -457,6 +457,7 @@ export function demoPpcCreate(input: CreateJobInput) {
   const r: PpcRequest = {
     id: 'pr_' + Date.now(),
     requestNo: 'PR-' + String(ppc.seq).padStart(4, '0'),
+    name: input.name?.trim() || null,
     priority: input.priority,
     status: 'submitted',
     startDate: input.startDate ?? null,

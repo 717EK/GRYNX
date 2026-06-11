@@ -9,6 +9,7 @@ import { acceptanceDueAt } from './sla.js'
 export interface JobCreateInput {
   productId: string
   priority: 'normal' | 'urgent'
+  name?: string | null
   jobType?: 'production' | 'rework'
   pipelineTemplateId?: string
   startDate?: Date | null
@@ -65,6 +66,7 @@ export async function createJobFromInput(
           data: {
             jobNo,
             displayLabel,
+            name: input.name?.trim() || null,
             jobType,
             productId: product.id,
             priority: input.priority,

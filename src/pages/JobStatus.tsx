@@ -141,9 +141,9 @@ function Section({
               <button key={j.id} className={`jrow ${done ? 'jrow--done' : ''}`} onClick={() => onOpenJob(j.id)}>
                 <span className={`jrow__pri jrow__pri--${done ? 'done' : j.priority === 'urgent' ? 'urgent' : 'normal'}`} />
                 <span className="jrow__main">
-                  <span className="jrow__id display">{j.displayLabel}</span>
+                  <span className="jrow__id display">{j.name || j.displayLabel}</span>
                   <span className="jrow__sub mono-label">
-                    {j.product?.name ?? ''} · {j.totalQty} units{done && j.completionDate ? ` · ${fmtDate(j.completionDate)}` : ''}
+                    {j.name ? `${j.displayLabel} · ` : ''}{j.product?.name ?? ''} · {j.totalQty} units{done && j.completionDate ? ` · ${fmtDate(j.completionDate)}` : ''}
                   </span>
                 </span>
                 <span className={`jstatus jstatus--${st.tone} mono-label`}>

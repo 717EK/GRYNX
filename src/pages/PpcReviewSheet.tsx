@@ -137,7 +137,7 @@ export default function PpcReviewSheet({
               {editing ? 'Edit Request' : 'PPC Request'}
               <span className="jobscreen__pr"> {request.requestNo}</span>
             </h1>
-            <span className="mono-label">{editing ? 'Modify and send back to PPC' : request.product.name}</span>
+            <span className="mono-label">{editing ? 'Modify and send back to PPC' : (request.name ? `${request.name} · ${request.product.name}` : request.product.name)}</span>
           </div>
           {!editing && !created && canEdit ? (
             <button className="prs__edit mono-label" onClick={() => { setEditing(true); setErr(null) }}>✎ Edit</button>
