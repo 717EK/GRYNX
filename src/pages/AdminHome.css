@@ -73,12 +73,17 @@
 /* ---- stats bar above the footer: a bordered card of 5 even cells —
    TOTAL JOBS | IN PROGRESS | SCAN | COMPLETED | ALERTS — the SCAN button sits
    in its own centred cell and pokes a little above the top ---- */
+/* exact spec: 780px bar (4×160 blocks + 140 centre) · 64px tall · 16px radius ·
+   SCAN 108×88 protruding 24px from the centre · 42px dividers · 10px to footer */
 .admin__statsbar {
   display: flex;
-  align-items: stretch; /* full-height cells so the dividers run top-to-bottom */
+  align-items: stretch;       /* full-height cells (64px) so SCAN can anchor to the bottom */
+  width: 780px;
+  max-width: 100%;
+  height: 64px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  margin: 16px 0 8px;
+  margin: 16px auto 10px;     /* centred · 10px gap to footer */
   flex: none;
   overflow: visible;
 }
@@ -86,46 +91,67 @@
   position: relative;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  flex: 2; /* two stat cells = two units */
+  flex: 1 1 320px;            /* two 160px blocks */
   min-width: 0;
   text-align: center;
+  background: none;           /* kill the default <button> chrome */
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
 }
-/* the SCAN cell — one unit, same width as a single stat cell */
+/* reserved 140px centre for the SCAN button */
 .admin__scancell {
-  flex: 1;
+  position: relative;
+  flex: 0 0 140px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;     /* button bottom sits on the bar bottom → top protrudes */
   justify-content: center;
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
   overflow: visible;
 }
+/* 42px dividers, vertically centred */
+.stat { position: relative; }
+.stat:not(:first-child)::before,
+.admin__scancell::before,
+.admin__scancell::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 42px;
+  background: var(--border);
+}
+.stat:not(:first-child)::before { left: 0; }
+.admin__scancell::before { left: 0; }
+.admin__scancell::after { right: 0; }
+
 .admin__scanbtn {
-  width: 60px;
-  height: 60px;
+  width: 108px;
+  height: 88px;
   box-sizing: border-box;
-  margin-top: -18px; /* slight lift above the card top */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 7px 6px;
+  gap: 4px;
+  padding: 8px;
   border: 3px solid var(--bg);
-  border-radius: 15px;
+  border-radius: 14px;
   background: var(--brand);
   color: var(--on-brand, #0a0a0a);
   cursor: pointer;
   overflow: visible;
   z-index: 3;
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--brand) 32%, transparent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--brand) 34%, transparent);
   transition: transform 0.1s ease;
 }
-.admin__scanbtn:active { transform: scale(0.95) translateY(2px); }
-.admin__scanbtn svg { width: 23px; height: 23px; }
+.admin__scanbtn:active { transform: scale(0.96) translateY(2px); }
+.admin__scanbtn svg { width: 30px; height: 30px; }
 .admin__scanbtn-label {
-  font-size: 9px;
-  letter-spacing: 0.06em;
+  font-size: 10px;
+  letter-spacing: 0.08em;
   line-height: 1;
   white-space: nowrap;
   color: var(--on-brand, #0a0a0a);
@@ -133,26 +159,21 @@
 .stat {
   display: flex;
   flex-direction: column;
-  align-items: center; /* centre label + number in each cell */
+  align-items: center;        /* value centred directly beneath label */
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   padding: 10px 7px;
-  border-left: 1px solid var(--border);
 }
-.stat:first-child {
-  border-left: none;
-}
-/* keep every label on one line so the cells stay symmetric (IN PROGRESS is the
-   longest — small, tight tracking so it fits its cell without clipping) */
+/* labels 10px / 2px tracking · values 22px / 700 */
 .stat__k {
-  font-size: 8px;
-  letter-spacing: 0;
+  font-size: 10px;
+  letter-spacing: 2px;
   white-space: nowrap;
 }
 .stat__v {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 .stat__v.is-warning {
   color: var(--warning);

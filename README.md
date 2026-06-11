@@ -46,6 +46,13 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.5.1 — bottom-bar exact spec + D-LYFT logo
+- Statistics bar refined to spec: 780px bar / 64px tall / 16px radius, 160px stat
+  blocks, 22px·700 values centred under 10px·2px labels, 42px dividers, SCAN button
+  108×88 protruding 24px from the centred 140px reserve, 10px gap to the footer
+  (fixed default `<button>` chrome that split the bar). Verified via headless shot.
+- Desktop admin rail now shows the **D-LYFT logo** instead of the placeholder glyph.
+
 ### v0.5.0 — warm "Work OS" desktop admin + calendar
 - New **desktop admin console** (`DesktopAdminWarm`) in a warm-paper bento theme
   (scoped to desktop admin only; the floor/mobile app stays dark): slim icon rail,
