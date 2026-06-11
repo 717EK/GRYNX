@@ -41,4 +41,13 @@ export async function catalogueRoutes(app: FastifyInstance) {
     })
     return { reasons }
   })
+
+  // pipeline-v2: production stations (for the scan UI station picker + occupancy)
+  app.get('/stations', async () => {
+    const stations = await prisma.station.findMany({
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true, code: true, name: true, sortOrder: true, isCritical: true },
+    })
+    return { stations }
+  })
 }

@@ -238,6 +238,7 @@ export default function App() {
             onBack={() => go('station')}
             stationName={viewAs?.name}
             stationDepartmentId={viewAs?.id}
+            stationScan
           />
         )
       case 'approvals':

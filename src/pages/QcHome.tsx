@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import { getQcQueue, qcApprove, qcRework, getReworkTargets, type QueueJob, type ReworkTarget } from '../lib/api'
+import { getQcQueue, qcApprove, qcRework, getReworkTargets, type QueueJob, type Station } from '../lib/api'
 import ReportButton from '../components/ReportButton'
 import './Maintenance.css'
 import './DeptHome.css'
@@ -77,15 +77,11 @@ function QcModal({ job, onClose, onDone }: { job: QueueJob; onClose: () => void;
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [mode, setMode] = useState<'choose' | 'rework'>('choose')
-  const [targets, setTargets] = useState<ReworkTarget[]>([])
-  const [reworkTo, setReworkTo] = useState('')
+  const [stations, setStations] = useState<Station[]>([])
+  const [reworkTo, setReworkTo] = useState('') // '' = back to Production (head decides)
 
   useEffect(() => {
-    getReworkTargets(job.id).then((r) => {
-      setTargets(r.targets)
-      // default to the last production station before QC
-      if (r.targets.length) setReworkTo(r.targets[r.targets.length - 1].departmentId)
-    }).catch(() => {})
+    getReworkTargets(job.id).then((r) => setStations(r.stations)).catch(() => {})
   }, [job.id])
 
   async function approve() {
@@ -96,9 +92,8 @@ function QcModal({ job, onClose, onDone }: { job: QueueJob; onClose: () => void;
   async function sendRework() {
     setErr(null)
     if (!notes.trim()) { setErr('Add a note on what failed'); return }
-    if (!reworkTo) { setErr('Pick which department to send it back to'); return }
     setBusy(true)
-    try { await qcRework(job.id, notes.trim(), reworkTo); onDone() }
+    try { await qcRework(job.id, notes.trim(), reworkTo ? { reworkStationId: reworkTo } : undefined); onDone() }
     catch { setErr('Action failed — try again'); setBusy(false) }
   }
 
@@ -119,8 +114,8 @@ function QcModal({ job, onClose, onDone }: { job: QueueJob; onClose: () => void;
           <label className="mnt__field">
             <span className="mono-label">Send back to</span>
             <select className="mnt__select" value={reworkTo} onChange={(e) => setReworkTo(e.target.value)}>
-              {targets.length === 0 && <option value="">— no stations —</option>}
-              {targets.map((t) => <option key={t.departmentId} value={t.departmentId}>{t.name}</option>)}
+              <option value="">Production — head decides</option>
+              {stations.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </label>
         )}

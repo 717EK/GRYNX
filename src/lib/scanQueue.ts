@@ -9,7 +9,10 @@ export interface QueuedScan {
   idempotencyKey: string
   clientTs: string
   stationDepartmentId?: string
-  force?: boolean
+  stationId?: string
+  parallel?: boolean
+  remark?: string
+  photoUrl?: string
 }
 
 const KEY = 'grynx-scan-queue'
@@ -39,11 +42,14 @@ export function onScanQueueChange(fn: (n: number) => void) {
 
 // Queue a scan to apply later. Generates the idempotency key once so replays
 // never double-apply.
-export function enqueueScan(item: { jobNo: string; stationDepartmentId?: string; force?: boolean; clientTs?: string }) {
+export function enqueueScan(item: { jobNo: string; stationDepartmentId?: string; stationId?: string; parallel?: boolean; remark?: string; photoUrl?: string; clientTs?: string }) {
   queue.push({
     jobNo: item.jobNo,
     stationDepartmentId: item.stationDepartmentId,
-    force: item.force,
+    stationId: item.stationId,
+    parallel: item.parallel,
+    remark: item.remark,
+    photoUrl: item.photoUrl,
     idempotencyKey: newIdempotencyKey(),
     clientTs: item.clientTs ?? new Date().toISOString(),
   })
@@ -62,7 +68,7 @@ export async function flushScanQueue() {
     while (queue.length) {
       const s = queue[0]
       try {
-        const { status } = await scan({ jobNo: s.jobNo, idempotencyKey: s.idempotencyKey, clientTs: s.clientTs, force: s.force, stationDepartmentId: s.stationDepartmentId })
+        const { status } = await scan({ jobNo: s.jobNo, idempotencyKey: s.idempotencyKey, clientTs: s.clientTs, stationDepartmentId: s.stationDepartmentId, stationId: s.stationId, parallel: s.parallel, remark: s.remark, photoUrl: s.photoUrl })
         if (status >= 500 || status === 401) break // server transient / not authed yet — retry later
         queue.shift()
         persist()

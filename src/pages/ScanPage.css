@@ -220,3 +220,59 @@
   text-align: center;
   flex: 0 0 auto;
 }
+
+/* ── pipeline-v2: production station picker + scan-in/out confirm ── */
+.scan__stations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px 0;
+  justify-content: center;
+}
+.scan__stchip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border, #d8d2c4);
+  background: var(--card, #fff);
+  color: var(--text-secondary, #6b6453);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.scan__stchip.is-on {
+  background: var(--brand, #84cc16);
+  border-color: var(--brand, #84cc16);
+  color: #1a1a1a;
+}
+.scan__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  font-size: 12px;
+}
+.scan__check input { width: 18px; height: 18px; }
+.scan__remark {
+  width: 100%;
+  min-height: 64px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border, #d8d2c4);
+  background: var(--card, #fff);
+  padding: 10px 12px;
+  font: inherit;
+  resize: vertical;
+  margin: 4px 0;
+}
+.scan__photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1.5px dashed var(--border, #d8d2c4);
+  cursor: pointer;
+  font-size: 13px;
+  margin: 4px 0;
+  overflow: hidden;
+}
+.scan__photo-thumb { max-height: 120px; border-radius: 8px; }
