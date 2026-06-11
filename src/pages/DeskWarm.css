@@ -11,16 +11,12 @@
 
   position:fixed; inset:0; background:var(--paper); color:var(--ink);
   font-family:var(--sans); overflow:hidden;
-  display:flex; align-items:center; justify-content:center;
+  display:grid; grid-template-columns:72px 1fr;
 }
 .dw *{box-sizing:border-box;}
-/* fixed reference design — scaled as one unit to fill any screen (single page, no
-   scroll, identical layout everywhere). REF must match REF_W/REF_H in the component. */
-.dw__stage{
-  width:1440px; height:812px; flex:none;
-  display:grid; grid-template-columns:72px 1fr;
-  transform-origin:center center;
-}
+/* fluid-fill: the dashboard fills the whole viewport edge-to-edge (no letterbox);
+   widgets that overflow scroll internally so the page itself never scrolls */
+.dw__stage{ display:contents; }
 
 /* icon rail */
 .dw__rail{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 0;}
@@ -31,8 +27,8 @@
 .dw__i .pip{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--red);}
 .dw__rail-sp{flex:1;}
 
-/* main — fills the stage height, no scroll */
-.dw__main{height:812px;padding:20px 26px 18px 8px;overflow:hidden;display:flex;flex-direction:column;}
+/* main — fills the viewport height, no page scroll */
+.dw__main{height:100vh;padding:20px 26px 18px 8px;overflow:hidden;display:flex;flex-direction:column;}
 .dw__head{display:flex;align-items:center;gap:18px;margin-bottom:16px;flex:none;}
 .dw__hi{font-family:var(--disp);font-weight:800;font-size:30px;line-height:1.05;letter-spacing:-.01em;white-space:nowrap;}
 .dw__sub{color:var(--ink2);font-size:13px;margin-top:7px;}
@@ -155,10 +151,12 @@
 .dw__frame{position:relative;width:430px;height:88vh;max-height:880px;background:var(--bg,#000);border-radius:26px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5);}
 .dw__frame .app{height:100%;}
 .dw__frame--drawer{width:520px;}
+/* New Job / Approve open in a large landscape-ish window, not the phone frame */
+.dw__frame--wide{width:min(860px,94vw);height:min(86vh,860px);border-radius:20px;}
 .dw__close{position:absolute;top:10px;right:12px;z-index:5;width:30px;height:30px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;font-size:18px;cursor:pointer;}
 
 /* ════════ mission control dashboard ════════ */
-.dwm{flex:1;min-height:0;display:grid;grid-template-columns:1fr 300px;gap:14px;align-items:stretch;}
+.dwm{flex:1;min-height:0;display:grid;grid-template-columns:1fr clamp(244px,19vw,320px);gap:14px;align-items:stretch;}
 .dwm__col{display:grid;grid-template-columns:1.55fr 1fr 1fr;grid-template-rows:1.25fr 0.78fr 1.32fr 1.05fr;gap:12px;min-height:0;}
 .dwm__s3{grid-column:1 / -1;}
 .dwm .dw__c{padding:14px 16px;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
@@ -248,3 +246,9 @@
 
 /* job board / ppc views scroll within the fixed-height stage */
 .dw__view{flex:1;min-height:0;overflow-y:auto;}
+
+/* scrollable widget bodies — the page never scrolls; long lists scroll in place */
+.dwm__feed,.dwm__age,.dwm__att,.dwm__hold,.dwm__ins{min-height:0;overflow-y:auto;flex:1 1 auto;}
+.dwm__intel .dwm__act{flex:none;}
+.dwm__rail .dwcal__list{overflow-y:auto;min-height:0;}
+.dwm .dw__c > .dwm__ttl, .dwm .dw__c > .dw__lbl{flex:none;}

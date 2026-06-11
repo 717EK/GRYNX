@@ -5,6 +5,8 @@ import { prisma } from '../lib/prisma.js'
 import { authenticate, requireRole, type AccessPayload } from '../lib/auth.js'
 import { createJobFromInput } from '../lib/jobCreate.js'
 import { renderJobCard } from '../lib/jobcard.js'
+import { notifyDepartment } from '../lib/notify.js'
+import { writeAudit } from '../lib/audit.js'
 
 const createSchema = z.object({
   productId: z.string().uuid(),
@@ -73,6 +75,28 @@ export async function jobRoutes(app: FastifyInstance) {
     // surface the live station as `current` (drops the partial steps array)
     const jobs = rows.map(({ steps, ...j }) => ({ ...j, current: steps[0] ?? null }))
     return { jobs }
+  })
+
+  // ── admin asks the current station for a status update ──────────────────────
+  app.post('/:id/request-update', { preHandler: requireRole('admin') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const actorId = (req.user as AccessPayload).sub
+    const job = await prisma.job.findUnique({
+      where: { id },
+      select: {
+        displayLabel: true,
+        steps: { where: { status: { in: ['waiting_acceptance', 'in_progress', 'on_hold'] } }, orderBy: { sequence: 'asc' }, take: 1, select: { departmentId: true, department: { select: { name: true } } } },
+      },
+    })
+    if (!job) return reply.code(404).send({ error: 'not_found' })
+    const cur = job.steps[0]
+    if (!cur) return reply.code(409).send({ error: 'no_active_station', detail: 'job is not on the floor' })
+    await prisma.$transaction(async (tx) => {
+      await tx.jobEvent.create({ data: { jobId: id, type: 'update_request', actorId, body: `Admin requested a status update from ${cur.department.name}` } })
+      await notifyDepartment(tx, cur.departmentId, { type: 'update_request', jobId: id, body: `Admin requested an update on ${job.displayLabel}` })
+      await writeAudit('job', id, 'request_update', { actorId, after: { dept: cur.department.name }, tx })
+    })
+    return { ok: true, dept: cur.department.name }
   })
 
   // ── a station's queue: jobs arriving at / in progress at a department ────────

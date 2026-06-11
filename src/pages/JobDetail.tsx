@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import JobCardModal from '../components/JobCardModal'
-import { getJob, getMaterials, getSerials, type JobDTO, type MaterialLine } from '../lib/api'
+import { getJob, getMaterials, getSerials, requestJobUpdate, type JobDTO, type MaterialLine } from '../lib/api'
 import './JobDetail.css'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -38,6 +38,15 @@ export default function JobDetail({
   const [materials, setMaterials] = useState<MaterialLine[]>([])
   const [serials, setSerials] = useState<{ serialNo: string }[]>([])
   const [err, setErr] = useState(false)
+  const [reqBusy, setReqBusy] = useState(false)
+  const [reqMsg, setReqMsg] = useState<string | null>(null)
+  async function askUpdate() {
+    if (!jobId) return
+    setReqBusy(true); setReqMsg(null)
+    try { const r = await requestJobUpdate(jobId); setReqMsg(`✓ Update requested from ${r.dept}`) }
+    catch { setReqMsg('Could not request — the job may not be on the floor.') }
+    finally { setReqBusy(false) }
+  }
   const [showCard, setShowCard] = useState(false)
 
   useEffect(() => {
@@ -122,6 +131,10 @@ export default function JobDetail({
 
               <div className="jd__actions">
                 <button className="btn btn--solid btn--block" onClick={() => setShowCard(true)}>▦ Print Job Card</button>
+                {user.role === 'ADMIN' && !closed && job.status !== 'cancelled' && (
+                  <button className="btn btn--ghost btn--block" disabled={reqBusy} onClick={askUpdate}>{reqBusy ? 'Requesting…' : '↻ Request update from station'}</button>
+                )}
+                {reqMsg && <span className="jd__scannote mono-label" style={{ color: 'var(--text-secondary)' }}>{reqMsg}</span>}
                 <span className="jd__scannote mono-label">ⓘ Stations advance this job by scanning its barcode — admins don’t complete steps.</span>
               </div>
 

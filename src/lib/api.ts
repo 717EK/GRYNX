@@ -341,6 +341,8 @@ export const getQueue = (departmentId?: string) =>
 export const getJobs = (status?: string) =>
   DEMO ? demo.demoGetJobs() : req<{ jobs: JobDTO[] }>('GET', `/api/v1/jobs${status ? `?status=${status}` : ''}`)
 export const getJob = (id: string) => (DEMO ? demo.demoGetJob(id) : req<{ job: JobDTO }>('GET', `/api/v1/jobs/${id}`))
+export const requestJobUpdate = (id: string) =>
+  DEMO ? Promise.resolve({ ok: true, dept: '' }) : req<{ ok: boolean; dept: string }>('POST', `/api/v1/jobs/${id}/request-update`)
 
 // ── admin control-centre stats (aggregated server-side) ─────────────────────
 export interface AttentionItem { kind: 'job' | 'ticket'; id: string; label: string; sub: string }

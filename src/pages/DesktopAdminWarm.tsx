@@ -58,16 +58,6 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
     const h = setInterval(tick, 30_000)
     return () => clearInterval(h)
   }, [])
-  // fit-to-viewport: scale the fixed reference stage to fill any screen (single
-  // page, no scroll, identical layout everywhere). REF must match .dw__stage size.
-  const [scale, setScale] = useState(1)
-  useEffect(() => {
-    const REF_W = 1440, REF_H = 812
-    const fit = () => setScale(Math.min(window.innerWidth / REF_W, window.innerHeight / REF_H))
-    fit()
-    window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
-  }, [])
   function closePopup() { setPopup(null); loadJobs(); loadPpc(); getAdminStats().then(setStats).catch(() => {}); notificationCount().then((r) => setUnread(r.unread)).catch(() => {}) }
   const openJob = (jobId: string) => setPopup({ kind: 'history', jobId })
   const openAttn = (a: AttentionItem) => (a.kind === 'job' ? setPopup({ kind: 'history', jobId: a.id }) : setPopup({ kind: 'maintdetail', id: a.id }))
@@ -92,7 +82,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
 
   return (
     <div className="dw">
-     <div className="dw__stage" style={{ transform: `scale(${scale})` }}>
+     <div className="dw__stage">
       {/* icon rail */}
       <aside className="dw__rail">
         <img className="dw__logo" src={dlyftLogo} alt="D-LYFT" />
@@ -326,7 +316,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
 
       {popup && (
         <div className="dw__overlay" onMouseDown={closePopup}>
-          <div className={`dw__frame ${popup.kind === 'history' ? 'dw__frame--drawer' : ''}`} onMouseDown={(e) => e.stopPropagation()}>
+          <div className={`dw__frame ${popup.kind === 'history' ? 'dw__frame--drawer' : (popup.kind === 'create' || popup.kind === 'review') ? 'dw__frame--wide' : ''}`} onMouseDown={(e) => e.stopPropagation()}>
             <button className="dw__close" onClick={closePopup} aria-label="Close">×</button>
             {popup.kind === 'create' && <CreateJob user={user} onBack={closePopup} onLock={onLock} />}
             {popup.kind === 'review' && <PpcReviewSheet user={user} request={popup.req} mode="admin" onBack={closePopup} onLock={onLock} onDone={closePopup} />}
