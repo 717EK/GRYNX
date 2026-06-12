@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma.js'
 import { authenticate, requireRole, type AccessPayload } from '../lib/auth.js'
 import { createJobFromInput } from '../lib/jobCreate.js'
 import { renderJobCard } from '../lib/jobcard.js'
+import { renderJobRecord } from '../lib/jobrecord.js'
 import { notifyDepartment } from '../lib/notify.js'
 import { writeAudit } from '../lib/audit.js'
 
@@ -101,6 +102,46 @@ export async function jobRoutes(app: FastifyInstance) {
     return { ok: true, dept: cur.department.name }
   })
 
+  // ── Design confirms/forwards a job to Production (pipeline-v2) ───────────────
+  // Design is a double-check, not a drawing board: most jobs are standard, so the
+  // team just confirms; a new design gets its file attached. No card scan needed.
+  app.post('/:id/design-release', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const body = z.object({ note: z.string().max(500).optional(), fileUrl: z.string().max(6_000_000).optional() }).safeParse(req.body ?? {})
+    if (!body.success) return reply.code(400).send({ error: 'bad_request' })
+    const u = req.user as AccessPayload
+    const job = await prisma.job.findUnique({
+      where: { id },
+      select: {
+        displayLabel: true, totalQty: true, status: true,
+        steps: { orderBy: { sequence: 'asc' }, select: { id: true, status: true, departmentId: true, department: { select: { code: true } } } },
+      },
+    })
+    if (!job) return reply.code(404).send({ error: 'not_found' })
+    const design = job.steps.find((s) => s.department.code === 'DESIGN')
+    const prod = job.steps.find((s) => s.department.code === 'PRODUCTION')
+    if (!design || !prod) return reply.code(409).send({ error: 'no_design_step' })
+    const isAdmin = u.roles.some((r) => r.role === 'admin')
+    const isDesign = u.roles.some((r) => r.role === 'dept_head' && r.departmentId === design.departmentId)
+    if (!isAdmin && !isDesign) return reply.code(403).send({ error: 'forbidden' })
+    if (design.status === 'completed') return reply.code(409).send({ error: 'already_released' })
+
+    const now = new Date()
+    const { stationDueAt } = await import('../lib/sla.js')
+    const dueAt = await stationDueAt(job.totalQty, now)
+    await prisma.$transaction(async (tx) => {
+      await tx.jobStep.update({ where: { id: design.id }, data: { status: 'completed', completedAt: now, completedById: u.sub, version: { increment: 1 } } })
+      if (prod.status === 'pending' || prod.status === 'waiting_acceptance') {
+        await tx.jobStep.update({ where: { id: prod.id }, data: { status: 'in_progress', acceptedAt: now, acceptedById: u.sub, slaDueAt: dueAt, version: { increment: 1 } } })
+      }
+      await tx.job.update({ where: { id }, data: { status: 'in_production', designFileUrl: body.data.fileUrl ?? undefined, version: { increment: 1 } } })
+      await tx.jobEvent.create({ data: { jobId: id, jobStepId: design.id, type: 'completed', actorId: u.sub, body: `Design${body.data.fileUrl ? ' · design file attached' : ' · standard design confirmed'}${body.data.note ? ` · ${body.data.note}` : ''}` } })
+      await notifyDepartment(tx, prod.departmentId, { type: 'new_job', jobId: id, body: `${job.displayLabel} released to Production by Design` })
+      await writeAudit('job', id, 'design_release', { actorId: u.sub, after: { file: !!body.data.fileUrl }, tx })
+    })
+    return { ok: true }
+  })
+
   // ── a station's queue: jobs arriving at / in progress at a department ────────
   app.get('/queue', async (req, reply) => {
     const u = req.user as AccessPayload
@@ -165,6 +206,44 @@ export async function jobRoutes(app: FastifyInstance) {
     const job = await prisma.job.findUnique({ where: { id }, include: detailInclude })
     if (!job) return reply.code(404).send({ error: 'not_found' })
     return { job }
+  })
+
+  // ── printable PRODUCTION RECORD (as-built dossier: trail/QC/serials/material) ──
+  app.get('/:id/record', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const job = await prisma.job.findUnique({
+      where: { id },
+      include: {
+        product: { select: { name: true } },
+        stationVisits: { orderBy: { scanInAt: 'asc' }, include: { station: { select: { name: true } } } },
+        qc: { orderBy: { createdAt: 'asc' } },
+        serials: { orderBy: { createdAt: 'asc' }, select: { serialNo: true } },
+        materials: { orderBy: { createdAt: 'asc' }, select: { item: true, quantity: true, vendor: true, batchRef: true } },
+      },
+    })
+    if (!job) return reply.code(404).send({ error: 'not_found' })
+    // resolve operator/inspector names in one query
+    const userIds = [...new Set([...job.stationVisits.map((v) => v.operatorId), ...job.qc.map((q) => q.inspectorId)])]
+    const users = await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true } })
+    const nameOf = (uid: string) => users.find((u) => u.id === uid)?.fullName ?? '—'
+    const visited = new Set(job.stationVisits.map((v) => v.station.name))
+    const allStations = await prisma.station.findMany({ orderBy: { sortOrder: 'asc' }, select: { name: true } })
+    const html = renderJobRecord({
+      displayLabel: job.displayLabel,
+      name: job.name,
+      productName: job.product.name,
+      priority: job.priority,
+      totalQty: job.totalQty,
+      status: job.status.replace(/_/g, ' '),
+      createdAt: job.createdAt,
+      completionDate: job.completionDate,
+      visits: job.stationVisits.map((v) => ({ station: v.station.name, operator: nameOf(v.operatorId), inAt: v.scanInAt, outAt: v.scanOutAt, outMode: v.scanOutMode, remark: v.remark })),
+      qc: job.qc.map((q) => ({ result: q.result, inspector: nameOf(q.inspectorId), notes: q.notes, at: q.createdAt })),
+      serials: job.serials.map((s) => s.serialNo),
+      materials: job.materials,
+      neverScanned: allStations.filter((s) => !visited.has(s.name)).map((s) => s.name),
+    })
+    return reply.type('text/html; charset=utf-8').send(html)
   })
 
   // ── printable job card (QR + Code128 encode the opaque jobNo) ───────────────

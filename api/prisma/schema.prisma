@@ -411,6 +411,7 @@ model Job {
   jobNo                   String    @unique // opaque immutable key
   displayLabel            String // AT-U-045-060626-001 (regenerable)
   name                    String? // optional human label carried from the PPC request
+  designFileUrl           String?   @db.Text // optional design file (data URL) attached when Design forwards
   jobType                 JobType   @default(production)
   productId               String
   priority                Priority  @default(normal)

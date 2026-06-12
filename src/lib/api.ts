@@ -416,6 +416,19 @@ export async function getJobCardHtml(id: string): Promise<string> {
   return res.text()
 }
 
+/** Printable PRODUCTION RECORD (as-built dossier: trail / QC / serials / material). */
+export async function getJobRecordHtml(id: string): Promise<string> {
+  const res = await fetch(`${BASE}/api/v1/jobs/${id}/record`, {
+    headers: access ? { Authorization: `Bearer ${access}` } : {},
+  })
+  if (!res.ok) throw new ApiError(res.status, await res.text())
+  return res.text()
+}
+
+/** Design confirms/forwards a job to Production (optional design file + note). */
+export const designRelease = (jobId: string, input?: { note?: string; fileUrl?: string }) =>
+  req<{ ok: boolean }>('POST', `/api/v1/jobs/${jobId}/design-release`, input ?? {})
+
 // ── scan engine (pipeline-v2) ───────────────────────────────────────────────
 // Two scan kinds: STATION scan (stationId given) = production sub-station in/out;
 // GATE scan (no stationId) = a macro step (Design / QC / FG) by the user's dept.

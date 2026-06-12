@@ -88,14 +88,12 @@ export async function fgRoutes(app: FastifyInstance) {
     const totalSerials = cjob._count.serials + incoming.length
     if (totalSerials < 1) return reply.code(400).send({ error: 'serial_required', hint: 'enter at least one serial number to close' })
 
-    // critical-station soft-flag (close still proceeds)
-    const criticalStations = await prisma.station.findMany({ where: { isCritical: true }, select: { id: true, name: true } })
-    let missing: string[] = []
-    if (criticalStations.length) {
-      const visited = await prisma.stationVisit.findMany({ where: { jobId }, select: { stationId: true } })
-      const visitedIds = new Set(visited.map((v) => v.stationId))
-      missing = criticalStations.filter((s) => !visitedIds.has(s.id)).map((s) => s.name)
-    }
+    // informational: note every station this job was NEVER scanned at (no curated
+    // critical list — the close note + record simply show the gaps; never blocks)
+    const allStations = await prisma.station.findMany({ select: { id: true, name: true }, orderBy: { sortOrder: 'asc' } })
+    const visited = await prisma.stationVisit.findMany({ where: { jobId }, select: { stationId: true } })
+    const visitedIds = new Set(visited.map((v) => v.stationId))
+    const missing = allStations.filter((s) => !visitedIds.has(s.id)).map((s) => s.name)
 
     await prisma.$transaction(async (tx) => {
       if (incoming.length) {
@@ -114,14 +112,12 @@ export async function fgRoutes(app: FastifyInstance) {
         create: { jobId, requestedById: closeActorId, approvedById: closeActorId, approvedAt: new Date(), status: 'approved', receivedQty: cbody.data.receivedQty ?? totalSerials },
       })
       await tx.job.update({ where: { id: jobId }, data: { status: 'closed', completionDate: new Date(), version: { increment: 1 } } })
-      await tx.jobEvent.create({ data: { jobId, type: 'closed', actorId: closeActorId, body: missing.length ? `closed · ⚠ never scanned at: ${missing.join(', ')}` : 'closed' } })
-      await writeAudit('job', jobId, 'fg_close', { actorId: closeActorId, after: { serials: totalSerials, missingCritical: missing }, tx })
+      await tx.jobEvent.create({ data: { jobId, type: 'closed', actorId: closeActorId, body: missing.length ? `closed · never scanned at: ${missing.join(', ')}` : 'closed' } })
+      await writeAudit('job', jobId, 'fg_close', { actorId: closeActorId, after: { serials: totalSerials, neverScanned: missing }, tx })
       await notifyAdmins(tx, {
-        type: missing.length ? 'escalation' : 'closure_request',
+        type: 'closure_request',
         jobId,
-        body: missing.length
-          ? `${cjob.displayLabel} closed by FG — ⚠ never scanned at: ${missing.join(', ')}`
-          : `${cjob.displayLabel} closed by FG (${totalSerials} serial${totalSerials > 1 ? 's' : ''})`,
+        body: `${cjob.displayLabel} closed by FG (${totalSerials} serial${totalSerials > 1 ? 's' : ''})${missing.length ? ` · not scanned at: ${missing.join(', ')}` : ''}`,
       })
     })
     return { ok: true, closed: true, serials: totalSerials, missingCritical: missing }

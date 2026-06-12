@@ -48,6 +48,7 @@ export default function JobDetail({
     finally { setReqBusy(false) }
   }
   const [showCard, setShowCard] = useState(false)
+  const [showRecord, setShowRecord] = useState(false)
 
   useEffect(() => {
     if (!jobId) return
@@ -131,6 +132,9 @@ export default function JobDetail({
 
               <div className="jd__actions">
                 <button className="btn btn--solid btn--block" onClick={() => setShowCard(true)}>▦ Show Job Card</button>
+                {closed && (
+                  <button className="btn btn--ghost btn--block" onClick={() => setShowRecord(true)}>🖨 Production Record</button>
+                )}
                 {user.role === 'ADMIN' && !closed && job.status !== 'cancelled' && (
                   <button className="btn btn--ghost btn--block" disabled={reqBusy} onClick={askUpdate}>{reqBusy ? 'Requesting…' : '↻ Request update from station'}</button>
                 )}
@@ -227,6 +231,7 @@ export default function JobDetail({
       </main>
       <BottomBar />
       {showCard && job && <JobCardModal jobId={job.id} onClose={() => setShowCard(false)} />}
+      {showRecord && job && <JobCardModal jobId={job.id} variant="record" onClose={() => setShowRecord(false)} />}
     </div>
   )
 }

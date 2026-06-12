@@ -46,6 +46,19 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.7.5 — Design tap-forward, production record, never-scanned note
+- **Design is a tap, not a scan:** Design's queue rows get **✓ Forward** — confirm
+  the standard design (or attach a new drawing photo + note) and the job moves to
+  Production. No card needed at the design desk; the design file is stored on the
+  job. The big Scan button is hidden for Design.
+- **Printable Production Record** — on a closed job, "🖨 Production Record" prints
+  the as-built dossier: the actual station trail (operator, in/out, dwell, ★
+  auto-out, remarks), QC results, serials, raw material, and any stations the job
+  was never scanned at.
+- **FG close note**: no curated "critical station" list — the close simply records
+  which stations were never scanned (informational, never blocks, no alarm spam).
+- New `Job.designFileUrl` column (additive migration, applied live).
+
 ### v0.7.4 — PPC converts sale sheets + Design release scan fixed
 - **Sales → PPC handoff closed:** PPC's request screen shows a banner when sale
   sheets are waiting; tap → pick a sheet → the request form opens pre-filled
