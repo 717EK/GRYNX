@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import { getFgQueue, getSerials, addSerials, requestClosure, type FgJob } from '../lib/api'
+import { getFgQueue, getSerials, addSerials, fgClose, type FgJob } from '../lib/api'
 import ReportButton from '../components/ReportButton'
 import './Maintenance.css'
 import './DeptHome.css'
@@ -44,7 +44,7 @@ export default function FgHome({ user, onBack, onLock }: { user: SessionUser; on
                 <li key={j.id}>
                   <button className="dh__row" onClick={() => setActive(j)}>
                     <span className="dh__main">
-                      <span className="dh__label display">{j.displayLabel}</span>
+                      <span className="dh__label display">{j.name || j.displayLabel}</span>
                       <span className="dh__meta mono-label">{j.product?.name} · {j.totalQty} units · {j.serialCount ?? 0} serials</span>
                     </span>
                     <span className="dh__right">
@@ -102,11 +102,17 @@ function FgModal({ job, onClose, onDone }: { job: FgJob; onClose: () => void; on
   async function close() {
     setBusy(true)
     setErr(null)
+    // flush any serials still in the box, then close in one step
+    const pending = text.split(/[\n,]/).map((s) => s.trim()).filter(Boolean)
     try {
-      await requestClosure(job.id, Math.max(0, Number(received) || 0))
+      const r = await fgClose(job.id, { serials: pending.length ? pending : undefined, receivedQty: Math.max(0, Number(received) || 0) })
+      if (r.missingCritical?.length) {
+        // soft-flag: closed anyway, but surface the gap to the operator
+        alert(`Closed — but never scanned at: ${r.missingCritical.join(', ')}. Admin has been notified.`)
+      }
       onDone()
-    } catch {
-      setErr('Could not request closure')
+    } catch (e) {
+      setErr(e instanceof Error && /serial/.test(e.message) ? 'Add at least one serial number to close.' : 'Could not close the job')
       setBusy(false)
     }
   }
@@ -133,7 +139,8 @@ function FgModal({ job, onClose, onDone }: { job: FgJob; onClose: () => void; on
           <input className="mnt__input" type="number" min={0} value={received} onChange={(e) => setReceived(e.target.value)} />
         </label>
         {err && <span className="mnt__err mono-label">{err}</span>}
-        <button className="btn btn--solid btn--block" disabled={busy} onClick={close}>{busy ? '…' : 'Request Closure'}</button>
+        <button className="btn btn--solid btn--block" disabled={busy} onClick={close}>{busy ? '…' : '✓ Serialise & Close Job'}</button>
+        <span className="mono-label" style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center' }}>Closing the job here is final — admin is notified.</span>
       </div>
     </div>
   )

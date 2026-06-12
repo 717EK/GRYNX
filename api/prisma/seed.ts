@@ -6,18 +6,27 @@ const prisma = new PrismaClient()
 // Idempotent seed — safe to run repeatedly. Uses upserts on unique keys so it
 // never duplicates and can extend an existing DB. Matches docs/02 seed list.
 
+// pipeline-v2: only FOUR gated departments on the floor + Maintenance (parallel).
+// The former production departments (Laser/CNC/MS/Alloy/MNTR/Powder) are now
+// STATIONS under PRODUCTION — see STATIONS below.
 const DEPARTMENTS = [
   { code: 'DESIGN', name: 'Design', sortOrder: 10 },
-  { code: 'PURCHASE', name: 'Purchase', sortOrder: 20 },
-  { code: 'LASER', name: 'Laser / Cutting', sortOrder: 30 },
-  { code: 'MS_PROD', name: 'MS Production', sortOrder: 40 },
-  { code: 'ALLOY_PROD', name: 'Alloy Production', sortOrder: 50 },
-  { code: 'CNC_VMC', name: 'CNC / VMC', sortOrder: 60 },
-  { code: 'MNTR', name: 'MNTR', sortOrder: 70 },
-  { code: 'POWDER', name: 'Powder Coat', sortOrder: 80 },
-  { code: 'QC', name: 'QC', sortOrder: 90 },
-  { code: 'FG_STOCK', name: 'FG Stock', sortOrder: 100 },
-  { code: 'MAINT', name: 'Maintenance', sortOrder: 110 },
+  { code: 'PRODUCTION', name: 'Production', sortOrder: 20 },
+  { code: 'QC', name: 'QC', sortOrder: 30 },
+  { code: 'FG_STOCK', name: 'FG Stock', sortOrder: 40 },
+  { code: 'MAINT', name: 'Maintenance', sortOrder: 50 },
+] as const
+
+// Stations live UNDER the PRODUCTION department. Tracking entities, not gates —
+// a job is scanned at them freely / in parallel (scan-in → scan-out). Mark
+// isCritical: true for any station whose skip should soft-flag at FG close.
+const STATIONS = [
+  { code: 'LASER', name: 'Laser / Cutting', sortOrder: 10, isCritical: false },
+  { code: 'CNC_VMC', name: 'CNC / VMC', sortOrder: 20, isCritical: false },
+  { code: 'MS_PROD', name: 'MS Production', sortOrder: 30, isCritical: false },
+  { code: 'ALLOY_PROD', name: 'Alloy Production', sortOrder: 40, isCritical: false }, // MIG welding the structure
+  { code: 'MNTR', name: 'Drilling / Tapping', sortOrder: 50, isCritical: false },
+  { code: 'POWDER', name: 'Powder Coat', sortOrder: 60, isCritical: false },
 ] as const
 
 // HoldCode enum -> reasons surfaced in the UI hold dialog.
@@ -40,8 +49,9 @@ const SETTINGS: { key: string; value: unknown }[] = [
   { key: 'maint.escalation.assignMins', value: 30 }, // unassigned ticket -> escalate to admin
 ]
 
-const ALLOY_STEPS = ['DESIGN', 'LASER', 'ALLOY_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
-const MS_STEPS = ['DESIGN', 'LASER', 'MS_PROD', 'CNC_VMC', 'POWDER', 'QC', 'FG_STOCK']
+// pipeline-v2: one short gated pipeline for every product. Production is a single
+// step — the stations inside it are scan-tracked, not sequenced.
+const PIPELINE_STEPS = ['DESIGN', 'PRODUCTION', 'QC', 'FG_STOCK']
 // products without a real model list yet carry a single "Custom" model
 const CUSTOM_ONLY = [{ code: 'Custom', name: 'Custom', sizes: [] as string[] }]
 
@@ -88,14 +98,14 @@ const PRODUCTS: {
   models: { code: string; name: string; sizes: string[] }[]
   pipeline: { name: string; steps: string[] }
 }[] = [
-  { code: 'AT', name: 'Alloy Truss', description: 'Aluminium truss systems', models: alloyModels, pipeline: { name: 'Alloy Truss Default', steps: ALLOY_STEPS } },
+  { code: 'AT', name: 'Alloy Truss', description: 'Aluminium truss systems', models: alloyModels, pipeline: { name: 'Alloy Truss Default', steps: PIPELINE_STEPS } },
   // other lines — real model lists to be added by the owner; "Custom" for now
-  { code: 'MT', name: 'MS Truss', description: 'Mild-steel truss systems', models: CUSTOM_ONLY, pipeline: { name: 'MS Truss Default', steps: MS_STEPS } },
-  { code: 'SC', name: 'Scaffolding', models: CUSTOM_ONLY, pipeline: { name: 'Scaffolding Default', steps: MS_STEPS } },
-  { code: 'ST', name: 'Stage', models: CUSTOM_ONLY, pipeline: { name: 'Stage Default', steps: MS_STEPS } },
-  { code: 'MJ', name: 'Mojo', description: 'Mojo barriers', models: CUSTOM_ONLY, pipeline: { name: 'Mojo Default', steps: MS_STEPS } },
-  { code: 'LF', name: 'Lifter', models: CUSTOM_ONLY, pipeline: { name: 'Lifter Default', steps: MS_STEPS } },
-  { code: 'SK', name: 'Stacker', models: CUSTOM_ONLY, pipeline: { name: 'Stacker Default', steps: MS_STEPS } },
+  { code: 'MT', name: 'MS Truss', description: 'Mild-steel truss systems', models: CUSTOM_ONLY, pipeline: { name: 'MS Truss Default', steps: PIPELINE_STEPS } },
+  { code: 'SC', name: 'Scaffolding', models: CUSTOM_ONLY, pipeline: { name: 'Scaffolding Default', steps: PIPELINE_STEPS } },
+  { code: 'ST', name: 'Stage', models: CUSTOM_ONLY, pipeline: { name: 'Stage Default', steps: PIPELINE_STEPS } },
+  { code: 'MJ', name: 'Mojo', description: 'Mojo barriers', models: CUSTOM_ONLY, pipeline: { name: 'Mojo Default', steps: PIPELINE_STEPS } },
+  { code: 'LF', name: 'Lifter', models: CUSTOM_ONLY, pipeline: { name: 'Lifter Default', steps: PIPELINE_STEPS } },
+  { code: 'SK', name: 'Stacker', models: CUSTOM_ONLY, pipeline: { name: 'Stacker Default', steps: PIPELINE_STEPS } },
 ]
 
 const DEMO_PIN = '123456'
@@ -114,6 +124,17 @@ async function main() {
     deptByCode.set(d.code, row.id)
   }
   console.log(`  departments: ${deptByCode.size}`)
+
+  // ── production stations (under the PRODUCTION department) ──────────────────
+  const productionId = deptByCode.get('PRODUCTION')!
+  for (const s of STATIONS) {
+    await prisma.station.upsert({
+      where: { code: s.code },
+      update: { name: s.name, sortOrder: s.sortOrder, isCritical: s.isCritical, departmentId: productionId },
+      create: { code: s.code, name: s.name, sortOrder: s.sortOrder, isCritical: s.isCritical, departmentId: productionId },
+    })
+  }
+  console.log(`  stations: ${STATIONS.length} (under PRODUCTION)`)
 
   // ── hold reasons ─────────────────────────────────────────────────────────
   for (const h of HOLD_REASONS) {
@@ -193,7 +214,7 @@ async function main() {
   const upsertUser = async (
     username: string,
     fullName: string,
-    role: 'admin' | 'ppc' | 'dept_head' | 'qc' | 'fg_stock' | 'maintenance',
+    role: 'admin' | 'ppc' | 'sales' | 'dept_head' | 'qc' | 'fg_stock' | 'maintenance',
     departmentCode?: string,
   ) => {
     const user = await prisma.user.upsert({
@@ -214,19 +235,16 @@ async function main() {
   await upsertUser('aashish', 'AASHISH', 'admin') // primary admin (PIN 123456)
   await upsertUser('admin', 'Administrator', 'admin') // SuperUser (View As, testing)
   await upsertUser('ppc', 'Deepak (PPC)', 'ppc')
-  // named heads per operational department (+ a backup on a couple) for testing
-  const HEADS: [string, string, string?][] = [
-    ['DESIGN', 'Pratik', 'Neha'],
-    ['LASER', 'Ramesh', 'Imran'],
-    ['MS_PROD', 'Suresh'],
-    ['ALLOY_PROD', 'Mahesh'],
-    ['CNC_VMC', 'Vijay', 'Anil'],
-    ['MNTR', 'Kunal'],
-    ['POWDER', 'Arjun'],
-  ]
-  for (const [code, head, backup] of HEADS) {
-    await upsertUser(code.toLowerCase(), `${head} (${code})`, 'dept_head', code)
-    if (backup) await upsertUser(`${code.toLowerCase()}2`, `${backup} (${code})`, 'dept_head', code)
+  await upsertUser('sales', 'Rahul (Sales)', 'sales') // pipeline-v2: raises sale sheets → PPC
+  // Design desk (+ backup)
+  await upsertUser('design', 'Pratik (Design)', 'dept_head', 'DESIGN')
+  await upsertUser('design2', 'Neha (Design)', 'dept_head', 'DESIGN')
+  // Production: one head + named operators, all bound to the single PRODUCTION
+  // department. They pick the station at scan time; operatorId records who worked.
+  await upsertUser('prod', 'Vijay (Production Head)', 'dept_head', 'PRODUCTION')
+  const OPERATORS = ['Ramesh', 'Mahesh', 'Suresh', 'Anil', 'Kunal', 'Arjun']
+  for (let i = 0; i < OPERATORS.length; i++) {
+    await upsertUser(`prod${i + 2}`, `${OPERATORS[i]} (Production)`, 'dept_head', 'PRODUCTION')
   }
   await upsertUser('qc', 'QC Inspector', 'qc', 'QC')
   await upsertUser('fg', 'FG Stock', 'fg_stock', 'FG_STOCK')

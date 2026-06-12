@@ -141,6 +141,9 @@ export async function jobRoutes(app: FastifyInstance) {
     models: { include: { model: { select: { code: true, name: true } } } },
     steps: { orderBy: { sequence: 'asc' }, include: { department: { select: { code: true, name: true } } } },
     events: { orderBy: { createdAt: 'desc' }, take: 50 },
+    // pipeline-v2: the production station trail (free / parallel) + parallel material needs
+    stationVisits: { orderBy: { scanInAt: 'asc' }, include: { station: { select: { code: true, name: true } } } },
+    materialRequests: { orderBy: { createdAt: 'desc' } },
   } satisfies Prisma.JobInclude
 
   // ── resolve a scanned code (jobNo OR displayLabel) → full detail ─────────────

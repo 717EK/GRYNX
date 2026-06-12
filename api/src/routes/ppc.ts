@@ -11,6 +11,7 @@ import { createJobFromInput } from '../lib/jobCreate.js'
 const createSchema = z.object({
   productId: z.string().uuid(),
   name: z.string().max(120).optional(),
+  saleSheetId: z.string().uuid().optional(), // pipeline-v2: converting a Sales sheet
   priority: z.enum(['normal', 'urgent']).default('normal'),
   startDate: z.coerce.date().optional(),
   targetDate: z.coerce.date().optional(),
@@ -85,12 +86,20 @@ export async function ppcRoutes(app: FastifyInstance) {
     const allowed = new Set(product.models.map((m) => m.id))
     if (input.models.some((m) => !allowed.has(m.modelId))) return reply.code(400).send({ error: 'model_not_in_product' })
 
+    // optional: converting a Sales sheet → must exist and not already be consumed
+    if (input.saleSheetId) {
+      const sheet = await prisma.saleSheet.findUnique({ where: { id: input.saleSheetId }, select: { status: true } })
+      if (!sheet) return reply.code(404).send({ error: 'sale_sheet_not_found' })
+      if (sheet.status === 'converted') return reply.code(409).send({ error: 'sale_sheet_already_converted' })
+    }
+
     const request = await prisma.$transaction(async (tx) => {
       const seq = await nextDailySequence(tx, 'ppc:counter')
       const r = await tx.ppcRequest.create({
         data: {
           requestNo: `PR-${String(seq).padStart(4, '0')}`,
           name: input.name?.trim() || null,
+          saleSheetId: input.saleSheetId ?? null,
           productId: product.id,
           priority: input.priority,
           startDate: input.startDate ?? null,
@@ -101,7 +110,10 @@ export async function ppcRoutes(app: FastifyInstance) {
         },
         select: requestSelect,
       })
-      await writeAudit('ppc_request', r.id, 'create', { actorId, after: { requestNo: r.requestNo }, tx })
+      if (input.saleSheetId) {
+        await tx.saleSheet.update({ where: { id: input.saleSheetId }, data: { status: 'converted' } })
+      }
+      await writeAudit('ppc_request', r.id, 'create', { actorId, after: { requestNo: r.requestNo, saleSheetId: input.saleSheetId ?? null }, tx })
       await notifyAdmins(tx, { type: 'ppc_approval', body: `New PPC request ${r.requestNo} — review & approve`, entityId: r.id })
       return r
     })

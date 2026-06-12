@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import { getQcQueue, qcApprove, qcRework, getReworkTargets, type QueueJob, type ReworkTarget } from '../lib/api'
+import { getQcQueue, qcApprove, qcRework, qcReceive, getReworkTargets, type QueueJob, type Station } from '../lib/api'
 import ReportButton from '../components/ReportButton'
 import './Maintenance.css'
 import './DeptHome.css'
@@ -16,6 +16,7 @@ export default function QcHome({
 }) {
   const [jobs, setJobs] = useState<QueueJob[] | null>(null)
   const [active, setActive] = useState<QueueJob | null>(null)
+  const [recv, setRecv] = useState<string | null>(null)
 
   async function load() {
     try {
@@ -28,6 +29,11 @@ export default function QcHome({
   useEffect(() => {
     void load()
   }, [])
+
+  async function receive(j: QueueJob) {
+    setRecv(j.id)
+    try { await qcReceive(j.id); await load() } catch { /* ignore */ } finally { setRecv(null) }
+  }
 
   return (
     <div className="app">
@@ -50,16 +56,31 @@ export default function QcHome({
             <ul className="dh__list">
               {jobs.map((j) => (
                 <li key={j.id}>
-                  <button className="dh__row" onClick={() => setActive(j)}>
-                    <span className="dh__main">
-                      <span className="dh__label display">{j.displayLabel}</span>
-                      <span className="dh__meta mono-label">{j.product?.name} · {j.totalQty} units</span>
-                    </span>
-                    <span className="dh__right">
-                      {j.priority === 'urgent' && <span className="dh__tag dh__tag--urgent mono-label">URGENT</span>}
-                      <span className="dh__tag dh__tag--info mono-label">{j.stepStatus === 'in_progress' ? 'HERE' : 'ARRIVING'}</span>
-                    </span>
-                  </button>
+                  {j.atProduction ? (
+                    <div className="dh__row">
+                      <span className="dh__main">
+                        <span className="dh__label display">{j.name || j.displayLabel}</span>
+                        <span className="dh__meta mono-label">{j.product?.name} · {j.totalQty} units · in production</span>
+                      </span>
+                      <span className="dh__right">
+                        {j.priority === 'urgent' && <span className="dh__tag dh__tag--urgent mono-label">URGENT</span>}
+                        <button className="btn btn--solid" style={{ padding: '6px 12px', fontSize: 12 }} disabled={recv === j.id} onClick={() => receive(j)}>
+                          {recv === j.id ? '…' : '↓ Receive'}
+                        </button>
+                      </span>
+                    </div>
+                  ) : (
+                    <button className="dh__row" onClick={() => setActive(j)}>
+                      <span className="dh__main">
+                        <span className="dh__label display">{j.name || j.displayLabel}</span>
+                        <span className="dh__meta mono-label">{j.product?.name} · {j.totalQty} units</span>
+                      </span>
+                      <span className="dh__right">
+                        {j.priority === 'urgent' && <span className="dh__tag dh__tag--urgent mono-label">URGENT</span>}
+                        <span className="dh__tag dh__tag--info mono-label">AT QC</span>
+                      </span>
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -77,15 +98,11 @@ function QcModal({ job, onClose, onDone }: { job: QueueJob; onClose: () => void;
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [mode, setMode] = useState<'choose' | 'rework'>('choose')
-  const [targets, setTargets] = useState<ReworkTarget[]>([])
-  const [reworkTo, setReworkTo] = useState('')
+  const [stations, setStations] = useState<Station[]>([])
+  const [reworkTo, setReworkTo] = useState('') // '' = back to Production (head decides)
 
   useEffect(() => {
-    getReworkTargets(job.id).then((r) => {
-      setTargets(r.targets)
-      // default to the last production station before QC
-      if (r.targets.length) setReworkTo(r.targets[r.targets.length - 1].departmentId)
-    }).catch(() => {})
+    getReworkTargets(job.id).then((r) => setStations(r.stations)).catch(() => {})
   }, [job.id])
 
   async function approve() {
@@ -96,9 +113,8 @@ function QcModal({ job, onClose, onDone }: { job: QueueJob; onClose: () => void;
   async function sendRework() {
     setErr(null)
     if (!notes.trim()) { setErr('Add a note on what failed'); return }
-    if (!reworkTo) { setErr('Pick which department to send it back to'); return }
     setBusy(true)
-    try { await qcRework(job.id, notes.trim(), reworkTo); onDone() }
+    try { await qcRework(job.id, notes.trim(), reworkTo ? { reworkStationId: reworkTo } : undefined); onDone() }
     catch { setErr('Action failed — try again'); setBusy(false) }
   }
 
@@ -119,8 +135,8 @@ function QcModal({ job, onClose, onDone }: { job: QueueJob; onClose: () => void;
           <label className="mnt__field">
             <span className="mono-label">Send back to</span>
             <select className="mnt__select" value={reworkTo} onChange={(e) => setReworkTo(e.target.value)}>
-              {targets.length === 0 && <option value="">— no stations —</option>}
-              {targets.map((t) => <option key={t.departmentId} value={t.departmentId}>{t.name}</option>)}
+              <option value="">Production — head decides</option>
+              {stations.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </label>
         )}

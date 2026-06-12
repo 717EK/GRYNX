@@ -9,7 +9,7 @@ const RAW_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
 export const DEMO = !RAW_BASE
 const BASE = (RAW_BASE ?? '').replace(/\/$/, '')
 
-export type RoleName = 'admin' | 'ppc' | 'dept_head' | 'qc' | 'fg_stock' | 'maintenance'
+export type RoleName = 'admin' | 'ppc' | 'sales' | 'dept_head' | 'qc' | 'fg_stock' | 'maintenance'
 export interface Role {
   role: RoleName
   departmentId: string | null
@@ -328,11 +328,25 @@ export interface JobDTO {
   current?: { status: string; department: { code: string; name: string } } | null
   models?: { quantity: number; size?: string | null; model: { code: string; name: string } }[]
   events?: { id: string; type: string; body: string | null; createdAt: string }[]
+  // pipeline-v2: the production station trail (free / parallel) + parallel material needs
+  stationVisits?: StationVisit[]
+  materialRequests?: MaterialRequest[]
+}
+export interface StationVisit {
+  id: string
+  operatorId: string
+  scanInAt: string
+  scanOutAt: string | null
+  scanOutMode: 'explicit' | 'auto' | null // 'auto' renders with a ★
+  remark: string | null
+  photoUrl?: string | null
+  station: { code: string; name: string }
 }
 
 export interface QueueJob extends JobDTO {
   stepStatus?: string
   slaDueAt?: string | null
+  atProduction?: boolean // QC queue: job still in Production, QC can receive it
 }
 export const getQueue = (departmentId?: string) =>
   DEMO
@@ -361,13 +375,14 @@ export interface AdminStats {
   attention: AttentionItem[]
   snapshot: { active: number; onHold: number; urgent: number; inQc: number }
   pipeline: { code: string; department: string; count: number; hold: number }[]
+  stations: { name: string; wip: number }[] // pipeline-v2: live production-station occupancy
   aging: { id: string; label: string; dept: string; days: number }[]
   holds: { code: string; label: string; count: number }[]
   urgent: { id: string; label: string }[]
 }
 export const getAdminStats = () =>
   DEMO
-    ? Promise.resolve({ kpis: { totalJobs: 0, active: 0, inProduction: 0, inQc: 0, inFg: 0, closureRequested: 0, closed: 0, unitsWip: 0, openTickets: 0, overdue: 0, completedToday: 0, pendingPpc: 0, pendingUsers: 0 }, statusMix: [], byProduct: [], byDepartment: [], departmentHealth: [], recentActivity: [], throughput: [], maintenance: [], attention: [], snapshot: { active: 0, onHold: 0, urgent: 0, inQc: 0 }, pipeline: [], aging: [], holds: [], urgent: [] } as AdminStats)
+    ? Promise.resolve({ kpis: { totalJobs: 0, active: 0, inProduction: 0, inQc: 0, inFg: 0, closureRequested: 0, closed: 0, unitsWip: 0, openTickets: 0, overdue: 0, completedToday: 0, pendingPpc: 0, pendingUsers: 0 }, statusMix: [], byProduct: [], byDepartment: [], departmentHealth: [], recentActivity: [], throughput: [], maintenance: [], attention: [], snapshot: { active: 0, onHold: 0, urgent: 0, inQc: 0 }, pipeline: [], stations: [], aging: [], holds: [], urgent: [] } as AdminStats)
     : req<AdminStats>('GET', '/api/v1/admin/stats')
 
 export interface CalendarDay { active: number; closed: number; jobs: { id: string; label: string; status: string; kind: 'active' | 'closed' }[] }
@@ -400,29 +415,31 @@ export async function getJobCardHtml(id: string): Promise<string> {
   return res.text()
 }
 
-// ── scan engine ─────────────────────────────────────────────────────────────
+// ── scan engine (pipeline-v2) ───────────────────────────────────────────────
+// Two scan kinds: STATION scan (stationId given) = production sub-station in/out;
+// GATE scan (no stationId) = a macro step (Design / QC / FG) by the user's dept.
 export interface ScanResult {
   result: 'applied' | 'forced' | 'duplicate' | 'rejected_out_of_seq' | 'superseded'
   label?: string
   station?: string
-  completed?: string | null
+  action?: 'in' | 'out' // station scan: did this open or close a visit
   jobStatus?: string
   reason?: string
   hint?: string
   replayed?: boolean
   preview?: boolean
-  from?: string | null
-  to?: string
-  completes?: string | null
 }
 export interface ScanInput {
   jobNo: string
   idempotencyKey: string
   clientTs: string
+  stationId?: string // production station scan (in/out)
+  parallel?: boolean // station scan-in: keep other open visits running
+  remark?: string // station scan-out: what they did
+  photoUrl?: string // station scan-out: compressed JPEG data URL
   note?: string
-  force?: boolean
+  stationDepartmentId?: string // explicit gate dept (admin "view as")
   preview?: boolean
-  stationDepartmentId?: string
 }
 export async function scan(input: ScanInput): Promise<{ status: number; data: ScanResult }> {
   if (DEMO) return demo.demoScanForUser(getUser()?.roles ?? [], input.jobNo, input.preview ?? false)
@@ -435,6 +452,69 @@ export async function scan(input: ScanInput): Promise<{ status: number; data: Sc
   const text = await res.text()
   return { status: res.status, data: text ? JSON.parse(text) : {} }
 }
+
+// ── production stations ──────────────────────────────────────────────────────
+export interface Station {
+  id: string
+  code: string
+  name: string
+  sortOrder: number
+  isCritical: boolean
+}
+export const getStations = () =>
+  DEMO ? Promise.resolve({ stations: [] as Station[] }) : req<{ stations: Station[] }>('GET', '/api/v1/stations')
+
+// ── sale sheets (Sales desk → PPC) ───────────────────────────────────────────
+export interface SaleSheet {
+  id: string
+  sheetNo: string
+  customer: string
+  orderName: string | null
+  details: string | null
+  targetDate: string | null
+  status: 'draft' | 'submitted' | 'converted' | 'cancelled'
+  createdById: string
+  createdAt: string
+  request?: { id: string; requestNo: string; status: string } | null
+}
+export interface SaleSheetInput {
+  customer: string
+  orderName?: string
+  details?: string
+  targetDate?: string
+  submit?: boolean
+}
+export const getSaleSheets = (status?: string) =>
+  req<{ sheets: SaleSheet[] }>('GET', `/api/v1/sales/sheets${status ? `?status=${status}` : ''}`)
+export const getSaleSheet = (id: string) => req<{ sheet: SaleSheet }>('GET', `/api/v1/sales/sheets/${id}`)
+export const createSaleSheet = (input: SaleSheetInput) => req<{ sheet: SaleSheet }>('POST', '/api/v1/sales/sheets', input)
+export const updateSaleSheet = (id: string, input: Partial<SaleSheetInput> & { status?: string }) =>
+  req<{ sheet: SaleSheet }>('PATCH', `/api/v1/sales/sheets/${id}`, input)
+
+// ── material / purchase needs (parallel, non-blocking) ───────────────────────
+export interface MaterialRequest {
+  id: string
+  item: string
+  quantity: string | null
+  status: 'needed' | 'ordered' | 'received' | 'cancelled'
+  note: string | null
+  vendor: string | null
+  raisedById: string
+  createdAt: string
+  job?: { id: string; displayLabel: string; name: string | null; status: string; product: { name: string } } | null
+}
+export const getMaterialRequests = (status?: string) =>
+  req<{ requests: MaterialRequest[] }>('GET', `/api/v1/purchase/requests${status ? `?status=${status}` : ''}`)
+export const getJobMaterialRequests = (jobId: string) =>
+  req<{ requests: MaterialRequest[] }>('GET', `/api/v1/purchase/${jobId}/requests`)
+export const createMaterialRequest = (jobId: string, input: { item: string; quantity?: string; note?: string; vendor?: string }) =>
+  req<{ request: MaterialRequest }>('POST', `/api/v1/purchase/${jobId}/requests`, input)
+export const updateMaterialRequest = (id: string, input: { status?: string; vendor?: string; note?: string }) =>
+  req<{ request: MaterialRequest }>('PATCH', `/api/v1/purchase/requests/${id}`, input)
+
+// ── FG close (serial → close + notify, with critical-station soft-flag) ──────
+export const fgClose = (jobId: string, input: { serials?: string[]; modelCode?: string; size?: string; receivedQty?: number }) =>
+  req<{ ok: boolean; closed: boolean; serials: number; missingCritical: string[] }>('POST', `/api/v1/fg/${jobId}/close`, input)
 
 // ── maintenance ───────────────────────────────────────────────────────────
 export interface MaintUserBrief {
@@ -559,11 +639,15 @@ export const getQcQueue = () =>
   DEMO ? Promise.resolve({ jobs: [] as QueueJob[] }) : req<{ jobs: QueueJob[] }>('GET', '/api/v1/qc/queue')
 export const qcApprove = (jobId: string, notes?: string) =>
   DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/qc/${jobId}/approve`, notes ? { notes } : {})
-export interface ReworkTarget { departmentId: string; code: string; name: string }
+export const qcReceive = (jobId: string) =>
+  DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/qc/${jobId}/receive`)
+// pipeline-v2: rework targets are production STATIONS (or none = back to Production)
 export const getReworkTargets = (jobId: string) =>
-  DEMO ? Promise.resolve({ targets: [] as ReworkTarget[] }) : req<{ targets: ReworkTarget[] }>('GET', `/api/v1/qc/${jobId}/rework-targets`)
-export const qcRework = (jobId: string, notes: string, toDepartmentId: string) =>
-  DEMO ? Promise.resolve({ ok: true, sentBackTo: '' }) : req<{ ok: boolean; sentBackTo: string }>('POST', `/api/v1/qc/${jobId}/rework`, { notes, toDepartmentId })
+  DEMO ? Promise.resolve({ stations: [] as Station[] }) : req<{ stations: Station[] }>('GET', `/api/v1/qc/${jobId}/rework-targets`)
+export const qcRework = (jobId: string, notes: string, opts?: { reworkStationId?: string; photoUrl?: string }) =>
+  DEMO
+    ? Promise.resolve({ ok: true, sentBackTo: '' })
+    : req<{ ok: boolean; sentBackTo: string }>('POST', `/api/v1/qc/${jobId}/rework`, { notes, ...opts })
 
 // ── FG Stock ────────────────────────────────────────────────────────────────
 export interface FgJob extends QueueJob {

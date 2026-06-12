@@ -22,6 +22,7 @@ enum UserStatus {
 enum Role {
   admin
   ppc
+  sales // creates sale sheets that feed PPC requests
   dept_head
   qc
   fg_stock
@@ -98,6 +99,12 @@ enum EventType {
   closure_requested
   closed
   forced_advance
+  station_in // production station scan-in
+  station_out // production station scan-out (explicit or auto ★)
+  material_request // design/floor raised a raw-material / purchase need
+  material_update // material need status changed (ordered/received)
+  sale_sheet // a sale sheet was created and handed to PPC
+  serialized // FG entered a serial number on a finished unit
 }
 
 enum AttachmentKind {
@@ -169,6 +176,30 @@ enum ScanResult {
   superseded
 }
 
+// how a production station visit ended: an operator scan-out (real time) vs.
+// auto-closed because they forgot and the job moved on (rendered with a ★).
+enum ScanOutMode {
+  explicit
+  auto
+}
+
+// a raw-material / purchase need raised against a job. Actual ordering happens
+// off-app; production keeps working on available parts meanwhile (non-blocking).
+enum MaterialStatus {
+  needed
+  ordered
+  received
+  cancelled
+}
+
+// lifecycle of a sale sheet from the Sales desk into PPC.
+enum SaleSheetStatus {
+  draft
+  submitted // handed to PPC
+  converted // turned into a PPC request
+  cancelled
+}
+
 enum SuggestionKind {
   update_request
   escalation
@@ -191,22 +222,22 @@ enum SuggestionStatus {
 
 // ───────────────────────── identity & org ─────────────────────────
 model User {
-  id            String   @id @default(uuid())
-  username      String   @unique
-  fullName      String
-  passwordHash  String? // office users
-  pinHash       String? // floor users (argon2)
-  status        UserStatus @default(active)
-  lastLoginAt   DateTime?
+  id                String     @id @default(uuid())
+  username          String     @unique
+  fullName          String
+  passwordHash      String? // office users
+  pinHash           String? // floor users (argon2)
+  status            UserStatus @default(active)
+  lastLoginAt       DateTime?
   webauthnChallenge String? // short-lived challenge for the in-flight ceremony
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
-  roles         RoleAssignment[]
-  devices       DeviceToken[]
-  scans         ScanEvent[]
+  roles               RoleAssignment[]
+  devices             DeviceToken[]
+  scans               ScanEvent[]
   webauthnCredentials WebauthnCredential[]
-  pushTokens    PushToken[]
+  pushTokens          PushToken[]
 }
 
 // FCM push registration token for a user's device (Capacitor Android app). Used
@@ -242,16 +273,17 @@ model WebauthnCredential {
 }
 
 model Department {
-  id        String  @id @default(uuid())
-  code      String  @unique
+  id        String @id @default(uuid())
+  code      String @unique
   name      String
-  sortOrder Int     @default(0)
+  sortOrder Int    @default(0)
 
   roles         RoleAssignment[]
   templateSteps PipelineTemplateStep[]
   jobSteps      JobStep[]
   scans         ScanEvent[]
   floorDevices  DeviceToken[]
+  stations      Station[] // production sub-stations (only the PRODUCTION dept has these)
 }
 
 model RoleAssignment {
@@ -267,23 +299,23 @@ model RoleAssignment {
 }
 
 model DeviceToken {
-  id            String     @id @default(uuid())
+  id            String      @id @default(uuid())
   userId        String
   platform      Platform
   token         String
-  isFloorDevice Boolean    @default(false)
+  isFloorDevice Boolean     @default(false)
   departmentId  String? // station binding for floor scanners (docs/10)
-  user          User       @relation(fields: [userId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
   department    Department? @relation(fields: [departmentId], references: [id])
 }
 
 // ───────────────────────── catalogue (Product Master) ─────────────────────────
 model Product {
-  id          String   @id @default(uuid())
-  code        String   @unique // e.g. AT
+  id          String  @id @default(uuid())
+  code        String  @unique // e.g. AT
   name        String
   description String?
-  active      Boolean  @default(true)
+  active      Boolean @default(true)
 
   models    Model[]
   pipelines PipelineTemplate[]
@@ -302,6 +334,7 @@ model Model {
 
   jobModels JobModel[]
   ppcModels PpcRequestModel[]
+
   @@unique([productId, code])
 }
 
@@ -354,9 +387,11 @@ model PpcRequest {
   createdById        String
   clarificationNote  String?
   approvedJobId      String?
+  saleSheetId        String?           @unique // originating sale sheet (if from Sales)
   createdAt          DateTime          @default(now())
   product            Product           @relation(fields: [productId], references: [id])
   pipeline           PipelineTemplate? @relation(fields: [pipelineTemplateId], references: [id])
+  saleSheet          SaleSheet?        @relation(fields: [saleSheetId], references: [id])
   models             PpcRequestModel[]
 }
 
@@ -372,40 +407,42 @@ model PpcRequestModel {
 
 // ───────────────────────── jobs (core) ─────────────────────────
 model Job {
-  id                     String            @id @default(uuid())
-  jobNo                  String            @unique // opaque immutable key
-  displayLabel           String // AT-U-045-060626-001 (regenerable)
-  name                   String? // optional human label carried from the PPC request
-  jobType                JobType           @default(production)
-  productId              String
-  priority               Priority          @default(normal)
-  totalQty               Int
-  status                 JobStatus         @default(draft)
-  pipelineTemplateId     String
-  parentJobId            String? // split (V2)
-  source                 JobSource         @default(admin)
-  ppcRequestId           String?
-  startDate              DateTime?
-  completionDate         DateTime?
-  reworkIssue            String?
+  id                      String    @id @default(uuid())
+  jobNo                   String    @unique // opaque immutable key
+  displayLabel            String // AT-U-045-060626-001 (regenerable)
+  name                    String? // optional human label carried from the PPC request
+  jobType                 JobType   @default(production)
+  productId               String
+  priority                Priority  @default(normal)
+  totalQty                Int
+  status                  JobStatus @default(draft)
+  pipelineTemplateId      String
+  parentJobId             String? // split (V2)
+  source                  JobSource @default(admin)
+  ppcRequestId            String?
+  startDate               DateTime?
+  completionDate          DateTime?
+  reworkIssue             String?
   reworkEntryDepartmentId String?
-  createdById            String
-  cancelledReason        String?
-  version                Int               @default(0) // optimistic lock
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  createdById             String
+  cancelledReason         String?
+  version                 Int       @default(0) // optimistic lock
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-  product  Product          @relation(fields: [productId], references: [id])
-  pipeline PipelineTemplate @relation(fields: [pipelineTemplateId], references: [id])
-  models   JobModel[]
-  steps    JobStep[]
-  events   JobEvent[]
-  scans    ScanEvent[]
-  holds    Hold[]
-  qc       QcInspection[]
-  closure  Closure?
-  materials MaterialUsage[]
-  serials   Serial[]
+  product          Product           @relation(fields: [productId], references: [id])
+  pipeline         PipelineTemplate  @relation(fields: [pipelineTemplateId], references: [id])
+  models           JobModel[]
+  steps            JobStep[]
+  events           JobEvent[]
+  scans            ScanEvent[]
+  holds            Hold[]
+  qc               QcInspection[]
+  closure          Closure?
+  materials        MaterialUsage[]
+  serials          Serial[]
+  stationVisits    StationVisit[] // production station scan trail (free / parallel)
+  materialRequests MaterialRequest[] // parallel raw-material / purchase needs
 }
 
 // Purchase logs the raw material consumed by a job (traceability/genealogy).
@@ -472,15 +509,15 @@ model JobStep {
 
 // immutable timeline
 model JobEvent {
-  id        String       @id @default(uuid())
-  jobId     String
-  jobStepId String?
-  type      EventType
-  actorId   String?
-  body      String?
-  meta      Json         @default("{}")
-  createdAt DateTime     @default(now())
-  job       Job          @relation(fields: [jobId], references: [id])
+  id          String       @id @default(uuid())
+  jobId       String
+  jobStepId   String?
+  type        EventType
+  actorId     String?
+  body        String?
+  meta        Json         @default("{}")
+  createdAt   DateTime     @default(now())
+  job         Job          @relation(fields: [jobId], references: [id])
   attachments Attachment[]
 
   @@index([jobId])
@@ -514,31 +551,33 @@ model Hold {
 
 // barcode scan log — the advance engine (docs/10)
 model ScanEvent {
-  id               String     @id @default(uuid())
-  jobId            String
+  id                  String     @id @default(uuid())
+  jobId               String
   stationDepartmentId String
-  scannedById      String
-  clientTs         DateTime
-  serverTs         DateTime   @default(now())
-  idempotencyKey   String     @unique // client UUID per physical scan → dedup
-  result           ScanResult
-  note             String?
-  job              Job        @relation(fields: [jobId], references: [id])
-  station          Department @relation(fields: [stationDepartmentId], references: [id])
-  scannedBy        User       @relation(fields: [scannedById], references: [id])
+  scannedById         String
+  clientTs            DateTime
+  serverTs            DateTime   @default(now())
+  idempotencyKey      String     @unique // client UUID per physical scan → dedup
+  result              ScanResult
+  note                String?
+  job                 Job        @relation(fields: [jobId], references: [id])
+  station             Department @relation(fields: [stationDepartmentId], references: [id])
+  scannedBy           User       @relation(fields: [scannedById], references: [id])
 
   @@index([jobId])
 }
 
 model QcInspection {
-  id           String   @id @default(uuid())
-  jobId        String
-  result       QcResult
-  inspectorId  String
-  notes        String? // required when result = rework
-  reworkJobId  String?
-  createdAt    DateTime @default(now())
-  job          Job      @relation(fields: [jobId], references: [id])
+  id              String   @id @default(uuid())
+  jobId           String
+  result          QcResult
+  inspectorId     String
+  notes           String? // required when result = rework — the issue description
+  photoUrl        String?  @db.Text // optional compressed JPEG data URL of the defect
+  reworkStationId String? // QC may target a specific production station; else back to Production generically
+  reworkJobId     String?
+  createdAt       DateTime @default(now())
+  job             Job      @relation(fields: [jobId], references: [id])
 }
 
 model Closure {
@@ -555,24 +594,24 @@ model Closure {
 
 // ───────────────────────── maintenance ─────────────────────────
 model MaintenanceTicket {
-  id           String        @id @default(uuid())
-  ticketNo     String        @unique // MT-0001
-  category     MaintCategory
-  priority     MaintPriority @default(normal)
-  status       MaintStatus   @default(open)
-  locationText String
-  description  String
-  reportedById String
-  assignedToId String?
-  closedById   String?
-  etaHours     Int? // assignee's expected time to fix
-  partsNeeded  String? // parts/replacements required
-  closeRemark  String?
-  photoUrl     String? @db.Text // compressed JPEG data URL of the issue (optional)
-  escalationLevel Int        @default(0) // 0=none, 1=ack-breach re-notified, 2=assign-breach escalated to admin
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  events       MaintenanceEvent[]
+  id              String             @id @default(uuid())
+  ticketNo        String             @unique // MT-0001
+  category        MaintCategory
+  priority        MaintPriority      @default(normal)
+  status          MaintStatus        @default(open)
+  locationText    String
+  description     String
+  reportedById    String
+  assignedToId    String?
+  closedById      String?
+  etaHours        Int? // assignee's expected time to fix
+  partsNeeded     String? // parts/replacements required
+  closeRemark     String?
+  photoUrl        String?            @db.Text // compressed JPEG data URL of the issue (optional)
+  escalationLevel Int                @default(0) // 0=none, 1=ack-breach re-notified, 2=assign-breach escalated to admin
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  events          MaintenanceEvent[]
 }
 
 model MaintenanceEvent {
@@ -672,4 +711,73 @@ model Feedback {
 
   @@index([status])
   @@index([createdAt])
+}
+
+// ───────────────────────── production stations (pipeline-v2) ─────────────────────────
+// Stations live UNDER the single PRODUCTION department. They are tracking entities,
+// NOT gated pipeline steps — a job is scanned at them freely / in parallel, and the
+// scanned order IS the route record. (Replaces the old per-station gated departments.)
+model Station {
+  id           String         @id @default(uuid())
+  code         String         @unique
+  name         String
+  sortOrder    Int            @default(0)
+  isCritical   Boolean        @default(false) // FG soft-flags a close if a critical station was never scanned
+  departmentId String // the PRODUCTION department
+  department   Department     @relation(fields: [departmentId], references: [id])
+  visits       StationVisit[]
+}
+
+// One scan-in→scan-out at a station. Multiple may be OPEN at once for the same job
+// (genuine parallel work). scanOut is preferred-explicit; if the operator forgets and
+// the job moves on, it auto-closes (scanOutMode=auto) and the UI renders the time with ★.
+model StationVisit {
+  id          String       @id @default(uuid())
+  jobId       String
+  stationId   String
+  operatorId  String // who scanned / worked (plain id, matches maintenance convention)
+  scanInAt    DateTime     @default(now())
+  scanOutAt   DateTime?
+  scanOutMode ScanOutMode? // null while open; explicit | auto(★) once closed
+  remark      String? // what they did
+  photoUrl    String?      @db.Text // optional compressed JPEG data URL
+  version     Int          @default(0) // optimistic lock for concurrent scans
+  job         Job          @relation(fields: [jobId], references: [id])
+  station     Station      @relation(fields: [stationId], references: [id])
+
+  @@index([jobId])
+  @@index([stationId])
+}
+
+// Sales desk creates a sale sheet, hands it to PPC, who converts it into a PpcRequest.
+model SaleSheet {
+  id          String          @id @default(uuid())
+  sheetNo     String          @unique // SS-0001
+  customer    String // customer / vendor name
+  orderName   String? // human label e.g. "Dubai order — 1600 sqft stage"
+  details     String?         @db.Text // freeform scope / spec
+  targetDate  DateTime?
+  status      SaleSheetStatus @default(draft)
+  createdById String // the Sales user
+  createdAt   DateTime        @default(now())
+  request     PpcRequest? // set once converted
+}
+
+// A raw-material / purchase need raised against a job. Non-blocking: production keeps
+// working on available parts. Actual ordering is OFF-app; this just tracks the state.
+model MaterialRequest {
+  id         String         @id @default(uuid())
+  jobId      String
+  item       String // what's needed
+  quantity   String? // freeform e.g. "120 kg" / "40 pcs"
+  status     MaterialStatus @default(needed)
+  note       String?
+  vendor     String? // optional off-app ordering reference
+  raisedById String // design / floor user who flagged the shortage
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  job        Job            @relation(fields: [jobId], references: [id])
+
+  @@index([jobId])
+  @@index([status])
 }

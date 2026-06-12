@@ -28,6 +28,7 @@ import JobCardModal from './components/JobCardModal'
 import { registerNav } from './lib/nav'
 import FeedbackFab from './components/FeedbackFab'
 import DesktopAdminWarm from './pages/DesktopAdminWarm'
+import SalesHome from './pages/SalesHome'
 import type { SessionUser } from './components/UtilityBars'
 import { getUser, isAuthed, logout, getDepartments, getPpcRequest, type ApiUser, type PpcRequest, type Notification } from './lib/api'
 
@@ -57,12 +58,14 @@ export type Screen =
   | 'jobhub'
   | 'ppcinbox'
   | 'purchase'
+  | 'sales'
 
 const FLOOR_ROLES = ['dept_head', 'qc', 'fg_stock', 'maintenance']
 
 function landingFor(u: ApiUser): Screen {
   if (u.username.toLowerCase() === 'admin') return 'viewas' // SuperUser (testing)
   if (u.roles.some((r) => r.role === 'admin')) return 'home' // AASHISH = real admin
+  if (u.roles.some((r) => r.role === 'sales')) return 'sales'
   if (u.roles.some((r) => r.role === 'ppc')) return 'ppcrequest'
   if (u.roles.some((r) => r.role === 'qc')) return 'qc'
   if (u.roles.some((r) => r.role === 'fg_stock')) return 'fgclosure'
@@ -73,9 +76,10 @@ function toSession(u: ApiUser, depNames: Record<string, string>): SessionUser {
   // The Administrator account is the SuperUser (View As / testing) — show a
   // single clear identity rather than the raw username.
   if (u.username.toLowerCase() === 'admin') return { name: 'SuperUser', role: 'SUPERUSER', id: 'SUPERUSER' }
-  const roleNames: Record<string, string> = { admin: 'ADMIN', ppc: 'PPC', qc: 'QC', fg_stock: 'FG STOCK', maintenance: 'MAINT' }
+  const roleNames: Record<string, string> = { admin: 'ADMIN', ppc: 'PPC', sales: 'SALES', qc: 'QC', fg_stock: 'FG STOCK', maintenance: 'MAINT' }
   let role = 'OPERATOR'
   if (u.roles.some((r) => r.role === 'admin')) role = 'ADMIN'
+  else if (u.roles.some((r) => r.role === 'sales')) role = 'SALES'
   else if (u.roles.some((r) => r.role === 'ppc')) role = 'PPC'
   else {
     const floor = u.roles.find((r) => FLOOR_ROLES.includes(r.role))
@@ -238,6 +242,7 @@ export default function App() {
             onBack={() => go('station')}
             stationName={viewAs?.name}
             stationDepartmentId={viewAs?.id}
+            stationScan
           />
         )
       case 'approvals':
@@ -257,6 +262,8 @@ export default function App() {
             onOpenInbox={() => go('ppcinbox')}
           />
         )
+      case 'sales':
+        return <SalesHome user={user} onLock={handleLock} />
       case 'qc':
         return <QcHome user={user} onBack={deptBack} onLock={handleLock} />
       case 'fgclosure':

@@ -278,7 +278,7 @@ export function demoScan(jobNo: string, stationCode: string | null, preview: boo
   const next = steps.find((s) => s.sequence > scanned.sequence && s.status === 'pending') ?? null
 
   if (preview) {
-    return { status: 200, data: { result: 'applied', preview: true, label: job.displayLabel, to: scanned.department.name, completes: prior?.department.name ?? null } }
+    return { status: 200, data: { result: 'applied', preview: true, label: job.displayLabel, station: scanned.department.name } }
   }
 
   if (prior) prior.status = 'completed'
@@ -287,7 +287,7 @@ export function demoScan(jobNo: string, stationCode: string | null, preview: boo
   job.status = stationCode === 'QC' ? 'in_qc' : stationCode === 'FG_STOCK' ? 'in_fg' : 'in_production'
   job.events = [{ id: `e_${Date.now()}`, type: 'scan', body: scanned.department.name, createdAt: new Date().toISOString() }, ...(job.events ?? [])]
   save()
-  return { status: 200, data: { result: 'applied', label: job.displayLabel, station: scanned.department.name, completed: prior?.department.name ?? null, jobStatus: job.status } }
+  return { status: 200, data: { result: 'applied', label: job.displayLabel, station: scanned.department.name, jobStatus: job.status } }
 }
 
 // resolve the scanner's station from their roles (mirrors server-side derivation)
