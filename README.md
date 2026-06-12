@@ -46,6 +46,13 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.7.1 — command-centre branding
+- **GRYNX badge** at the top of the vertical rail (sized to the bar) and the
+  **D-LYFT wordmark** beside the greeting, matched to the greeting text height —
+  using the dark-on-light wordmark (the old asset's white "LYft" was invisible on
+  the warm background, which is why the logo looked clipped). Verified at 3072px
+  and 1680px.
+
 ### v0.7.0 — pipeline v2: the simplified floor
 - **Four gated stages instead of seven:** Design → **Production** → QC → FG Stock
   (+ Maintenance in parallel). The former production departments (Laser/Cutting,

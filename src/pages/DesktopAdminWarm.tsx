@@ -7,7 +7,8 @@ import Maintenance from './Maintenance'
 import MaintenanceDetail from './MaintenanceDetail'
 import Notifications from './Notifications'
 import CalendarWidget from '../components/CalendarWidget'
-import dlyftLogo from '../assets/dlyft-logo.png'
+import grynxLogo from '../assets/grynx-logo.png'
+import dlyftWordmark from '../assets/dlyft-wordmark-light.png'
 import {
   getAdminStats, getJobs, listPpcRequests, notificationCount,
   type AdminStats, type JobDTO, type PpcRequest, type AttentionItem,
@@ -86,7 +87,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
      <div className="dw__stage">
       {/* icon rail */}
       <aside className="dw__rail">
-        <img className="dw__logo" src={dlyftLogo} alt="D-LYFT" />
+        <img className="dw__logo" src={grynxLogo} alt="GRYNX" />
         <button className={`dw__i ${nav === 'dashboard' ? 'is-on' : ''}`} title="Control Centre" onClick={() => setNav('dashboard')}>⌂</button>
         <button className={`dw__i ${nav === 'jobs' ? 'is-on' : ''}`} title="Job Board" onClick={() => setNav('jobs')}>▤</button>
         <button className={`dw__i ${nav === 'ppc' ? 'is-on' : ''}`} title="PPC Requests" onClick={() => setNav('ppc')}>◳</button>
@@ -98,6 +99,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
 
       <main className="dw__main">
         <header className="dw__head">
+          <img className="dw__dlyft" src={dlyftWordmark} alt="D-LYFT" />
           <div>
             <div className="dw__hi">{greeting()}, {user.name.split(' ')[0]}</div>
             <div className="dw__sub">
