@@ -7,7 +7,7 @@ import Maintenance from './Maintenance'
 import MaintenanceDetail from './MaintenanceDetail'
 import Notifications from './Notifications'
 import CalendarWidget from '../components/CalendarWidget'
-import grynxLogo from '../assets/grynx-logo.png'
+import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark-light.png'
 import {
   getAdminStats, getJobs, listPpcRequests, notificationCount,
@@ -87,7 +87,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
      <div className="dw__stage">
       {/* icon rail */}
       <aside className="dw__rail">
-        <img className="dw__logo" src={grynxLogo} alt="GRYNX" />
+        <img className="dw__logo" src={grynxWordmark} alt="GRYNX" />
         <button className={`dw__i ${nav === 'dashboard' ? 'is-on' : ''}`} title="Control Centre" onClick={() => setNav('dashboard')}>⌂</button>
         <button className={`dw__i ${nav === 'jobs' ? 'is-on' : ''}`} title="Job Board" onClick={() => setNav('jobs')}>▤</button>
         <button className={`dw__i ${nav === 'ppc' ? 'is-on' : ''}`} title="PPC Requests" onClick={() => setNav('ppc')}>◳</button>

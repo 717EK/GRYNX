@@ -20,8 +20,9 @@
 
 /* icon rail */
 .dw__rail{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 0;}
-/* GRYNX badge at the top of the (fixed 72px) rail — fills the bar width */
-.dw__logo{width:58px;height:auto;object-fit:contain;margin:2px 0 10px;border-radius:12px;box-shadow:var(--shadow-sm);}
+/* GRYNX mark at the top of the (fixed 72px) rail — black on the paper, no bg
+   (the wordmark asset is white-on-transparent; invert flips it black) */
+.dw__logo{width:58px;height:auto;object-fit:contain;margin:6px 0 12px;filter:invert(1);}
 /* D-LYFT wordmark left of the greeting — matches the greeting text height */
 .dw__dlyft{height:clamp(22px,2.1vw,50px);width:auto;object-fit:contain;margin-right:clamp(14px,1.1vw,26px);}
 .dw__i{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;color:var(--ink2);font-size:18px;cursor:pointer;border:none;background:transparent;position:relative;}

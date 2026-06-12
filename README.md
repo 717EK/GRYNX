@@ -46,6 +46,11 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.7.2 — rail logo: black GRYNX mark, no background
+- The rail badge no longer carries the baked black tile — it's now the GRYNX
+  wordmark rendered black on the warm paper (white-on-transparent asset +
+  `invert(1)`, same convention as the login/top bar). Verified 3072px + 1680px.
+
 ### v0.7.1 — command-centre branding
 - **GRYNX badge** at the top of the vertical rail (sized to the bar) and the
   **D-LYFT wordmark** beside the greeting, matched to the greeting text height —
