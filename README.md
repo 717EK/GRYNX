@@ -46,6 +46,14 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.7.3 — command-centre popups look native (+ form pipeline fix)
+- The control-centre popups (job history, create job, PPC review, maintenance,
+  notifications) no longer look like a phone app in a window: the phone status
+  bar + version footer are hidden inside popups and the mobile theme tokens are
+  re-mapped to the warm Work-OS palette — **pure scoped CSS, zero screen re-code**.
+- Create-job form's pipeline display updated to the v2 model (was still showing
+  the old 8-department list; now Design → Production → QC → FG Stock).
+
 ### v0.7.2 — rail logo: black GRYNX mark, no background
 - The rail badge no longer carries the baked black tile — it's now the GRYNX
   wordmark rendered black on the warm paper (white-on-transparent asset +

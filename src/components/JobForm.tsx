@@ -36,14 +36,11 @@ const MODELS_BY_PRODUCT: Record<string, string[]> = {
   SK: ['SK-S', 'SK-L'],
 }
 
-const DEPARTMENTS = [
-  'Design', 'Purchase', 'Laser/Cutting', 'MS Production', 'Alloy Production',
-  'CNC/VMC', 'MNTR', 'Powder Coat', 'QC', 'FG Stock', 'Maintenance',
-]
+// pipeline-v2: four gated stages; the former production departments are now
+// free-scan stations inside Production (not part of the gated pipeline).
+const DEPARTMENTS = ['Design', 'Production', 'QC', 'FG Stock']
 
-const DEFAULT_PIPELINE = [
-  'Design', 'Purchase', 'Laser/Cutting', 'Alloy Production', 'CNC/VMC', 'MNTR', 'Powder Coat', 'FG Stock',
-]
+const DEFAULT_PIPELINE = ['Design', 'Production', 'QC', 'FG Stock']
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const pad3 = (n: number) => String(n).padStart(3, '0')
