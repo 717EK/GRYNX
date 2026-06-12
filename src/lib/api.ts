@@ -526,6 +526,16 @@ export const createMaterialRequest = (jobId: string, input: { item: string; quan
 export const updateMaterialRequest = (id: string, input: { status?: string; vendor?: string; note?: string }) =>
   req<{ request: MaterialRequest }>('PATCH', `/api/v1/purchase/requests/${id}`, input)
 
+// ── dwell analytics (admin, last 30d, from the StationVisit trail) ────────────
+export interface DwellAnalytics {
+  since: string
+  totalVisits: number
+  stations: { name: string; visits: number; open: number; avgDwellMins: number; autoOuts: number }[]
+  operators: { name: string; visits: number; jobs: number; avgDwellMins: number }[]
+  slowest: { label: string; jobId: string; station: string; operator: string; mins: number; auto: boolean }[]
+}
+export const getAnalytics = () => req<DwellAnalytics>('GET', '/api/v1/admin/analytics')
+
 // ── FG close (serial → close + notify, with critical-station soft-flag) ──────
 export const fgClose = (jobId: string, input: { serials?: string[]; modelCode?: string; size?: string; receivedQty?: number }) =>
   req<{ ok: boolean; closed: boolean; serials: number; missingCritical: string[] }>('POST', `/api/v1/fg/${jobId}/close`, input)

@@ -46,6 +46,17 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.8.0 — dwell analytics + beta-ready
+- **Dwell Analytics** on the command centre (new ◫ rail tab): per-station average
+  dwell + visit volume (with ★ auto-out counts), operator throughput (scans, jobs,
+  avg dwell), and the longest single stays (click to open the job). Built from the
+  StationVisit trail, last 30 days.
+- **Beta-readiness proven**: a 14-step end-to-end test of the entire v2 flow
+  passes against the live DB — sales sheet → PPC convert → admin approve → design
+  tap-forward → parallel multi-operator station scans → material need → QC receive
+  (★ auto-out) → QC fail → rework to station → re-scan → QC pass → FG serialise &
+  close (never-scanned note) → production record → analytics.
+
 ### v0.7.5 — Design tap-forward, production record, never-scanned note
 - **Design is a tap, not a scan:** Design's queue rows get **✓ Forward** — confirm
   the standard design (or attach a new drawing photo + note) and the job moves to

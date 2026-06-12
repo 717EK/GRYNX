@@ -188,6 +188,62 @@ export async function adminRoutes(app: FastifyInstance) {
   })
 
   // Calendar: active jobs on their start date, closed jobs on completion date.
+  // ── pipeline-v2 dwell analytics: what the StationVisit trail is FOR ─────────
+  // Per-station average dwell + visit volume, per-operator throughput, and the
+  // longest individual stays — last 30 days. Aggregated in JS (floor volumes are
+  // small); auto-closed (★) visits count but their dwell is system-approximated.
+  app.get('/analytics', { preHandler: requireRole('admin') }, async () => {
+    const since = new Date(Date.now() - 30 * 86400_000)
+    const visits = await prisma.stationVisit.findMany({
+      where: { scanInAt: { gte: since } },
+      select: {
+        stationId: true, operatorId: true, scanInAt: true, scanOutAt: true, scanOutMode: true, jobId: true,
+        remark: true,
+        station: { select: { name: true } },
+        job: { select: { id: true, displayLabel: true, name: true } },
+      },
+    })
+    const stationRows = await prisma.station.findMany({ orderBy: { sortOrder: 'asc' }, select: { id: true, name: true } })
+    const operatorIds = [...new Set(visits.map((v) => v.operatorId))]
+    const users = await prisma.user.findMany({ where: { id: { in: operatorIds } }, select: { id: true, fullName: true } })
+    const nameOf = (id: string) => users.find((u) => u.id === id)?.fullName ?? '—'
+    const mins = (v: { scanInAt: Date; scanOutAt: Date | null }) =>
+      v.scanOutAt ? Math.max(0, Math.round((v.scanOutAt.getTime() - v.scanInAt.getTime()) / 60000)) : null
+
+    const stations = stationRows.map((s) => {
+      const vs = visits.filter((v) => v.stationId === s.id)
+      const closed = vs.map(mins).filter((m): m is number => m !== null)
+      return {
+        name: s.name,
+        visits: vs.length,
+        open: vs.filter((v) => !v.scanOutAt).length,
+        avgDwellMins: closed.length ? Math.round(closed.reduce((a, b) => a + b, 0) / closed.length) : 0,
+        autoOuts: vs.filter((v) => v.scanOutMode === 'auto').length,
+      }
+    })
+
+    const operators = operatorIds
+      .map((id) => {
+        const vs = visits.filter((v) => v.operatorId === id)
+        const closed = vs.map(mins).filter((m): m is number => m !== null)
+        return {
+          name: nameOf(id),
+          visits: vs.length,
+          jobs: new Set(vs.map((v) => v.jobId)).size,
+          avgDwellMins: closed.length ? Math.round(closed.reduce((a, b) => a + b, 0) / closed.length) : 0,
+        }
+      })
+      .sort((a, b) => b.visits - a.visits)
+
+    const slowest = visits
+      .map((v) => ({ label: v.job.name || v.job.displayLabel, jobId: v.job.id, station: v.station.name, operator: nameOf(v.operatorId), mins: mins(v), auto: v.scanOutMode === 'auto' }))
+      .filter((x): x is typeof x & { mins: number } => x.mins !== null)
+      .sort((a, b) => b.mins - a.mins)
+      .slice(0, 8)
+
+    return { since: since.toISOString(), stations, operators, slowest, totalVisits: visits.length }
+  })
+
   app.get('/calendar', { preHandler: requireRole('admin') }, async (req) => {
     const q = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/).optional() }).parse(req.query)
     const now = new Date()

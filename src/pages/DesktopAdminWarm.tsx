@@ -10,8 +10,8 @@ import CalendarWidget from '../components/CalendarWidget'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark-light.png'
 import {
-  getAdminStats, getJobs, listPpcRequests, notificationCount,
-  type AdminStats, type JobDTO, type PpcRequest, type AttentionItem,
+  getAdminStats, getJobs, listPpcRequests, notificationCount, getAnalytics,
+  type AdminStats, type JobDTO, type PpcRequest, type AttentionItem, type DwellAnalytics,
 } from '../lib/api'
 import './DeskWarm.css'
 
@@ -31,7 +31,7 @@ function linePath(vals: number[], w: number, h: number, pad = 6) {
   return vals.map((v, i) => `${i ? 'L' : 'M'}${(i * step).toFixed(1)},${(h - pad - ((v - min) / range) * (h - 2 * pad)).toFixed(1)}`).join(' ')
 }
 
-type Nav = 'dashboard' | 'jobs' | 'ppc'
+type Nav = 'dashboard' | 'jobs' | 'ppc' | 'analytics'
 type Popup =
   | null
   | { kind: 'create' }
@@ -50,6 +50,10 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
   const [q, setQ] = useState('')
   const [popup, setPopup] = useState<Popup>(null)
   const [unread, setUnread] = useState(0)
+  const [ana, setAna] = useState<DwellAnalytics | null>(null)
+  useEffect(() => {
+    if (nav === 'analytics' && !ana) getAnalytics().then(setAna).catch(() => {})
+  }, [nav, ana])
 
   function loadJobs() { getJobs().then((r) => setJobs(r.jobs)).catch(() => setJobs([])) }
   function loadPpc() { listPpcRequests('submitted').then((r) => setPpc(r.requests)).catch(() => setPpc([])) }
@@ -81,6 +85,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
   const bottleneck = [...pipeline].sort((a, b) => b.count - a.count)[0]
   const maxHold = Math.max(...(stats?.holds ?? []).map((h) => h.count), 1)
   const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  const fmtMins = (m: number) => (m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`)
 
   return (
     <div className="dw">
@@ -91,6 +96,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         <button className={`dw__i ${nav === 'dashboard' ? 'is-on' : ''}`} title="Control Centre" onClick={() => setNav('dashboard')}>⌂</button>
         <button className={`dw__i ${nav === 'jobs' ? 'is-on' : ''}`} title="Job Board" onClick={() => setNav('jobs')}>▤</button>
         <button className={`dw__i ${nav === 'ppc' ? 'is-on' : ''}`} title="PPC Requests" onClick={() => setNav('ppc')}>◳</button>
+        <button className={`dw__i ${nav === 'analytics' ? 'is-on' : ''}`} title="Dwell Analytics" onClick={() => { setAna(null); setNav('analytics') }}>◫</button>
         <button className="dw__i" title="Maintenance" onClick={() => setPopup({ kind: 'maintenance' })}>⚙</button>
         <div className="dw__rail-sp" />
         <button className="dw__i" title="Notifications" onClick={() => setPopup({ kind: 'notifications' })}>◔{unread > 0 && <span className="pip" />}</button>
@@ -325,6 +331,63 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
                 )
               })}
             </div>
+          </section>
+        )}
+
+        {nav === 'analytics' && (
+          <section className="dw__view">
+            <div className="dw__toolbar">
+              <h1 className="dw__h1">Dwell Analytics</h1>
+              <span className="dw__sub">last 30 days · {ana ? `${ana.totalVisits} station scans` : 'loading…'}</span>
+            </div>
+            <div className="dwa">
+              {/* station dwell */}
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Station Dwell <span className="dw__lbl">avg time a job spends at each station</span></h3>
+                {!ana ? <div className="dw__empty">Loading…</div> : ana.stations.every((s) => s.visits === 0) ? <div className="dw__empty">No station scans yet — dwell builds up as the floor scans in/out.</div> : (
+                  <div className="dwa__bars">
+                    {(() => { const max = Math.max(...ana.stations.map((s) => s.avgDwellMins), 1); return ana.stations.map((s) => (
+                      <div key={s.name} className="dwa__bar">
+                        <span className="dwa__bar-k">{s.name}</span>
+                        <span className="dwa__bar-t"><i style={{ width: `${Math.max(2, (s.avgDwellMins / max) * 100)}%` }} /></span>
+                        <span className="dwa__bar-v">{fmtMins(s.avgDwellMins)}</span>
+                        <span className="dwa__bar-n">{s.visits} visit{s.visits === 1 ? '' : 's'}{s.autoOuts > 0 ? ` · ${s.autoOuts}★` : ''}</span>
+                      </div>
+                    )) })()}
+                  </div>
+                )}
+              </div>
+              {/* operators */}
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Operators <span className="dw__lbl">who scanned · throughput</span></h3>
+                {!ana ? <div className="dw__empty">Loading…</div> : ana.operators.length === 0 ? <div className="dw__empty">No operator scans yet.</div> : (
+                  <table className="dwa__tbl">
+                    <thead><tr><th>Operator</th><th>Scans</th><th>Jobs</th><th>Avg dwell</th></tr></thead>
+                    <tbody>
+                      {ana.operators.map((o) => (
+                        <tr key={o.name}><td>{o.name}</td><td>{o.visits}</td><td>{o.jobs}</td><td>{fmtMins(o.avgDwellMins)}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              {/* longest stays */}
+              <div className="dw__c">
+                <h3 className="dwm__ttl">Longest Stays <span className="dw__lbl">single visits · click to open the job</span></h3>
+                {!ana ? <div className="dw__empty">Loading…</div> : ana.slowest.length === 0 ? <div className="dw__empty">Nothing recorded yet.</div> : (
+                  <div className="dwa__slow">
+                    {ana.slowest.map((s, i) => (
+                      <button key={i} className="dwa__slowrow" onClick={() => openJob(s.jobId)}>
+                        <b>{s.label}</b>
+                        <span>{s.station} · {s.operator}</span>
+                        <em>{fmtMins(s.mins)}{s.auto ? ' ★' : ''}</em>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className="dwa__legend dw__lbl">★ = the operator never scanned out — the time is system-approximated.</p>
           </section>
         )}
       </main>

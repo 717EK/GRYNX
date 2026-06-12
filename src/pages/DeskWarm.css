@@ -350,3 +350,23 @@
 .dwm__stcell.is-busy { background: color-mix(in srgb, var(--lime, #84cc16) 18%, transparent); }
 .dwm__stcell-n { font-size: clamp(18px, 1.5vw, 34px); font-weight: 800; font-family: var(--display, inherit); line-height: 1; }
 .dwm__stcell-k { font-size: clamp(8px, 0.6vw, 13px); color: var(--ink-soft, #6b6453); margin-top: 3px; letter-spacing: .02em; }
+
+/* ── dwell analytics view ── */
+.dwa{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:clamp(12px,1.05vw,24px);align-items:start;}
+.dwa__bars{display:flex;flex-direction:column;gap:clamp(10px,0.8vw,18px);margin-top:clamp(10px,0.85vw,20px);}
+.dwa__bar{display:grid;grid-template-columns:minmax(90px,0.6fr) 1fr 64px auto;align-items:center;gap:clamp(8px,0.7vw,16px);font-size:clamp(12px,0.92vw,20px);}
+.dwa__bar-k{font-weight:600;}
+.dwa__bar-t{height:clamp(9px,0.7vw,15px);border-radius:7px;background:var(--inset);overflow:hidden;display:block;}
+.dwa__bar-t i{display:block;height:100%;border-radius:7px;background:var(--lime);}
+.dwa__bar-v{font-family:var(--disp);font-weight:700;text-align:right;font-size:clamp(13px,1vw,22px);}
+.dwa__bar-n{color:var(--ink3);font-size:clamp(10px,0.78vw,17px);white-space:nowrap;}
+.dwa__tbl{width:100%;border-collapse:collapse;margin-top:clamp(10px,0.85vw,20px);font-size:clamp(12px,0.92vw,20px);}
+.dwa__tbl th{text-align:left;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;font-size:clamp(8.5px,0.64vw,14px);color:var(--ink2);padding:4px 6px;border-bottom:1px solid var(--line);}
+.dwa__tbl td{padding:clamp(7px,0.6vw,13px) 6px;border-bottom:1px solid var(--line);}
+.dwa__tbl td:first-child{font-weight:600;}
+.dwa__slow{display:flex;flex-direction:column;margin-top:clamp(8px,0.7vw,16px);}
+.dwa__slowrow{display:flex;align-items:baseline;gap:clamp(8px,0.7vw,16px);padding:clamp(8px,0.7vw,15px) 0;border-bottom:1px solid var(--line);background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;text-align:left;font-family:var(--sans);font-size:clamp(12px,0.92vw,20px);color:var(--ink);}
+.dwa__slowrow b{font-weight:700;}
+.dwa__slowrow span{color:var(--ink2);font-size:clamp(11px,0.8vw,18px);}
+.dwa__slowrow em{margin-left:auto;font-style:normal;font-family:var(--disp);font-weight:700;font-size:clamp(14px,1.05vw,24px);}
+.dwa__legend{margin-top:clamp(10px,0.85vw,18px);}
