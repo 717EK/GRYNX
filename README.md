@@ -46,6 +46,26 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.7.0 — pipeline v2: the simplified floor
+- **Four gated stages instead of seven:** Design → **Production** → QC → FG Stock
+  (+ Maintenance in parallel). The former production departments (Laser/Cutting,
+  CNC/VMC, MS Production, Alloy Production, Drilling/Tapping, Powder Coat) are now
+  **stations inside Production** — free scan-in → scan-out tracking with operator,
+  dwell time, optional photo + remark, and **parallel work on one job** (e.g. Alloy
+  welding + VMC connectors at once). No more sequence gates, skip, or force-advance:
+  the scanned order IS the route. Forgotten scan-outs auto-close marked with **★**.
+- **Sales desk:** new `sales` role raises a **Sale Sheet** (customer, order name,
+  scope) → PPC converts it into a request → admin approves. Full digital intake.
+- **QC** keeps its pass/fail gate: jobs are *received* out of Production, a fail
+  records the issue note + optional defect photo and sends the job back to
+  Production (head routes) or to a specific station.
+- **FG serialise & close in one step** — entering the serial(s) closes the job and
+  notifies admin; a skipped critical station soft-flags the close (never blocks).
+- **Material needs, non-blocking:** flag a shortage on any job (needed→ordered→
+  received); ordering happens off-app and production keeps working meanwhile.
+- Dashboard: live **production-station occupancy** strip; pipeline shows 4 stages.
+- DB reset + reseeded for the new model (test data wiped, users re-created).
+
 ### v0.6.8 — trim desktop content scale ~7% on 4K
 - On very large (4K, ~3072px) screens the dashboard fills (logo, numerals, text)
   read a touch oversized. Trimmed every fluid **max cap** by ~7% — the `vw` ramp and
