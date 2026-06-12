@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import JobForm, { type JobFormSelection } from '../components/JobForm'
 import JobCardModal from '../components/JobCardModal'
 import ReportButton from '../components/ReportButton'
 import { useCatalogue } from '../lib/useCatalogue'
-import { createJob, createPpcRequest, ApiError, type JobDTO } from '../lib/api'
+import { createJob, createPpcRequest, getSaleSheets, ApiError, type JobDTO, type SaleSheet } from '../lib/api'
 
 // Same form, two entry points — only the header + bottom action differ.
 // 'job' = admin creates a job directly · 'ppc' = PPC raises a planning request
@@ -19,6 +19,9 @@ export default function CreateJob({
   onBack,
   onLock,
   onOpenInbox,
+  onOpenSheets,
+  onClearSheet,
+  sheet = null,
   variant = 'job',
 }: {
   user: SessionUser
@@ -26,6 +29,12 @@ export default function CreateJob({
   onLock: () => void
   /** PPC variant: jump to "My Requests" inbox. */
   onOpenInbox?: () => void
+  /** PPC variant: open the Sale Sheets list (sheets from sales awaiting conversion). */
+  onOpenSheets?: () => void
+  /** PPC variant: clear the picked sheet (after converting / cancelling). */
+  onClearSheet?: () => void
+  /** PPC variant: the Sale Sheet being converted — pre-fills + links the request. */
+  sheet?: SaleSheet | null
   variant?: 'job' | 'ppc'
 }) {
   const isPpc = variant === 'ppc'
@@ -35,7 +44,13 @@ export default function CreateJob({
   const loadErr = catErr ? 'Could not load the product catalogue' : null
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const [name, setName] = useState('')
+  const [name, setName] = useState(sheet ? (sheet.orderName ?? `${sheet.customer} order`) : '')
+  const [sheetCount, setSheetCount] = useState(0)
+  useEffect(() => {
+    if (!isPpc || !onOpenSheets) return
+    getSaleSheets('submitted').then((r) => setSheetCount(r.sheets.length)).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPpc])
   const [created, setCreated] = useState<JobDTO | null>(null)
   const [cardJobId, setCardJobId] = useState<string | null>(null)
   const sel = useRef<JobFormSelection | null>(null)
@@ -74,7 +89,14 @@ export default function CreateJob({
       return
     }
     const startDate = s.startDate ? new Date(`${s.startDate}T${s.startTime || '09:00'}`).toISOString() : undefined
-    const input = { productId: product.id, name: name.trim() || undefined, priority: s.priority, models, startDate }
+    const input = {
+      productId: product.id,
+      name: name.trim() || undefined,
+      saleSheetId: isPpc && sheet ? sheet.id : undefined,
+      priority: s.priority,
+      models,
+      startDate,
+    }
 
     setBusy(true)
     try {
@@ -121,6 +143,21 @@ export default function CreateJob({
           )}
         </header>
 
+        {/* sales handoff: sheets waiting to be converted into requests */}
+        {isPpc && !sheet && !created && sheetCount > 0 && onOpenSheets && (
+          <button className="cj__sheetbar mono-label" onClick={onOpenSheets}>
+            ⎘ {sheetCount} sale sheet{sheetCount > 1 ? 's' : ''} from sales awaiting conversion
+            <b>Convert →</b>
+          </button>
+        )}
+
+        {isPpc && sheet && !created && (
+          <div className="cj__sheetchip mono-label">
+            ⎘ Converting <b>{sheet.sheetNo}</b> · {sheet.customer}
+            {onClearSheet && <button className="cj__sheetchip-x" onClick={onClearSheet} title="Detach sheet">×</button>}
+          </div>
+        )}
+
         <div className="jobscreen__scroll">
           {created ? (
             <div className="jobdone">
@@ -139,6 +176,8 @@ export default function CreateJob({
                 <button
                   className="btn btn--primary btn--block"
                   onClick={() => {
+                    // a converted sheet is consumed — detach it before the next request
+                    if (isPpc && sheet && onClearSheet) return onClearSheet()
                     setCreated(null)
                     setErr(null)
                   }}

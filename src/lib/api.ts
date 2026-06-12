@@ -397,6 +397,7 @@ export const lookupJob = (code: string) =>
 export interface CreateJobInput {
   productId: string
   name?: string
+  saleSheetId?: string // PPC variant: converting a Sales sheet (links + marks it converted)
   priority: 'normal' | 'urgent'
   jobType?: 'production' | 'rework'
   startDate?: string

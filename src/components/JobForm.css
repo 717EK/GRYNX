@@ -986,3 +986,29 @@
 }
 .cj__name-input::placeholder { color: var(--text-tertiary); }
 .cj__name-input:focus { outline: none; border-color: var(--brand); }
+
+/* PPC: converting-a-sale-sheet chip */
+.cj__sheetchip {
+  display: flex; align-items: center; gap: 6px;
+  margin: 0 16px; padding: 8px 12px;
+  border-radius: 10px; font-size: 11px;
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 40%, transparent);
+  color: var(--text);
+}
+.cj__sheetchip b { letter-spacing: .04em; }
+.cj__sheetchip-x {
+  margin-left: auto; border: none; background: none; cursor: pointer;
+  color: var(--text-secondary); font-size: 15px; line-height: 1;
+}
+
+/* PPC: sheets-awaiting-conversion banner */
+.cj__sheetbar {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 16px 4px; padding: 10px 12px; width: calc(100% - 32px);
+  border-radius: 10px; font-size: 11px; cursor: pointer; text-align: left;
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 40%, transparent);
+  color: var(--text);
+}
+.cj__sheetbar b { margin-left: auto; color: var(--brand); letter-spacing: .04em; }

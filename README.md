@@ -46,6 +46,17 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.7.4 — PPC converts sale sheets + Design release scan fixed
+- **Sales → PPC handoff closed:** PPC's request screen shows a banner when sale
+  sheets are waiting; tap → pick a sheet → the request form opens pre-filled
+  (order name) and linked — submitting marks the sheet **converted**. No more
+  double data entry.
+- **Design release fixed:** the floor Scan screen showed the production station
+  picker to every department — Design (or any non-production dept) got a 403.
+  Now only production users get the station picker; Design's scan is the gate
+  scan that releases the job to Production.
+- Station queue rows show the order name (was code only).
+
 ### v0.7.3 — command-centre popups look native (+ form pipeline fix)
 - The control-centre popups (job history, create job, PPC review, maintenance,
   notifications) no longer look like a phone app in a window: the phone status

@@ -113,9 +113,9 @@ function Section({
       {jobs.map((j) => (
         <button key={j.id} className={`qjob qjob--${tone}`} onClick={() => onOpenJob(j.id)}>
           <span className="qjob__main">
-            <span className="qjob__label display">{j.displayLabel}</span>
+            <span className="qjob__label display">{j.name || j.displayLabel}</span>
             <span className="qjob__meta mono-label">
-              {j.product?.name ?? ''} · {j.totalQty} units
+              {j.name ? `${j.displayLabel} · ` : ''}{j.product?.name ?? ''} · {j.totalQty} units
             </span>
           </span>
           <span className="qjob__right">

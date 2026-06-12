@@ -29,8 +29,9 @@ import { registerNav } from './lib/nav'
 import FeedbackFab from './components/FeedbackFab'
 import DesktopAdminWarm from './pages/DesktopAdminWarm'
 import SalesHome from './pages/SalesHome'
+import PpcSheets from './pages/PpcSheets'
 import type { SessionUser } from './components/UtilityBars'
-import { getUser, isAuthed, logout, getDepartments, getPpcRequest, type ApiUser, type PpcRequest, type Notification } from './lib/api'
+import { getUser, isAuthed, logout, getDepartments, getPpcRequest, type ApiUser, type PpcRequest, type Notification, type SaleSheet } from './lib/api'
 
 export type Screen =
   | 'login'
@@ -59,6 +60,7 @@ export type Screen =
   | 'ppcinbox'
   | 'purchase'
   | 'sales'
+  | 'ppcsheets'
 
 const FLOOR_ROLES = ['dept_head', 'qc', 'fg_stock', 'maintenance']
 
@@ -95,6 +97,7 @@ export default function App() {
   const [maintTicketId, setMaintTicketId] = useState<string | null>(null)
   const [viewAs, setViewAs] = useState<{ id: string; name: string } | null>(null)
   const [selectedPpc, setSelectedPpc] = useState<PpcRequest | null>(null)
+  const [sheetForPpc, setSheetForPpc] = useState<SaleSheet | null>(null)
   const [reviewMode, setReviewMode] = useState<'admin' | 'ppc'>('admin')
   const [cardJobId, setCardJobId] = useState<string | null>(null)
   const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)
@@ -242,7 +245,9 @@ export default function App() {
             onBack={() => go('station')}
             stationName={viewAs?.name}
             stationDepartmentId={viewAs?.id}
-            stationScan
+            // station picker (scan-in/out) only for production users; other floor
+            // depts (Design) gate-scan — e.g. Design's scan releases to Production
+            stationScan={(viewAs?.name ?? user.role).toLowerCase().includes('production')}
           />
         )
       case 'approvals':
@@ -254,12 +259,24 @@ export default function App() {
       case 'ppcrequest':
         return (
           <CreateJob
-            key="cj-ppc-request"
+            key={`cj-ppc-${sheetForPpc?.id ?? 'blank'}`}
             variant="ppc"
             user={user}
+            sheet={sheetForPpc}
             onBack={() => go(isSuper ? 'viewas' : 'home')}
             onLock={handleLock}
             onOpenInbox={() => go('ppcinbox')}
+            onOpenSheets={() => go('ppcsheets')}
+            onClearSheet={() => setSheetForPpc(null)}
+          />
+        )
+      case 'ppcsheets':
+        return (
+          <PpcSheets
+            user={user}
+            onBack={() => go('ppcrequest')}
+            onLock={handleLock}
+            onPick={(s) => { setSheetForPpc(s); go('ppcrequest') }}
           />
         )
       case 'sales':
