@@ -10,11 +10,21 @@ const prisma = new PrismaClient()
 // The former production departments (Laser/CNC/MS/Alloy/MNTR/Powder) are now
 // STATIONS under PRODUCTION — see STATIONS below.
 const DEPARTMENTS = [
-  { code: 'DESIGN', name: 'Design', sortOrder: 10 },
-  { code: 'PRODUCTION', name: 'Production', sortOrder: 20 },
-  { code: 'QC', name: 'QC', sortOrder: 30 },
-  { code: 'FG_STOCK', name: 'FG Stock', sortOrder: 40 },
-  { code: 'MAINT', name: 'Maintenance', sortOrder: 50 },
+  { code: 'DESIGN', name: 'Design', sortOrder: 10, type: 'design' },
+  { code: 'PRODUCTION', name: 'Production', sortOrder: 20, type: 'production' },
+  { code: 'QC', name: 'QC', sortOrder: 30, type: 'qc' },
+  { code: 'FG_STOCK', name: 'FG Stock', sortOrder: 40, type: 'fg_stock' },
+  { code: 'MAINT', name: 'Maintenance', sortOrder: 50, type: 'maintenance' },
+] as const
+
+// workflow-engine v1: the published company workflow = today's gated flow, as
+// versioned data. (New business stages — Sales, FG-Check, PPC-final, Dispatch —
+// arrive in later phases; v1 keeps the floor identical, just engine-driven.)
+const WORKFLOW_V1_STAGES = [
+  { stageType: 'design', deptCode: 'DESIGN', label: 'Design' },
+  { stageType: 'production', deptCode: 'PRODUCTION', label: 'Production' },
+  { stageType: 'qc', deptCode: 'QC', label: 'QC' },
+  { stageType: 'fg_stock', deptCode: 'FG_STOCK', label: 'FG Stock' },
 ] as const
 
 // Stations live UNDER the PRODUCTION department. Tracking entities, not gates —
@@ -110,6 +120,39 @@ const PRODUCTS: {
 
 const DEMO_PIN = '123456'
 
+// Idempotent: ensure the company WorkflowDefinition exists with a published v1.
+// Never overwrites an existing definition's versions (preserves edits/history).
+async function seedWorkflow(deptByCode: Map<string, string>) {
+  let def = await prisma.workflowDefinition.findFirst({ where: { isActive: true } })
+  if (!def) def = await prisma.workflowDefinition.create({ data: { name: 'GRYNX Factory Workflow' } })
+  const existing = await prisma.workflowVersion.count({ where: { definitionId: def.id } })
+  if (existing > 0) {
+    console.log(`  workflow: definition exists (${existing} version(s)) — left as-is`)
+    return
+  }
+  const admin = await prisma.user.findUnique({ where: { username: 'aashish' }, select: { id: true } })
+  const v1 = await prisma.workflowVersion.create({
+    data: {
+      definitionId: def.id,
+      version: 1,
+      status: 'published',
+      note: 'Seeded v1 — current gated flow as versioned data',
+      createdById: admin?.id ?? 'seed',
+      publishedAt: new Date(),
+      stages: {
+        create: WORKFLOW_V1_STAGES.map((s, i) => ({
+          stageType: s.stageType,
+          departmentId: deptByCode.get(s.deptCode) ?? null,
+          label: s.label,
+          sequence: (i + 1) * 10,
+        })),
+      },
+    },
+  })
+  await prisma.workflowDefinition.update({ where: { id: def.id }, data: { publishedVersionId: v1.id } })
+  console.log(`  workflow: definition + published v1 (${WORKFLOW_V1_STAGES.length} stages)`)
+}
+
 async function main() {
   console.log('Seeding GRYNX…')
 
@@ -118,12 +161,15 @@ async function main() {
   for (const d of DEPARTMENTS) {
     const row = await prisma.department.upsert({
       where: { code: d.code },
-      update: { name: d.name, sortOrder: d.sortOrder },
-      create: d,
+      update: { name: d.name, sortOrder: d.sortOrder, type: d.type },
+      create: { code: d.code, name: d.name, sortOrder: d.sortOrder, type: d.type },
     })
     deptByCode.set(d.code, row.id)
   }
   console.log(`  departments: ${deptByCode.size}`)
+
+  // ── workflow engine: the company WorkflowDefinition + published v1 ─────────
+  await seedWorkflow(deptByCode)
 
   // ── production stations (under the PRODUCTION department) ──────────────────
   const productionId = deptByCode.get('PRODUCTION')!

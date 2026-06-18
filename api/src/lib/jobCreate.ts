@@ -37,16 +37,39 @@ export async function createJobFromInput(
   const allowed = new Set(product.models.map((m) => m.id))
   if (input.models.some((m) => !allowed.has(m.modelId))) return { ok: false, status: 400, error: 'model_not_in_product' }
 
-  const template = input.pipelineTemplateId
-    ? await prisma.pipelineTemplate.findFirst({
-        where: { id: input.pipelineTemplateId, productId: product.id },
-        include: { steps: { orderBy: { sequence: 'asc' } } },
-      })
-    : await prisma.pipelineTemplate.findFirst({
-        where: { productId: product.id, isDefault: true },
-        include: { steps: { orderBy: { sequence: 'asc' } } },
-      })
-  if (!template || template.steps.length === 0) return { ok: false, status: 400, error: 'no_pipeline' }
+  // workflow-engine (docs/12): jobs snapshot the PUBLISHED company workflow version
+  // when one exists; the per-product pipeline template is the legacy fallback. Only
+  // department-backed stages (with a departmentId) become JobSteps — non-department
+  // business stages (sales/dispatch) are handled by later phases, not as steps.
+  const def = await prisma.workflowDefinition.findFirst({
+    where: { isActive: true, publishedVersionId: { not: null } },
+    select: {
+      publishedVersionId: true,
+      publishedVersion: { select: { id: true, stages: { where: { departmentId: { not: null } }, orderBy: { sequence: 'asc' }, select: { departmentId: true, stageType: true } } } },
+    },
+  })
+  const wfStages = def?.publishedVersion?.stages ?? []
+
+  // fallback path: legacy per-product pipeline template
+  const template =
+    wfStages.length > 0
+      ? null
+      : input.pipelineTemplateId
+        ? await prisma.pipelineTemplate.findFirst({ where: { id: input.pipelineTemplateId, productId: product.id }, include: { steps: { orderBy: { sequence: 'asc' } } } })
+        : await prisma.pipelineTemplate.findFirst({ where: { productId: product.id, isDefault: true }, include: { steps: { orderBy: { sequence: 'asc' } } } })
+
+  // the steps to snapshot — from the workflow version (preferred) or the template
+  const stepSpecs =
+    wfStages.length > 0
+      ? wfStages.map((s, i) => ({ departmentId: s.departmentId!, stageType: s.stageType, sequence: (i + 1) * 10 }))
+      : (template?.steps ?? []).map((s) => ({ departmentId: s.departmentId, stageType: null as null, sequence: s.sequence }))
+  if (stepSpecs.length === 0) return { ok: false, status: 400, error: 'no_pipeline' }
+
+  // a job always needs a pipelineTemplateId (non-null FK) for back-compat; use the
+  // product default even on the workflow path (it's not used to build steps there).
+  const templateIdForJob =
+    template?.id ?? (await prisma.pipelineTemplate.findFirst({ where: { productId: product.id, isDefault: true }, select: { id: true } }))?.id
+  if (!templateIdForJob) return { ok: false, status: 400, error: 'no_pipeline' }
 
   const jobType = input.jobType ?? 'production'
   if (jobType === 'rework' && !input.reworkEntryDepartmentId) return { ok: false, status: 400, error: 'rework_entry_required' }
@@ -54,7 +77,8 @@ export async function createJobFromInput(
   const totalQty = input.models.reduce((s, m) => s + m.quantity, 0)
   const now = new Date()
   const firstStepDue = await acceptanceDueAt(now)
-  const firstDeptId = template.steps[0].departmentId
+  const firstDeptId = stepSpecs[0].departmentId
+  const workflowVersionId = def?.publishedVersionId ?? null
 
   const create = () =>
     prisma.$transaction(
@@ -72,7 +96,8 @@ export async function createJobFromInput(
             priority: input.priority,
             totalQty,
             status: 'in_production',
-            pipelineTemplateId: template.id,
+            pipelineTemplateId: templateIdForJob,
+            workflowVersionId,
             source: opts.source,
             ppcRequestId: opts.ppcRequestId ?? null,
             createdById: opts.actorId,
@@ -81,8 +106,9 @@ export async function createJobFromInput(
             reworkEntryDepartmentId: input.reworkEntryDepartmentId ?? null,
             models: { create: input.models.map((m) => ({ modelId: m.modelId, size: m.size ?? null, quantity: m.quantity })) },
             steps: {
-              create: template.steps.map((s, i) => ({
+              create: stepSpecs.map((s, i) => ({
                 departmentId: s.departmentId,
+                stageType: s.stageType,
                 sequence: s.sequence,
                 status: i === 0 ? 'waiting_acceptance' : 'pending',
                 slaDueAt: i === 0 ? firstStepDue : null,

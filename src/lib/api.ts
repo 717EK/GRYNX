@@ -526,6 +526,22 @@ export const createMaterialRequest = (jobId: string, input: { item: string; quan
 export const updateMaterialRequest = (id: string, input: { status?: string; vendor?: string; note?: string }) =>
   req<{ request: MaterialRequest }>('PATCH', `/api/v1/purchase/requests/${id}`, input)
 
+// ── workflow engine (docs/12) — the company pipeline as versioned data ────────
+export interface WorkflowStage {
+  id: string
+  stageType: string
+  departmentId: string | null
+  label: string
+  sequence: number
+  config: Record<string, unknown>
+  department?: { code: string; name: string } | null
+}
+export interface WorkflowView {
+  definition: { id: string; name: string; publishedVersionId: string | null } | null
+  published: { id: string; version: number; stages: WorkflowStage[] } | null
+}
+export const getWorkflow = () => req<WorkflowView>('GET', '/api/v1/workflow')
+
 // ── dwell analytics (admin, last 30d, from the StationVisit trail) ────────────
 export interface DwellAnalytics {
   since: string

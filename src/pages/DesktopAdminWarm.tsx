@@ -10,8 +10,8 @@ import CalendarWidget from '../components/CalendarWidget'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark-light.png'
 import {
-  getAdminStats, getJobs, listPpcRequests, notificationCount, getAnalytics,
-  type AdminStats, type JobDTO, type PpcRequest, type AttentionItem, type DwellAnalytics,
+  getAdminStats, getJobs, listPpcRequests, notificationCount, getAnalytics, getWorkflow,
+  type AdminStats, type JobDTO, type PpcRequest, type AttentionItem, type DwellAnalytics, type WorkflowView,
 } from '../lib/api'
 import './DeskWarm.css'
 
@@ -31,7 +31,7 @@ function linePath(vals: number[], w: number, h: number, pad = 6) {
   return vals.map((v, i) => `${i ? 'L' : 'M'}${(i * step).toFixed(1)},${(h - pad - ((v - min) / range) * (h - 2 * pad)).toFixed(1)}`).join(' ')
 }
 
-type Nav = 'dashboard' | 'jobs' | 'ppc' | 'analytics'
+type Nav = 'dashboard' | 'jobs' | 'ppc' | 'analytics' | 'workflow'
 type Popup =
   | null
   | { kind: 'create' }
@@ -54,6 +54,10 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
   useEffect(() => {
     if (nav === 'analytics' && !ana) getAnalytics().then(setAna).catch(() => {})
   }, [nav, ana])
+  const [wf, setWf] = useState<WorkflowView | null>(null)
+  useEffect(() => {
+    if (nav === 'workflow' && !wf) getWorkflow().then(setWf).catch(() => {})
+  }, [nav, wf])
 
   function loadJobs() { getJobs().then((r) => setJobs(r.jobs)).catch(() => setJobs([])) }
   function loadPpc() { listPpcRequests('submitted').then((r) => setPpc(r.requests)).catch(() => setPpc([])) }
@@ -97,6 +101,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         <button className={`dw__i ${nav === 'jobs' ? 'is-on' : ''}`} title="Job Board" onClick={() => setNav('jobs')}>▤</button>
         <button className={`dw__i ${nav === 'ppc' ? 'is-on' : ''}`} title="PPC Requests" onClick={() => setNav('ppc')}>◳</button>
         <button className={`dw__i ${nav === 'analytics' ? 'is-on' : ''}`} title="Dwell Analytics" onClick={() => { setAna(null); setNav('analytics') }}>◫</button>
+        <button className={`dw__i ${nav === 'workflow' ? 'is-on' : ''}`} title="Workflow Map" onClick={() => { setWf(null); setNav('workflow') }}>⛓</button>
         <button className="dw__i" title="Maintenance" onClick={() => setPopup({ kind: 'maintenance' })}>⚙</button>
         <div className="dw__rail-sp" />
         <button className="dw__i" title="Notifications" onClick={() => setPopup({ kind: 'notifications' })}>◔{unread > 0 && <span className="pip" />}</button>
@@ -388,6 +393,38 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
               </div>
             </div>
             <p className="dwa__legend dw__lbl">★ = the operator never scanned out — the time is system-approximated.</p>
+          </section>
+        )}
+
+        {nav === 'workflow' && (
+          <section className="dw__view">
+            <div className="dw__toolbar">
+              <h1 className="dw__h1">Workflow Map</h1>
+              <span className="dw__sub">{wf?.published ? `published v${wf.published.version} · ${wf.published.stages.length} stages` : 'loading…'}</span>
+            </div>
+            {!wf ? <div className="dw__empty">Loading…</div> : !wf.published ? <div className="dw__empty">No published workflow.</div> : (
+              <>
+                <div className="wfm">
+                  {wf.published.stages.map((s, i) => (
+                    <div key={s.id} className="wfm__node-wrap">
+                      <div className={`wfm__node wfm__node--${s.stageType}`}>
+                        <span className="wfm__seq">{i + 1}</span>
+                        <span className="wfm__label">{s.label}</span>
+                        <span className="wfm__type">{s.stageType.replace(/_/g, ' ')}</span>
+                        {s.department && <span className="wfm__dept">⛭ {s.department.name}</span>}
+                        {s.stageType === 'production' && <span className="wfm__sub2">free-scan stations</span>}
+                      </div>
+                      {i < wf.published!.stages.length - 1 && <span className="wfm__arrow">→</span>}
+                    </div>
+                  ))}
+                </div>
+                <p className="dwa__legend dw__lbl">
+                  This is the live company workflow (versioned). Jobs snapshot the published version when created, so
+                  editing + publishing a new version never re-routes jobs already on the floor. Conditional branches +
+                  drag-to-edit arrive in later phases (docs/12).
+                </p>
+              </>
+            )}
           </section>
         )}
       </main>

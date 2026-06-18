@@ -370,3 +370,17 @@
 .dwa__slowrow span{color:var(--ink2);font-size:clamp(11px,0.8vw,18px);}
 .dwa__slowrow em{margin-left:auto;font-style:normal;font-family:var(--disp);font-weight:700;font-size:clamp(14px,1.05vw,24px);}
 .dwa__legend{margin-top:clamp(10px,0.85vw,18px);}
+
+/* ── workflow map (read-only flow diagram) ── */
+.wfm{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin-top:clamp(14px,1.2vw,28px);}
+.wfm__node-wrap{display:flex;align-items:center;}
+.wfm__node{display:flex;flex-direction:column;gap:3px;min-width:clamp(150px,12vw,230px);padding:clamp(14px,1.1vw,24px) clamp(16px,1.2vw,26px);border-radius:var(--r-sm);background:var(--card);border:1px solid var(--line);border-left:4px solid var(--lime);box-shadow:var(--shadow-sm);position:relative;}
+.wfm__node--production{border-left-color:var(--amber);background:color-mix(in srgb,var(--amber) 7%,var(--card));}
+.wfm__node--qc{border-left-color:var(--teal);}
+.wfm__node--fg_stock{border-left-color:var(--dark);}
+.wfm__seq{position:absolute;top:8px;right:10px;font-family:var(--disp);font-weight:800;font-size:clamp(16px,1.3vw,26px);color:var(--ink3);}
+.wfm__label{font-family:var(--disp);font-weight:700;font-size:clamp(16px,1.3vw,26px);}
+.wfm__type{font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;font-size:clamp(8.5px,0.64vw,14px);color:var(--ink2);}
+.wfm__dept{font-size:clamp(11px,0.82vw,18px);color:var(--ink2);margin-top:4px;}
+.wfm__sub2{font-size:clamp(10px,0.76vw,16px);color:var(--amber);font-weight:600;}
+.wfm__arrow{font-family:var(--disp);font-size:clamp(22px,1.8vw,40px);color:var(--ink3);padding:0 clamp(8px,0.7vw,18px);}
