@@ -12,6 +12,22 @@ Layer 4 (workflow), built first because the pipeline IS the app's core logic.
 
 ---
 
+## 1a. Refinement — Design→PPC→Production handoff + Cutting (2026-06-18)
+
+Vivek clarified the Design→Production handoff:
+- Once **Design confirms** (standard, or attaches a new drawing) it goes **back to
+  PPC**, not straight to production.
+- **PPC forwards to Production and may SPLIT the job** if needed — PPC tells
+  production *what* and *how* to make it (the production requirement / job card).
+- Production's **first station is Cutting** — raw material is cut to the order, and
+  **the raw-material details are logged onto the job sheet at cutting** (reuse
+  MaterialUsage genealogy; raw material is captured here, not earlier).
+
+⚠ Built-state gap: today `design-release` sends Design **straight to Production**.
+This refinement requires routing Design → back to PPC (a "PPC final / forward +
+split" step) before Production. Queued as a dedicated build (PPC-final + split +
+cutting-raw-material) — see §10.
+
 ## 1. The business flow (Level 1)
 
 ```
@@ -162,6 +178,11 @@ owner opens the app twice a day.
 8. **Editor Ring 1 (arrange)** behind draft → publish → rollback.
 9. **Editor Ring 2 (conditions)** — the FG-check / design loops become user-editable.
 10. **Editor Ring 3 (full authoring)** — last.
+
+**Refinement build (slot after phase 6, before editor rings):** Design→PPC→Production
+handoff per §1a — design-release routes **back to PPC**; PPC **forwards + can split**
+the job to production with the requirement; production **first station = Cutting**
+where **raw material is logged on the job sheet**.
 
 Realistic sizing: this is **months of sessions**, not one. Phases 1–4 re-found the
 core; 5–6 add the inventory/dispatch bookends; 7 is the owner's daily layer; 8–10
