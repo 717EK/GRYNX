@@ -1,10 +1,11 @@
 # 12 — Hierarchical Workflow Engine (metadata-driven)
 
-> **Status: DRAFT for confirmation.** Captures Vivek's 2026-06-12 flow + the four
-> decisions (free-scan production; full logic editor as the destination; FG-check
-> = manual gate first; order-centric). Nothing here is built yet — floor beta runs
-> on v0.8.x. This doc is the plan we build against. Anything marked **[CONFIRM]**
-> is my interpretation and may be wrong.
+> **Status: CONFIRMED plan** (all open questions resolved — see §8). Captures
+> Vivek's 2026-06-12 flow + decisions: free-scan production; full-logic editor as
+> the destination (built in 3 rings); FG-check = manual gate but with FULL FG
+> inventory behind it; order-centric; whole-order dispatch (two-way); QC
+> non-blocking + soft FG guard; one company-wide workflow. Nothing built yet —
+> floor beta runs on v0.8.x. This is the plan we build against; §10 is the phasing.
 
 This is the engine behind the [Modular Studio](11-modular-studio.md) — its
 Layer 4 (workflow), built first because the pipeline IS the app's core logic.
@@ -109,30 +110,59 @@ running jobs finish on their snapshot, never silently re-routed.
 - **R6 Scope creep to "generic builder"** → every stage type stays bound to OUR
   entities; the palette is curated, not open.
 
-## 8. Build order (each phase ships a working floor)
+## 8. Resolved decisions (2026-06-12)
 
-1. **Engine core:** Stage/JobStage generalization + WorkflowDefinition/Version +
-   snapshot + seed THIS flow as the default (hardcoded behaviours, data-driven
-   arrangement). Floor runs unchanged but on the new engine. *(Prove R5 here.)*
-2. **Order layer:** Order → sub-jobs; PPC raises jobs for non-stock items;
-   order status rollup.
-3. **QC-into-production:** per-station QC remark + the FG-serialise soft guard;
-   retire the standalone QC stage.
-4. **FG inventory + reservation + Dispatch:** the stock subsystem + reallocation
-   loop + dispatch stage/close.
-5. **Editor Ring 1** (arrange) behind draft/publish.
-6. **Editor Ring 2** (conditions) — makes the loops user-editable.
-7. **Flow map (read-only)** can land any time after phase 1 — high-visibility,
-   low-risk; arguably do it right after the engine to make the system legible.
-8. **Editor Ring 3** last.
+- **Q1 → YES.** QC is non-blocking (per-station remark) **and** the soft guard
+  stands: FG cannot serialise a job with an open QC issue.
+- **Q2 → granularity confirmed.** Design + Production act **per job**; FG-check +
+  Dispatch act **per order**. **Dispatch is whole-order only** — never partial; the
+  order ships once *all* its sub-jobs are in FG stock.
+- **Q3 → FULL inventory.** Build real on-hand / reserved / available math. Plus:
+  **FG home screen gets an "add stocking details" action** so FG staff enter /
+  adjust opening + existing stock manually.
+- **Q4 → Dispatch is two-way.** (a) Sales requests dispatch → **admin approves** →
+  dispatch executes; **and** (b) FG can **auto-generate a dispatch request** once
+  the whole order is in stock. Both directions feed the same dispatch queue.
+- **Q5 → one company-wide workflow.** Single business workflow for the whole
+  factory (per-product variation lives only in Level-2 station choice, not Level-1).
 
-## 9. Open questions
+## 9. The product thesis (what GRYNX *is*)
 
-- Q1 Confirm C1 (QC non-blocking) + the soft FG guard.
-- Q2 Order vs Job: does Design/Production act per-job (yes, "job card per job")
-  while FG-check/dispatch act per-order? [CONFIRM the granularity per stage.]
-- Q3 FG reservation depth: just a client tag + manual admin pull (light), or full
-  reserved/available math from day one? (I lean light first.)
-- Q4 Does Dispatch need its own role/screen, or is it Sales + a stores action?
-- Q5 One global business workflow, or per-product/per-job-class workflows?
-  (We have per-product templates already — could go either way.)
+**Factory-floor management software.** Sales input → managed floor → dispatch
+output, with the **admin as air-traffic-control**:
+- **Glance health view** of the whole floor + what's happening now (live — built).
+- **One-click "ask for an update"** from *any* station or *all* stations at once
+  (generalize today's per-job request-update to per-station / broadcast).
+- **Morning agenda** (start of day): what's urgent, what's due, what to do today.
+- **Evening auto-summary** (end of day): the day's activity, updates, exceptions.
+  *(Rule-based first; AI-generated later via the local Ollama "Ask GRYNX" path —
+  see [[project_grynx_ask_grynx_plan]].)*
+
+This daily rhythm is a first-class layer, not a nice-to-have — it's the reason an
+owner opens the app twice a day.
+
+## 10. Build order (each phase keeps the floor running)
+
+1. **Engine core** — Stage/JobStage generalization + WorkflowDefinition/Version +
+   snapshot; seed THIS flow as the published default (behaviours still coded per
+   type). Floor runs unchanged on the new foundation. **Prove R5 (snapshot) here.**
+2. **Flow map (read-only)** — auto-drawn graph of the seeded workflow on the admin
+   PC. High-visibility, low-risk; makes the engine legible before we edit it.
+3. **Order layer** — Order(client, items) → sub-Jobs for non-stock items; order
+   status rollup; whole-order completion = all sub-jobs serialised.
+4. **QC-into-production** — per-station QC remark on StationVisit; retire the
+   standalone QC stage; FG-serialise soft guard.
+5. **FG inventory (full)** — StockItem (on-hand/reserved/available, client tag) +
+   StockMovement audit; FG "add stocking details"; FG-check reads availability,
+   reserves & skips; admin reallocation loop → PPC remake.
+6. **Dispatch** — whole-order dispatch queue, two-way (sales-request+admin-approve
+   / FG-auto-request); packing/loading/ship; close order; decrement stock.
+7. **Admin daily rhythm** — broadcast/station ask-updates; morning agenda + evening
+   auto-summary (rule-based; AI later).
+8. **Editor Ring 1 (arrange)** behind draft → publish → rollback.
+9. **Editor Ring 2 (conditions)** — the FG-check / design loops become user-editable.
+10. **Editor Ring 3 (full authoring)** — last.
+
+Realistic sizing: this is **months of sessions**, not one. Phases 1–4 re-found the
+core; 5–6 add the inventory/dispatch bookends; 7 is the owner's daily layer; 8–10
+are the no-code editor. Each phase ships independently usable.
