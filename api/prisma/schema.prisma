@@ -790,6 +790,14 @@ model StationVisit {
   scanOutMode ScanOutMode? // null while open; explicit | auto(★) once closed
   remark      String? // what they did
   photoUrl    String?      @db.Text // optional compressed JPEG data URL
+  // per-station QC (docs/12 phase 4): a QC person marks the visit checked / issue.
+  // Non-blocking for movement; an OPEN issue (qcIssue && !qcResolvedAt) blocks FG close.
+  qcChecked    Boolean     @default(false)
+  qcIssue      Boolean     @default(false)
+  qcNote       String?
+  qcById       String?
+  qcAt         DateTime?
+  qcResolvedAt DateTime?
   version     Int          @default(0) // optimistic lock for concurrent scans
   job         Job          @relation(fields: [jobId], references: [id])
   station     Station      @relation(fields: [stationId], references: [id])

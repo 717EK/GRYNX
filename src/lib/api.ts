@@ -341,6 +341,11 @@ export interface StationVisit {
   remark: string | null
   photoUrl?: string | null
   station: { code: string; name: string }
+  // per-station QC (phase 4)
+  qcChecked?: boolean
+  qcIssue?: boolean
+  qcNote?: string | null
+  qcResolvedAt?: string | null
 }
 
 export interface QueueJob extends JobDTO {
@@ -733,6 +738,12 @@ export const qcRework = (jobId: string, notes: string, opts?: { reworkStationId?
   DEMO
     ? Promise.resolve({ ok: true, sentBackTo: '' })
     : req<{ ok: boolean; sentBackTo: string }>('POST', `/api/v1/qc/${jobId}/rework`, { notes, ...opts })
+
+// per-station QC (phase 4): jobs in production + their visits, and the mark action
+export interface QcProductionJob extends QueueJob { stationVisits: StationVisit[] }
+export const getQcProduction = () => req<{ jobs: QcProductionJob[] }>('GET', '/api/v1/qc/production')
+export const markVisitQc = (visitId: string, input: { checked?: boolean; issue?: boolean; note?: string; resolve?: boolean }) =>
+  req<{ ok: boolean }>('POST', `/api/v1/qc/visit/${visitId}`, input)
 
 // ── FG Stock ────────────────────────────────────────────────────────────────
 export interface FgJob extends QueueJob {

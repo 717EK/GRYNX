@@ -83,6 +83,21 @@ export async function fgRoutes(app: FastifyInstance) {
     if (cjob.status === 'closed' || cjob.status === 'cancelled') return reply.code(409).send({ error: 'job_terminal', status: cjob.status })
     const fgStep = cjob.steps[0]
 
+    // QC soft guard (docs/12 phase 4): cannot serialise/close while a per-station
+    // QC issue is open. Quality is advisory for MOVEMENT but a wall at the door.
+    const openQc = await prisma.stationVisit.findMany({
+      where: { jobId, qcIssue: true, qcResolvedAt: null },
+      select: { qcNote: true, station: { select: { name: true } } },
+    })
+    if (openQc.length > 0) {
+      return reply.code(409).send({
+        error: 'open_qc_issue',
+        count: openQc.length,
+        issues: openQc.map((v) => ({ station: v.station.name, note: v.qcNote })),
+        hint: 'resolve the open QC issue(s) before closing',
+      })
+    }
+
     // serials: accept new ones now (one per finished unit). At least one must exist.
     const incoming = [...new Set((cbody.data.serials ?? []).map((s) => s.trim()).filter(Boolean))]
     const totalSerials = cjob._count.serials + incoming.length

@@ -98,6 +98,48 @@ export async function qcRoutes(app: FastifyInstance) {
     return { ok: true }
   })
 
+  // ── per-station QC (docs/12 phase 4) ───────────────────────────────────────
+  // QC sits at the stations: jobs currently in Production + their station visits,
+  // so QC can mark each visit checked / flag an issue. Non-blocking for movement.
+  app.get('/production', { preHandler: requireRole('admin', 'qc') }, async () => {
+    const steps = await prisma.jobStep.findMany({
+      where: { department: { code: 'PRODUCTION' }, status: 'in_progress', job: { status: { notIn: ['closed', 'cancelled'] } } },
+      orderBy: { slaDueAt: 'asc' },
+      select: {
+        job: {
+          select: {
+            ...jobBrief,
+            stationVisits: { orderBy: { scanInAt: 'desc' }, select: { id: true, scanInAt: true, scanOutAt: true, qcChecked: true, qcIssue: true, qcNote: true, qcResolvedAt: true, operatorId: true, station: { select: { code: true, name: true } } } },
+          },
+        },
+      },
+    })
+    return { jobs: steps.map((s) => s.job) }
+  })
+
+  // QC marks a station visit: checked (good), issue (flag + note), or resolve.
+  app.post('/visit/:visitId', { preHandler: requireRole('admin', 'qc') }, async (req, reply) => {
+    const { visitId } = z.object({ visitId: z.string().uuid() }).parse(req.params)
+    const body = z.object({ checked: z.boolean().optional(), issue: z.boolean().optional(), note: z.string().max(500).optional(), resolve: z.boolean().optional() }).safeParse(req.body ?? {})
+    if (!body.success) return reply.code(400).send({ error: 'bad_request' })
+    const actorId = (req.user as AccessPayload).sub
+    const v = await prisma.stationVisit.findUnique({ where: { id: visitId }, select: { id: true, jobId: true, station: { select: { name: true } } } })
+    if (!v) return reply.code(404).send({ error: 'not_found' })
+
+    const now = new Date()
+    const data = body.data.resolve
+      ? { qcResolvedAt: now, qcById: actorId, qcAt: now }
+      : { qcChecked: body.data.checked ?? true, qcIssue: body.data.issue ?? false, qcNote: body.data.note ?? null, qcById: actorId, qcAt: now, qcResolvedAt: body.data.issue ? null : undefined }
+    await prisma.$transaction(async (tx) => {
+      await tx.stationVisit.update({ where: { id: visitId }, data })
+      const label = body.data.resolve ? `QC issue resolved · ${v.station.name}` : body.data.issue ? `⚠ QC issue · ${v.station.name}${body.data.note ? ` — ${body.data.note}` : ''}` : `QC checked · ${v.station.name}`
+      await tx.jobEvent.create({ data: { jobId: v.jobId, type: 'qc_result', actorId, body: label } })
+      if (body.data.issue) await notifyAdmins(tx, { type: 'escalation', jobId: v.jobId, body: `QC issue at ${v.station.name}${body.data.note ? `: ${body.data.note}` : ''}` })
+      await writeAudit('station_visit', visitId, 'qc_mark', { actorId, after: { issue: !!body.data.issue, resolve: !!body.data.resolve }, tx })
+    })
+    return { ok: true }
+  })
+
   // pipeline-v2: rework goes back to PRODUCTION. QC may aim it at a specific
   // station (reworkStationId) or leave it for the production head to route.
   app.get('/:jobId/rework-targets', { preHandler: requireRole('admin', 'qc') }, async (_req, reply) => {
