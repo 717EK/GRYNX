@@ -531,6 +531,24 @@ export const createMaterialRequest = (jobId: string, input: { item: string; quan
 export const updateMaterialRequest = (id: string, input: { status?: string; vendor?: string; note?: string }) =>
   req<{ request: MaterialRequest }>('PATCH', `/api/v1/purchase/requests/${id}`, input)
 
+// ── dispatch (docs/12 phase 6) — whole-order shipping ─────────────────────────
+export interface Dispatch {
+  id: string
+  orderId: string
+  status: 'requested' | 'approved' | 'shipped' | 'cancelled'
+  raisedBy: string
+  vehicle: string | null
+  note: string | null
+  approvedAt: string | null
+  shippedAt: string | null
+  createdAt: string
+  order?: { id: string; orderNo: string; name: string | null; client: string; priority: string; status: string; items?: { quantity: number }[] }
+}
+export const getDispatches = (status?: string) => req<{ dispatches: Dispatch[] }>('GET', `/api/v1/dispatch${status ? `?status=${status}` : ''}`)
+export const requestDispatch = (orderId: string, note?: string) => req<{ dispatch: Dispatch }>('POST', '/api/v1/dispatch/request', { orderId, note })
+export const approveDispatch = (id: string) => req<{ ok: boolean }>('POST', `/api/v1/dispatch/${id}/approve`)
+export const shipDispatch = (id: string, input?: { vehicle?: string; note?: string }) => req<{ ok: boolean; shipped: boolean }>('POST', `/api/v1/dispatch/${id}/ship`, input ?? {})
+
 // ── FG inventory (docs/12 phase 5) ────────────────────────────────────────────
 export interface StockRow {
   id: string

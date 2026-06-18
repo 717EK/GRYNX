@@ -905,6 +905,7 @@ model Order {
   updatedAt   DateTime    @updatedAt
   items       OrderItem[]
   jobs        Job[]
+  dispatch    Dispatch?
 
   @@index([status])
 }
@@ -975,4 +976,30 @@ model StockMovement {
   stockItem     StockItem     @relation(fields: [stockItemId], references: [id])
 
   @@index([stockItemId])
+}
+
+// ───────────────────────── dispatch (docs/12 phase 6) ────────────────────────
+// Ships the WHOLE order (never partial). Two-way trigger: Sales requests → admin
+// approves, OR FG auto-raises when every item is in stock. Shipping DEDUCTS stock.
+enum DispatchStatus {
+  requested
+  approved
+  shipped
+  cancelled
+}
+
+model Dispatch {
+  id            String         @id @default(uuid())
+  orderId       String         @unique
+  status        DispatchStatus @default(requested)
+  raisedBy      String // 'sales' | 'fg' | 'admin' — who/what raised it
+  requestedById String
+  approvedById  String?
+  approvedAt    DateTime?
+  shippedById   String?
+  shippedAt     DateTime?
+  vehicle       String?
+  note          String?
+  createdAt     DateTime       @default(now())
+  order         Order          @relation(fields: [orderId], references: [id])
 }

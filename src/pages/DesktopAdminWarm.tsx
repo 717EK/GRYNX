@@ -7,6 +7,7 @@ import Maintenance from './Maintenance'
 import MaintenanceDetail from './MaintenanceDetail'
 import Notifications from './Notifications'
 import OrdersDesktop from './OrdersDesktop'
+import DispatchDesktop from './DispatchDesktop'
 import CalendarWidget from '../components/CalendarWidget'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark-light.png'
@@ -32,7 +33,7 @@ function linePath(vals: number[], w: number, h: number, pad = 6) {
   return vals.map((v, i) => `${i ? 'L' : 'M'}${(i * step).toFixed(1)},${(h - pad - ((v - min) / range) * (h - 2 * pad)).toFixed(1)}`).join(' ')
 }
 
-type Nav = 'dashboard' | 'jobs' | 'ppc' | 'analytics' | 'workflow' | 'orders'
+type Nav = 'dashboard' | 'jobs' | 'ppc' | 'analytics' | 'workflow' | 'orders' | 'dispatch'
 type Popup =
   | null
   | { kind: 'create' }
@@ -102,6 +103,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         <button className={`dw__i ${nav === 'jobs' ? 'is-on' : ''}`} title="Job Board" onClick={() => setNav('jobs')}>▤</button>
         <button className={`dw__i ${nav === 'ppc' ? 'is-on' : ''}`} title="PPC Requests" onClick={() => setNav('ppc')}>◳</button>
         <button className={`dw__i ${nav === 'orders' ? 'is-on' : ''}`} title="Orders" onClick={() => setNav('orders')}>▦</button>
+        <button className={`dw__i ${nav === 'dispatch' ? 'is-on' : ''}`} title="Dispatch" onClick={() => setNav('dispatch')}>🚚</button>
         <button className={`dw__i ${nav === 'analytics' ? 'is-on' : ''}`} title="Dwell Analytics" onClick={() => { setAna(null); setNav('analytics') }}>◫</button>
         <button className={`dw__i ${nav === 'workflow' ? 'is-on' : ''}`} title="Workflow Map" onClick={() => { setWf(null); setNav('workflow') }}>⛓</button>
         <button className="dw__i" title="Maintenance" onClick={() => setPopup({ kind: 'maintenance' })}>⚙</button>
@@ -399,6 +401,8 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         )}
 
         {nav === 'orders' && <OrdersDesktop onOpenJob={openJob} />}
+
+        {nav === 'dispatch' && <DispatchDesktop />}
 
         {nav === 'workflow' && (
           <section className="dw__view">
