@@ -46,6 +46,20 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.1 — order layer (docs/12 phase 3)
+- **Sales orders are now the top entity.** An `Order` (client + line-items) is the
+  parent; PPC raises a **Job per line-item that needs production**, or marks an item
+  **fulfilled from FG stock**. Jobs carry `orderId`/`orderItemId` back to the order.
+- **Order rollup** — each order shows derived production progress (items resolved /
+  total, jobs, from-stock) and a derived status (planning → in-production → ready);
+  whole-order completion = every item resolved. Dispatch (phase 6) ships the whole
+  order.
+- New **Orders** tab on the command centre (▦): order cards with progress, a
+  create-order form, and an order detail with per-item raise-job / from-stock and
+  click-through to each job.
+- `/api/v1/orders` (list/detail/create/patch, raise-job-per-item, from-stock).
+  Additive migration; v0.9.0 behaviour preserved.
+
 ### v0.9.0 — workflow engine foundation (docs/12, phases 1–2)
 - **The company pipeline is now versioned DATA, not hardcoded** (metadata-driven
   workflow engine). New `WorkflowDefinition` / `WorkflowVersion` / `WorkflowStage`
