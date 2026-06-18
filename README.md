@@ -46,6 +46,21 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.0 — workflow engine foundation (docs/12, phases 1–2)
+- **The company pipeline is now versioned DATA, not hardcoded** (metadata-driven
+  workflow engine). New `WorkflowDefinition` / `WorkflowVersion` / `WorkflowStage`
+  + typed stages (`StageType`); jobs **snapshot the published version at creation**,
+  so publishing a new version never re-routes jobs already on the floor — the core
+  correctness property, proven by a live test (job on v1 keeps its v1 steps after
+  v2 publishes; rollback to v1 works). The live floor runs identically: the seeded
+  v1 = today's Design→Production→QC→FG gates.
+- `/api/v1/workflow`: published view, version history, create-draft, publish
+  (publish a draft = release; publish an archived version = rollback).
+- **Workflow Map** on the command centre (new ⛓ rail tab): a read-only diagram of
+  the live workflow — stages, types, backing departments — making the engine
+  legible before the visual editor (later phases) lands.
+- Additive migration only; v0.8 behaviour preserved.
+
 ### v0.8.0 — dwell analytics + beta-ready
 - **Dwell Analytics** on the command centre (new ◫ rail tab): per-station average
   dwell + visit volume (with ★ auto-out counts), operator throughput (scans, jobs,
