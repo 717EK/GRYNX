@@ -30,6 +30,7 @@ import FeedbackFab from './components/FeedbackFab'
 import DesktopAdminWarm from './pages/DesktopAdminWarm'
 import SalesHome from './pages/SalesHome'
 import PpcSheets from './pages/PpcSheets'
+import PpcHub from './pages/PpcHub'
 import type { SessionUser } from './components/UtilityBars'
 import { getUser, isAuthed, logout, getDepartments, getPpcRequest, type ApiUser, type PpcRequest, type Notification, type SaleSheet } from './lib/api'
 
@@ -61,6 +62,7 @@ export type Screen =
   | 'purchase'
   | 'sales'
   | 'ppcsheets'
+  | 'ppchub'
 
 const FLOOR_ROLES = ['dept_head', 'qc', 'fg_stock', 'maintenance']
 
@@ -68,7 +70,7 @@ function landingFor(u: ApiUser): Screen {
   if (u.username.toLowerCase() === 'admin') return 'viewas' // SuperUser (testing)
   if (u.roles.some((r) => r.role === 'admin')) return 'home' // AASHISH = real admin
   if (u.roles.some((r) => r.role === 'sales')) return 'sales'
-  if (u.roles.some((r) => r.role === 'ppc')) return 'ppcrequest'
+  if (u.roles.some((r) => r.role === 'ppc')) return 'ppchub'
   if (u.roles.some((r) => r.role === 'qc')) return 'qc'
   if (u.roles.some((r) => r.role === 'fg_stock')) return 'fgclosure'
   return 'station' // production-station floor users land on their station home
@@ -263,11 +265,22 @@ export default function App() {
             variant="ppc"
             user={user}
             sheet={sheetForPpc}
-            onBack={() => go(isSuper ? 'viewas' : 'home')}
+            onBack={() => go(isSuper ? 'viewas' : 'ppchub')}
             onLock={handleLock}
             onOpenInbox={() => go('ppcinbox')}
             onOpenSheets={() => go('ppcsheets')}
             onClearSheet={() => setSheetForPpc(null)}
+          />
+        )
+      case 'ppchub':
+        return (
+          <PpcHub
+            user={user}
+            onLock={handleLock}
+            onNewRequest={() => go('ppcrequest')}
+            onSheets={() => go('ppcsheets')}
+            onInbox={() => go('ppcinbox')}
+            onOpenJob={(id) => openJob(id, 'ppchub')}
           />
         )
       case 'ppcsheets':
@@ -317,7 +330,7 @@ export default function App() {
         return (
           <PpcInbox
             user={user}
-            onBack={() => go('ppcrequest')}
+            onBack={() => go('ppchub')}
             onLock={handleLock}
             onOpen={(reqData) => openReview(reqData, 'ppc')}
           />

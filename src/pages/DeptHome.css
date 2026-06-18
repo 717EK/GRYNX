@@ -128,3 +128,19 @@
 .qcf__issueform { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
 .qcf__issueform .mnt__input { flex: 1; }
 .qcf__hint { color: var(--text-secondary); font-size: 11px; display: block; margin-top: 8px; }
+
+/* PPC hub (docs/12) */
+.ppc__quick { display: flex; gap: 8px; margin-bottom: 14px; }
+.ppc__qbtn { flex: 1; padding: 11px 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-raised); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-display); }
+.ppc__notes { color: var(--text-secondary); font-size: 12px; margin: 8px 0 0; }
+.ppc__items { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.ppc__item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.ppc__item-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ppc__item-head b { font-size: 14px; }
+.ppc__qty { color: var(--text-secondary); }
+.ppc__item-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.ppc__sm { padding: 7px 12px; font-size: 12px; }
+.ppc__joblink { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; color: var(--text); cursor: pointer; font-size: 11px; }
+.ppc__hint { color: var(--text-secondary); font-size: 11px; display: block; margin-top: 10px; }
+.ppc__orow { display: grid; grid-template-columns: 1fr 0.7fr 64px 34px; gap: 6px; margin-top: 6px; align-items: center; }
+.ppc__orow .mnt__input { padding: 8px; }

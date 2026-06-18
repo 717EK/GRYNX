@@ -46,6 +46,19 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.3 — PPC Hub: the planning desk
+- **PPC finally has a home.** PPC now lands on a **Planning hub** (was a bare request
+  form): orders **to plan**, **in flight**, and completed, plus quick links to raise
+  a request / convert sale sheets / view My Requests.
+- **Order-driven planning:** open an order → per line-item, **Make (raise a job)** or
+  **mark From stock** (the FG-stock check). Raised jobs link back to the order and
+  flow to the floor; the order is "ready" once every item is resolved.
+- **Sales can raise structured Orders on mobile** (line items: product · model · qty)
+  — these land in the PPC hub. The quick free-text Sale Sheet stays as a secondary
+  path. Sales home now shows its orders + their status.
+- This makes the Sales → PPC → jobs flow real inside PPC's own app, not just the
+  admin desktop.
+
 ### v0.9.2 — QC into production (docs/12 phase 4)
 - **QC now sits at the stations**, not as a separate gate. A QC person marks each
   production station visit **✓ checked** or flags an **⚠ issue** (with a note) — a
