@@ -144,3 +144,4 @@
 .ppc__hint { color: var(--text-secondary); font-size: 11px; display: block; margin-top: 10px; }
 .ppc__orow { display: grid; grid-template-columns: 1fr 0.7fr 64px 34px; gap: 6px; margin-top: 6px; align-items: center; }
 .ppc__orow .mnt__input { padding: 8px; }
+.ppc__qbtn--on { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }

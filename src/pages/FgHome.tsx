@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import { getFgQueue, getSerials, addSerials, fgClose, type FgJob } from '../lib/api'
+import { getFgQueue, getSerials, addSerials, fgClose, getStock, adjustStock, type FgJob, type StockRow } from '../lib/api'
+import { useCatalogue } from '../lib/useCatalogue'
 import ReportButton from '../components/ReportButton'
 import './Maintenance.css'
 import './DeptHome.css'
@@ -8,18 +9,15 @@ import './DeptHome.css'
 export default function FgHome({ user, onBack, onLock }: { user: SessionUser; onBack: () => void; onLock: () => void }) {
   const [jobs, setJobs] = useState<FgJob[] | null>(null)
   const [active, setActive] = useState<FgJob | null>(null)
+  const [tab, setTab] = useState<'serialise' | 'stock'>('serialise')
+  const [stock, setStock] = useState<StockRow[] | null>(null)
+  const [adding, setAdding] = useState(false)
 
   async function load() {
-    try {
-      const { jobs } = await getFgQueue()
-      setJobs(jobs)
-    } catch {
-      setJobs([])
-    }
+    try { setJobs((await getFgQueue()).jobs) } catch { setJobs([]) }
+    getStock().then((r) => setStock(r.items)).catch(() => setStock([]))
   }
-  useEffect(() => {
-    void load()
-  }, [])
+  useEffect(() => { void load() }, [])
 
   return (
     <div className="app">
@@ -29,36 +27,121 @@ export default function FgHome({ user, onBack, onLock }: { user: SessionUser; on
           <button className="screen__back" onClick={onBack} aria-label="Back">←</button>
           <div className="screen__titles">
             <h1 className="screen__title display">FG Stock</h1>
-            <span className="mono-label">{jobs ? `${jobs.length} to receive / serialise` : 'Loading…'}</span>
+            <span className="mono-label">{jobs ? `${jobs.length} to serialise · ${stock?.length ?? 0} stock lines` : 'Loading…'}</span>
           </div>
           <ReportButton />
         </header>
+        <div className="ppc__quick" style={{ padding: '0 16px' }}>
+          <button className={`ppc__qbtn ${tab === 'serialise' ? 'ppc__qbtn--on' : ''}`} onClick={() => setTab('serialise')}>To serialise{jobs?.length ? ` (${jobs.length})` : ''}</button>
+          <button className={`ppc__qbtn ${tab === 'stock' ? 'ppc__qbtn--on' : ''}`} onClick={() => setTab('stock')}>Stock</button>
+        </div>
         <div className="screen__scroll">
-          {jobs === null ? (
-            <span className="dh__empty mono-label">Loading…</span>
-          ) : jobs.length === 0 ? (
-            <span className="dh__empty mono-label">No jobs at FG Stock right now.</span>
+          {tab === 'serialise' ? (
+            jobs === null ? <span className="dh__empty mono-label">Loading…</span> : jobs.length === 0 ? (
+              <span className="dh__empty mono-label">No jobs at FG Stock right now.</span>
+            ) : (
+              <ul className="dh__list">
+                {jobs.map((j) => (
+                  <li key={j.id}>
+                    <button className="dh__row" onClick={() => setActive(j)}>
+                      <span className="dh__main">
+                        <span className="dh__label display">{j.name || j.displayLabel}</span>
+                        <span className="dh__meta mono-label">{j.product?.name} · {j.totalQty} units · {j.serialCount ?? 0} serials</span>
+                      </span>
+                      <span className="dh__right">{j.priority === 'urgent' && <span className="dh__tag dh__tag--urgent mono-label">URGENT</span>}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
           ) : (
-            <ul className="dh__list">
-              {jobs.map((j) => (
-                <li key={j.id}>
-                  <button className="dh__row" onClick={() => setActive(j)}>
-                    <span className="dh__main">
-                      <span className="dh__label display">{j.name || j.displayLabel}</span>
-                      <span className="dh__meta mono-label">{j.product?.name} · {j.totalQty} units · {j.serialCount ?? 0} serials</span>
-                    </span>
-                    <span className="dh__right">
-                      {j.priority === 'urgent' && <span className="dh__tag dh__tag--urgent mono-label">URGENT</span>}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <button className="btn btn--solid btn--block" style={{ marginBottom: 12 }} onClick={() => setAdding(true)}>＋ Add / adjust stock</button>
+              {stock === null ? <span className="dh__empty mono-label">Loading…</span> : stock.length === 0 ? (
+                <span className="dh__empty mono-label">No stock recorded yet — add your opening stock.</span>
+              ) : (
+                <ul className="dh__list">
+                  {stock.map((s) => (
+                    <li key={s.id}>
+                      <div className="dh__row">
+                        <span className="dh__main">
+                          <span className="dh__label display">{s.product.name}{s.model ? ` · ${s.model.code}` : ''}{s.size ? ` · ${s.size}` : ''}</span>
+                          <span className="dh__meta mono-label">on-hand {s.onHand} · reserved {s.reserved}</span>
+                        </span>
+                        <span className="dh__right">
+                          <span className={`dh__tag mono-label ${s.available > 0 ? 'dh__tag--info' : 'dh__tag--urgent'}`}>{s.available} avail</span>
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </div>
       </main>
       <BottomBar />
       {active && <FgModal job={active} onClose={() => setActive(null)} onDone={() => { setActive(null); void load() }} />}
+      {adding && <StockModal onClose={() => setAdding(false)} onDone={() => { setAdding(false); void load() }} />}
+    </div>
+  )
+}
+
+// FG enters opening stock / corrects a count (absolute on-hand) per product+model+size.
+function StockModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { catalogue } = useCatalogue()
+  const products = catalogue ?? []
+  const [productId, setProductId] = useState('')
+  const [modelId, setModelId] = useState('')
+  const [size, setSize] = useState('')
+  const [onHand, setOnHand] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const product = products.find((p) => p.id === productId)
+  const models = product?.models ?? []
+  const sizes = models.find((m) => m.id === modelId)?.sizes ?? []
+
+  async function submit() {
+    setErr(null)
+    if (!productId || !modelId) return setErr('Pick product + model')
+    setBusy(true)
+    try { await adjustStock({ productId, modelId, size: size || undefined, onHand: Math.max(0, onHand), opening: true }); onDone() }
+    catch (e) { setErr(e instanceof Error && /below_reserved/.test(e.message) ? "Can't set below what's already reserved." : 'Could not save'); setBusy(false) }
+  }
+
+  return (
+    <div className="mnt__overlay" onMouseDown={onClose}>
+      <div className="mnt__modal" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="mnt__modal-head">
+          <span className="display mnt__modal-title">Add / adjust stock</span>
+          <button className="modal__x" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <label className="mnt__field"><span className="mono-label">Product *</span>
+          <select className="mnt__input" value={productId} onChange={(e) => { setProductId(e.target.value); setModelId(''); setSize('') }}>
+            <option value="">— select —</option>
+            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </label>
+        <label className="mnt__field"><span className="mono-label">Model *</span>
+          <select className="mnt__input" value={modelId} onChange={(e) => { setModelId(e.target.value); setSize('') }} disabled={!productId}>
+            <option value="">— select —</option>
+            {models.map((m) => <option key={m.id} value={m.id}>{m.code}</option>)}
+          </select>
+        </label>
+        {sizes.length > 0 && (
+          <label className="mnt__field"><span className="mono-label">Size</span>
+            <select className="mnt__input" value={size} onChange={(e) => setSize(e.target.value)}>
+              <option value="">— any / n/a —</option>
+              {sizes.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+        )}
+        <label className="mnt__field"><span className="mono-label">On-hand quantity</span>
+          <input className="mnt__input" type="number" min={0} value={onHand} onChange={(e) => setOnHand(Math.max(0, +e.target.value))} />
+        </label>
+        {err && <span className="mnt__err mono-label">{err}</span>}
+        <button className="btn btn--solid btn--block" disabled={busy} onClick={submit}>{busy ? '…' : 'Save stock'}</button>
+      </div>
     </div>
   )
 }

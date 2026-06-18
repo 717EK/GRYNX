@@ -361,6 +361,7 @@ model Product {
   jobs       Job[]
   ppc        PpcRequest[]
   orderItems OrderItem[]
+  stockItems StockItem[]
 }
 
 model Model {
@@ -375,6 +376,7 @@ model Model {
   jobModels  JobModel[]
   ppcModels  PpcRequestModel[]
   orderItems OrderItem[]
+  stockItems StockItem[]
 
   @@unique([productId, code])
 }
@@ -781,26 +783,26 @@ model Station {
 // (genuine parallel work). scanOut is preferred-explicit; if the operator forgets and
 // the job moves on, it auto-closes (scanOutMode=auto) and the UI renders the time with ★.
 model StationVisit {
-  id          String       @id @default(uuid())
-  jobId       String
-  stationId   String
-  operatorId  String // who scanned / worked (plain id, matches maintenance convention)
-  scanInAt    DateTime     @default(now())
-  scanOutAt   DateTime?
-  scanOutMode ScanOutMode? // null while open; explicit | auto(★) once closed
-  remark      String? // what they did
-  photoUrl    String?      @db.Text // optional compressed JPEG data URL
+  id           String       @id @default(uuid())
+  jobId        String
+  stationId    String
+  operatorId   String // who scanned / worked (plain id, matches maintenance convention)
+  scanInAt     DateTime     @default(now())
+  scanOutAt    DateTime?
+  scanOutMode  ScanOutMode? // null while open; explicit | auto(★) once closed
+  remark       String? // what they did
+  photoUrl     String?      @db.Text // optional compressed JPEG data URL
   // per-station QC (docs/12 phase 4): a QC person marks the visit checked / issue.
   // Non-blocking for movement; an OPEN issue (qcIssue && !qcResolvedAt) blocks FG close.
-  qcChecked    Boolean     @default(false)
-  qcIssue      Boolean     @default(false)
+  qcChecked    Boolean      @default(false)
+  qcIssue      Boolean      @default(false)
   qcNote       String?
   qcById       String?
   qcAt         DateTime?
   qcResolvedAt DateTime?
-  version     Int          @default(0) // optimistic lock for concurrent scans
-  job         Job          @relation(fields: [jobId], references: [id])
-  station     Station      @relation(fields: [stationId], references: [id])
+  version      Int          @default(0) // optimistic lock for concurrent scans
+  job          Job          @relation(fields: [jobId], references: [id])
+  station      Station      @relation(fields: [stationId], references: [id])
 
   @@index([jobId])
   @@index([stationId])
@@ -908,18 +910,69 @@ model Order {
 }
 
 model OrderItem {
-  id        String  @id @default(uuid())
-  orderId   String
-  productId String
-  modelId   String?
-  size      String?
-  quantity  Int
-  fromStock Boolean @default(false) // PPC marked: fulfilled from existing FG stock (phase 5)
-  note      String?
-  order     Order   @relation(fields: [orderId], references: [id])
-  product   Product @relation(fields: [productId], references: [id])
-  model     Model?  @relation(fields: [modelId], references: [id])
-  jobs      Job[]
+  id          String     @id @default(uuid())
+  orderId     String
+  productId   String
+  modelId     String?
+  size        String?
+  quantity    Int
+  fromStock   Boolean    @default(false) // PPC marked: fulfilled from existing FG stock
+  stockItemId String? // phase 5: the StockItem this item reserved from (when fromStock)
+  note        String?
+  order       Order      @relation(fields: [orderId], references: [id])
+  product     Product    @relation(fields: [productId], references: [id])
+  model       Model?     @relation(fields: [modelId], references: [id])
+  stockItem   StockItem? @relation(fields: [stockItemId], references: [id])
+  jobs        Job[]
 
   @@index([orderId])
+}
+
+// ───────────────────────── FG inventory (docs/12 phase 5) ────────────────────
+// Finished-goods stock per product+model+size. available = onHand − reserved.
+// `version` is the optimistic lock that prevents double-allocation (R2): every
+// reserve/produce/dispatch reads version, writes version+1, retries on conflict.
+model StockItem {
+  id         String          @id @default(uuid())
+  productId  String
+  modelId    String?
+  size       String?
+  onHand     Int             @default(0) // physically in FG
+  reserved   Int             @default(0) // promised to orders (available = onHand − reserved)
+  version    Int             @default(0) // optimistic lock — DO NOT bypass
+  updatedAt  DateTime        @updatedAt
+  product    Product         @relation(fields: [productId], references: [id])
+  model      Model?          @relation(fields: [modelId], references: [id])
+  movements  StockMovement[]
+  orderItems OrderItem[]
+
+  @@unique([productId, modelId, size])
+}
+
+enum StockMoveKind {
+  opening // FG entered existing/opening stock
+  adjust // manual correction / stock-take
+  produced // a job closed → units entered FG
+  reserve // PPC reserved for an order (from stock)
+  release // reservation freed (undo / reallocate / cancel)
+  dispatch // shipped out (on-hand drops)
+}
+
+model StockMovement {
+  id            String        @id @default(uuid())
+  stockItemId   String
+  kind          StockMoveKind
+  qty           Int // units moved (always positive; `kind` says what changed)
+  onHandAfter   Int
+  reservedAfter Int
+  orderId       String?
+  orderItemId   String?
+  jobId         String?
+  clientTag     String? // "made for <client>" provenance
+  actorId       String
+  note          String?
+  createdAt     DateTime      @default(now())
+  stockItem     StockItem     @relation(fields: [stockItemId], references: [id])
+
+  @@index([stockItemId])
 }

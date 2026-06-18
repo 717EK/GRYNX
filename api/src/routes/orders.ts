@@ -6,6 +6,7 @@ import { writeAudit } from '../lib/audit.js'
 import { notifyAdmins } from '../lib/notify.js'
 import { nextDailySequence } from '../lib/sequence.js'
 import { createJobFromInput } from '../lib/jobCreate.js'
+import { moveStock, normSize } from '../lib/stock.js'
 
 // Order layer (docs/12 phase 3). A Sales Order holds line-items; PPC raises a Job
 // per item that needs production (others are fulfilled from FG stock — phase 5).
@@ -112,13 +113,28 @@ export async function orderRoutes(app: FastifyInstance) {
     return { order: { ...order, rollup: r, derivedStatus: derivedStatus(order.status, r) } }
   })
 
-  // PPC marks an item as fulfilled from existing FG stock (phase-5 stub: flag only)
+  // PPC marks an item fulfilled from existing FG stock → RESERVES the qty (phase 5).
+  // Undo releases it. Reservation is optimistic-locked so two orders can't claim
+  // the same units (R2).
   app.post('/:id/items/:itemId/from-stock', { preHandler: requireRole('admin', 'ppc') }, async (req, reply) => {
     const { id, itemId } = z.object({ id: z.string().uuid(), itemId: z.string().uuid() }).parse(req.params)
     const body = z.object({ fromStock: z.boolean().default(true) }).parse(req.body ?? {})
-    const item = await prisma.orderItem.findFirst({ where: { id: itemId, orderId: id }, select: { id: true } })
+    const actorId = (req.user as AccessPayload).sub
+    const item = await prisma.orderItem.findFirst({ where: { id: itemId, orderId: id }, select: { id: true, productId: true, modelId: true, size: true, quantity: true, fromStock: true, stockItemId: true } })
     if (!item) return reply.code(404).send({ error: 'not_found' })
-    await prisma.orderItem.update({ where: { id: itemId }, data: { fromStock: body.fromStock } })
+
+    const modelId = item.modelId ?? (await prisma.model.findFirst({ where: { productId: item.productId, active: true }, select: { id: true } }))?.id
+    if (!modelId) return reply.code(400).send({ error: 'no_model_for_item' })
+    const key = { productId: item.productId, modelId, size: normSize(item.size) }
+
+    if (body.fromStock && !item.fromStock) {
+      const res = await moveStock({ key, kind: 'reserve', qty: item.quantity, actorId, orderId: id, orderItemId: itemId, note: 'reserved for order' })
+      if (!res.ok) return reply.code(409).send({ error: res.error, available: res.available ?? 0 })
+      await prisma.orderItem.update({ where: { id: itemId }, data: { fromStock: true, stockItemId: res.stockItemId } })
+    } else if (!body.fromStock && item.fromStock) {
+      await moveStock({ key, kind: 'release', qty: item.quantity, actorId, orderId: id, orderItemId: itemId, note: 'reservation released' })
+      await prisma.orderItem.update({ where: { id: itemId }, data: { fromStock: false, stockItemId: null } })
+    }
     return { ok: true, fromStock: body.fromStock }
   })
 
