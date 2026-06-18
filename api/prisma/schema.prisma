@@ -200,6 +200,29 @@ enum SaleSheetStatus {
   cancelled
 }
 
+// ── workflow engine (docs/12) ──
+// A stage's TYPE drives its behaviour/screen (code); its arrangement + config are
+// data in a WorkflowVersion. Department-backed types map to a Department row;
+// sales/dispatch/etc. are stages with no station.
+enum StageType {
+  sales
+  ppc_requirements
+  fg_check
+  design
+  ppc_final
+  production
+  qc
+  fg_stock
+  dispatch
+  maintenance
+}
+
+enum WorkflowStatus {
+  draft
+  published
+  archived
+}
+
 enum SuggestionKind {
   update_request
   escalation
@@ -273,17 +296,19 @@ model WebauthnCredential {
 }
 
 model Department {
-  id        String @id @default(uuid())
-  code      String @unique
+  id        String     @id @default(uuid())
+  code      String     @unique
   name      String
-  sortOrder Int    @default(0)
+  sortOrder Int        @default(0)
+  type      StageType? // workflow-engine: which stage type this department backs
 
-  roles         RoleAssignment[]
-  templateSteps PipelineTemplateStep[]
-  jobSteps      JobStep[]
-  scans         ScanEvent[]
-  floorDevices  DeviceToken[]
-  stations      Station[] // production sub-stations (only the PRODUCTION dept has these)
+  roles          RoleAssignment[]
+  templateSteps  PipelineTemplateStep[]
+  jobSteps       JobStep[]
+  scans          ScanEvent[]
+  floorDevices   DeviceToken[]
+  stations       Station[] // production sub-stations (only the PRODUCTION dept has these)
+  workflowStages WorkflowStage[]
 }
 
 model RoleAssignment {
@@ -419,6 +444,7 @@ model Job {
   status                  JobStatus @default(draft)
   pipelineTemplateId      String
   parentJobId             String? // split (V2)
+  workflowVersionId       String? // workflow-engine: the version this job's steps were snapshotted from
   source                  JobSource @default(admin)
   ppcRequestId            String?
   startDate               DateTime?
@@ -433,6 +459,7 @@ model Job {
 
   product          Product           @relation(fields: [productId], references: [id])
   pipeline         PipelineTemplate  @relation(fields: [pipelineTemplateId], references: [id])
+  workflowVersion  WorkflowVersion?  @relation(fields: [workflowVersionId], references: [id])
   models           JobModel[]
   steps            JobStep[]
   events           JobEvent[]
@@ -493,6 +520,7 @@ model JobStep {
   id            String     @id @default(uuid())
   jobId         String
   departmentId  String
+  stageType     StageType? // snapshot of the workflow stage type at creation
   sequence      Int
   status        StepStatus @default(pending)
   acceptedById  String?
@@ -781,4 +809,50 @@ model MaterialRequest {
 
   @@index([jobId])
   @@index([status])
+}
+
+// ───────────────────────── workflow engine (docs/12) ─────────────────────────
+// The company-wide business pipeline as VERSIONED data. Stages are typed; jobs
+// snapshot the published version at creation, so publishing a new version never
+// re-routes in-flight jobs (the core correctness property, R5).
+model WorkflowDefinition {
+  id                 String            @id @default(uuid())
+  name               String // "GRYNX Factory Workflow"
+  isActive           Boolean           @default(true)
+  publishedVersionId String?           @unique
+  createdAt          DateTime          @default(now())
+  versions           WorkflowVersion[] @relation("DefinitionVersions")
+  publishedVersion   WorkflowVersion?  @relation("PublishedVersion", fields: [publishedVersionId], references: [id])
+}
+
+model WorkflowVersion {
+  id           String              @id @default(uuid())
+  definitionId String
+  version      Int
+  status       WorkflowStatus      @default(draft)
+  note         String?
+  createdById  String
+  createdAt    DateTime            @default(now())
+  publishedAt  DateTime?
+  definition   WorkflowDefinition  @relation("DefinitionVersions", fields: [definitionId], references: [id])
+  publishedFor WorkflowDefinition? @relation("PublishedVersion")
+  stages       WorkflowStage[]
+  jobs         Job[]
+
+  @@unique([definitionId, version])
+}
+
+model WorkflowStage {
+  id           String          @id @default(uuid())
+  versionId    String
+  stageType    StageType
+  departmentId String? // department-backed stages (design/production/qc/fg); null for sales/dispatch
+  label        String // display name, e.g. "Production"
+  sequence     Int
+  config       Json            @default("{}") // per-stage config (who acts, SLA, conditions later)
+  version      WorkflowVersion @relation(fields: [versionId], references: [id])
+  department   Department?     @relation(fields: [departmentId], references: [id])
+
+  @@unique([versionId, sequence])
+  @@index([versionId])
 }
