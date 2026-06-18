@@ -12,6 +12,8 @@ export interface JobCreateInput {
   name?: string | null
   jobType?: 'production' | 'rework'
   pipelineTemplateId?: string
+  orderId?: string | null // order-layer: the sales order this job fulfils
+  orderItemId?: string | null // which order line-item
   startDate?: Date | null
   reworkIssue?: string | null
   reworkEntryDepartmentId?: string | null
@@ -98,6 +100,8 @@ export async function createJobFromInput(
             status: 'in_production',
             pipelineTemplateId: templateIdForJob,
             workflowVersionId,
+            orderId: input.orderId ?? null,
+            orderItemId: input.orderItemId ?? null,
             source: opts.source,
             ppcRequestId: opts.ppcRequestId ?? null,
             createdById: opts.actorId,

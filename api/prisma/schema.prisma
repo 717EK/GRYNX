@@ -223,6 +223,20 @@ enum WorkflowStatus {
   archived
 }
 
+// order-layer (docs/12): a Sales order spawns sub-Jobs for items not in stock.
+// Coarse human-set lifecycle; production progress is derived from the order's jobs.
+enum OrderStatus {
+  draft // sales drafting
+  submitted // handed to PPC
+  planning // PPC checking stock / raising jobs
+  in_production // ≥1 job on the floor
+  ready // all jobs done → in FG, awaiting dispatch
+  dispatched // shipped (phase 6)
+  closed
+  cancelled
+  on_hold
+}
+
 enum SuggestionKind {
   update_request
   escalation
@@ -342,10 +356,11 @@ model Product {
   description String?
   active      Boolean @default(true)
 
-  models    Model[]
-  pipelines PipelineTemplate[]
-  jobs      Job[]
-  ppc       PpcRequest[]
+  models     Model[]
+  pipelines  PipelineTemplate[]
+  jobs       Job[]
+  ppc        PpcRequest[]
+  orderItems OrderItem[]
 }
 
 model Model {
@@ -357,8 +372,9 @@ model Model {
   active    Boolean  @default(true)
   product   Product  @relation(fields: [productId], references: [id])
 
-  jobModels JobModel[]
-  ppcModels PpcRequestModel[]
+  jobModels  JobModel[]
+  ppcModels  PpcRequestModel[]
+  orderItems OrderItem[]
 
   @@unique([productId, code])
 }
@@ -445,6 +461,8 @@ model Job {
   pipelineTemplateId      String
   parentJobId             String? // split (V2)
   workflowVersionId       String? // workflow-engine: the version this job's steps were snapshotted from
+  orderId                 String? // order-layer: the sales order this job fulfils
+  orderItemId             String? // which order line-item this job makes
   source                  JobSource @default(admin)
   ppcRequestId            String?
   startDate               DateTime?
@@ -460,6 +478,8 @@ model Job {
   product          Product           @relation(fields: [productId], references: [id])
   pipeline         PipelineTemplate  @relation(fields: [pipelineTemplateId], references: [id])
   workflowVersion  WorkflowVersion?  @relation(fields: [workflowVersionId], references: [id])
+  order            Order?            @relation(fields: [orderId], references: [id])
+  orderItem        OrderItem?        @relation(fields: [orderItemId], references: [id])
   models           JobModel[]
   steps            JobStep[]
   events           JobEvent[]
@@ -855,4 +875,43 @@ model WorkflowStage {
 
   @@unique([versionId, sequence])
   @@index([versionId])
+}
+
+// ───────────────────────── order layer (docs/12 phase 3) ─────────────────────
+// Top-level Sales order. Holds line-items; PPC raises a Job per item that needs
+// production (items already in FG stock are fulfilled from stock — phase 5).
+// Whole-order completion = all sub-jobs closed; dispatch ships the WHOLE order.
+model Order {
+  id          String      @id @default(uuid())
+  orderNo     String      @unique // ORD-0001 (app-generated id)
+  name        String? // human-friendly, e.g. "SS Production 60x40 Truss"
+  client      String // customer / vendor
+  notes       String?     @db.Text
+  priority    Priority    @default(normal)
+  targetDate  DateTime?
+  status      OrderStatus @default(draft)
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  items       OrderItem[]
+  jobs        Job[]
+
+  @@index([status])
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  modelId   String?
+  size      String?
+  quantity  Int
+  fromStock Boolean @default(false) // PPC marked: fulfilled from existing FG stock (phase 5)
+  note      String?
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+  model     Model?  @relation(fields: [modelId], references: [id])
+  jobs      Job[]
+
+  @@index([orderId])
 }

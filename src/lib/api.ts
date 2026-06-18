@@ -526,6 +526,51 @@ export const createMaterialRequest = (jobId: string, input: { item: string; quan
 export const updateMaterialRequest = (id: string, input: { status?: string; vendor?: string; note?: string }) =>
   req<{ request: MaterialRequest }>('PATCH', `/api/v1/purchase/requests/${id}`, input)
 
+// ── orders (docs/12 phase 3) — Sales order → sub-jobs ─────────────────────────
+export interface OrderItem {
+  id: string
+  productId: string
+  modelId: string | null
+  size: string | null
+  quantity: number
+  fromStock: boolean
+  note: string | null
+  product: { code: string; name: string }
+  model: { code: string; name: string } | null
+}
+export interface OrderRollup { totalItems: number; fromStock: number; totalJobs: number; closedJobs: number; resolved: number }
+export interface Order {
+  id: string
+  orderNo: string
+  name: string | null
+  client: string
+  notes: string | null
+  priority: string
+  targetDate: string | null
+  status: string
+  derivedStatus: string
+  createdById: string
+  createdAt: string
+  items: OrderItem[]
+  jobs: { id: string; displayLabel: string; name: string | null; status: string; orderItemId: string | null }[]
+  rollup: OrderRollup
+}
+export interface OrderInput {
+  client: string
+  name?: string
+  notes?: string
+  priority?: 'normal' | 'urgent'
+  targetDate?: string
+  submit?: boolean
+  items: { productId: string; modelId?: string; size?: string; quantity: number; note?: string }[]
+}
+export const getOrders = (status?: string) => req<{ orders: Order[] }>('GET', `/api/v1/orders${status ? `?status=${status}` : ''}`)
+export const getOrder = (id: string) => req<{ order: Order }>('GET', `/api/v1/orders/${id}`)
+export const createOrder = (input: OrderInput) => req<{ order: Order }>('POST', '/api/v1/orders', input)
+export const updateOrder = (id: string, input: Partial<{ status: string; name: string; notes: string; targetDate: string }>) => req<{ order: Order }>('PATCH', `/api/v1/orders/${id}`, input)
+export const markOrderItemFromStock = (orderId: string, itemId: string, fromStock = true) => req<{ ok: boolean }>('POST', `/api/v1/orders/${orderId}/items/${itemId}/from-stock`, { fromStock })
+export const raiseOrderItemJob = (orderId: string, itemId: string, input?: { name?: string; startDate?: string }) => req<{ job: { id: string; displayLabel: string } }>('POST', `/api/v1/orders/${orderId}/items/${itemId}/job`, input ?? {})
+
 // ── workflow engine (docs/12) — the company pipeline as versioned data ────────
 export interface WorkflowStage {
   id: string
