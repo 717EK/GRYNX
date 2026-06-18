@@ -46,6 +46,18 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.5 — Dispatch (docs/12 phase 6)
+- **Whole-order dispatch closes the loop.** An order ships only when **every** item
+  is resolved (made or reserved from stock) — never partial. **Two-way trigger:**
+  Sales/PPC request → admin approves → ship; **or FG auto-raises** a dispatch
+  request the moment a closing job makes the whole order ready.
+- **Shipping DEDUCTS FG stock** (reserved units go out, on-hand drops) and marks the
+  order dispatched — completing produce → reserve → dispatch.
+- New **Dispatch** tab on the command centre (🚚): awaiting-approval / ready-to-ship
+  / shipped, with Approve and Ship-whole-order (optional vehicle ref). PPC hub gets
+  a "Request dispatch" button once an order's items are all resolved.
+- Verified e2e (both trigger paths + stock deduction + guards). Additive migration.
+
 ### v0.9.4 — FG inventory (docs/12 phase 5)
 - **Real finished-goods stock** per product · model · size: **on-hand / reserved /
   available**. FG (and admin) enter opening stock and corrections on a new **Stock**

@@ -5,6 +5,7 @@ import { authenticate, requireRole, type AccessPayload } from '../lib/auth.js'
 import { writeAudit } from '../lib/audit.js'
 import { notifyAdmins, notifyUsers } from '../lib/notify.js'
 import { moveStock, normSize } from '../lib/stock.js'
+import { orderReady } from './dispatch.js'
 
 const jobBrief = {
   id: true,
@@ -149,6 +150,22 @@ export async function fgRoutes(app: FastifyInstance) {
       await moveStock({ key, kind: 'produced', qty: m.quantity, actorId: closeActorId, jobId, orderId: cjob.orderId, clientTag: cjob.order?.client ?? null, note: `produced · ${cjob.displayLabel}` })
       if (cjob.orderId) {
         await moveStock({ key, kind: 'reserve', qty: m.quantity, actorId: closeActorId, orderId: cjob.orderId, orderItemId: cjob.orderItemId, clientTag: cjob.order?.client ?? null, note: 'reserved (made to order)' })
+      }
+    }
+
+    // phase 6: if this close makes the WHOLE order ready (every item made or from
+    // stock) and there's no dispatch yet, FG auto-raises a dispatch request.
+    if (cjob.orderId) {
+      const order = await prisma.order.findUnique({
+        where: { id: cjob.orderId },
+        select: { orderNo: true, client: true, items: { select: { id: true, fromStock: true } }, jobs: { select: { orderItemId: true, status: true } }, dispatch: { select: { id: true } } },
+      })
+      if (order && !order.dispatch && orderReady(order)) {
+        await prisma.$transaction(async (tx) => {
+          const d = await tx.dispatch.create({ data: { orderId: cjob.orderId!, raisedBy: 'fg', requestedById: closeActorId, note: 'auto: whole order in stock' } })
+          await tx.order.update({ where: { id: cjob.orderId! }, data: { status: 'ready' } })
+          await notifyAdmins(tx, { type: 'closure_request', entityId: d.id, body: `${order.orderNo} (${order.client}) fully in stock — dispatch ready to approve` })
+        })
       }
     }
     return { ok: true, closed: true, serials: totalSerials, missingCritical: missing }

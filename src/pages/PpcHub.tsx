@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import { getOrders, getOrder, raiseOrderItemJob, markOrderItemFromStock, type Order } from '../lib/api'
+import { getOrders, getOrder, raiseOrderItemJob, markOrderItemFromStock, requestDispatch, type Order } from '../lib/api'
 import ReportButton from '../components/ReportButton'
 import './DeptHome.css'
 import './Maintenance.css'
@@ -155,7 +155,12 @@ function PlanModal({ id, onClose, onOpenJob }: { id: string; onClose: () => void
               })}
             </div>
             {err && <span className="mnt__err mono-label" style={{ display: 'block', marginTop: 8 }}>{err}</span>}
-            <span className="mono-label ppc__hint">ⓘ FG-stock check: "From stock" reserves the units from FG inventory (can't double-book); raise jobs for the rest. The order is ready once every item is resolved.</span>
+            {order.rollup.totalItems > 0 && order.rollup.resolved === order.rollup.totalItems && order.derivedStatus !== 'dispatched' && (
+              <button className="btn btn--solid btn--block" style={{ marginTop: 10 }} disabled={busy === 'dispatch'} onClick={async () => { setBusy('dispatch'); setErr(null); try { await requestDispatch(id); load() } catch (e) { setErr(e instanceof Error && /dispatch_exists/.test(e.message) ? 'Dispatch already requested.' : 'Could not request dispatch.') } finally { setBusy(null) } }}>
+                🚚 Request dispatch (all items ready)
+              </button>
+            )}
+            <span className="mono-label ppc__hint">ⓘ FG-stock check: "From stock" reserves the units from FG inventory (can't double-book); raise jobs for the rest. Once every item is resolved, request dispatch (or FG auto-requests when made).</span>
           </>
         )}
       </div>
