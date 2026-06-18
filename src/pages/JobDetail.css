@@ -309,3 +309,8 @@
 .jd__mtag--ordered { background: color-mix(in srgb, #3b82f6 16%, transparent); color: #2563eb; }
 .jd__mtag--received { background: color-mix(in srgb, #84cc16 18%, transparent); color: #4d7c0f; }
 .jd__mtag--cancelled { background: #eee; color: #888; }
+
+/* per-station QC marks on the trail (phase 4) */
+.jd__qc { display: inline-block; margin-top: 5px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; }
+.jd__qc--ok { background: color-mix(in srgb, #84cc16 16%, transparent); color: #4d7c0f; }
+.jd__qc--issue { background: color-mix(in srgb, #e5503a 15%, transparent); color: #c0392b; }

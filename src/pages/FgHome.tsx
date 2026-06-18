@@ -112,7 +112,14 @@ function FgModal({ job, onClose, onDone }: { job: FgJob; onClose: () => void; on
       }
       onDone()
     } catch (e) {
-      setErr(e instanceof Error && /serial/.test(e.message) ? 'Add at least one serial number to close.' : 'Could not close the job')
+      const msg = e instanceof Error ? e.message : ''
+      if (/open_qc_issue/.test(msg)) {
+        let stations = ''
+        try { stations = (JSON.parse(msg.replace(/^[^{]*/, '')).issues ?? []).map((i: { station: string }) => i.station).join(', ') } catch { /* ignore */ }
+        setErr(`Can't close — an open QC issue must be resolved first${stations ? ` (${stations})` : ''}.`)
+      } else {
+        setErr(/serial/.test(msg) ? 'Add at least one serial number to close.' : 'Could not close the job')
+      }
       setBusy(false)
     }
   }

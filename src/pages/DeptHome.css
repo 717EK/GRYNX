@@ -110,3 +110,21 @@
   flex: 1;
   height: 44px;
 }
+
+/* per-station QC modal (phase 4) */
+.qcf__list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.qcf__row { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.qcf__row--issue { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 6%, transparent); }
+.qcf__rowtop { display: flex; align-items: center; justify-content: space-between; }
+.qcf__rowtop b { font-size: 14px; }
+.qcf__tag { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+.qcf__tag--ok { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
+.qcf__tag--issue { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+.qcf__tag--mut { background: var(--surface-raised); color: var(--text-secondary); }
+.qcf__remark { display: block; font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.qcf__remark--issue { color: var(--danger); }
+.qcf__actions { display: flex; gap: 8px; margin-top: 8px; }
+.qcf__actions .btn, .qcf__issueform .btn { padding: 6px 12px; font-size: 12px; }
+.qcf__issueform { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
+.qcf__issueform .mnt__input { flex: 1; }
+.qcf__hint { color: var(--text-secondary); font-size: 11px; display: block; margin-top: 8px; }

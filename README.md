@@ -46,6 +46,20 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.2 — QC into production (docs/12 phase 4)
+- **QC now sits at the stations**, not as a separate gate. A QC person marks each
+  production station visit **✓ checked** or flags an **⚠ issue** (with a note) — a
+  record that **never blocks the job from moving**. New per-station QC fields on
+  `StationVisit`; `qc/production` queue + `qc/visit/:id` mark endpoint; QcHome gets
+  an "On the floor · per-station QC" section + marking modal; the production trail
+  on Job Detail shows each station's QC status.
+- **The one wall: FG can't serialise/close a job with an OPEN QC issue** (409
+  `open_qc_issue`) — quality is advisory for movement but enforced at the door. FG
+  shows a clear blocking message until QC resolves it.
+- Additive migration; the QC gate still works for in-flight jobs. Fully retiring the
+  QC stage is a deliberate, reversible workflow republish (engine rollback) — not
+  flipped automatically.
+
 ### v0.9.1 — order layer (docs/12 phase 3)
 - **Sales orders are now the top entity.** An `Order` (client + line-items) is the
   parent; PPC raises a **Job per line-item that needs production**, or marks an item

@@ -157,6 +157,13 @@ export default function JobDetail({
                           </span>
                         </div>
                         {v.remark && <span className="jd__visit-remark">{v.remark}</span>}
+                        {v.qcIssue && !v.qcResolvedAt ? (
+                          <span className="jd__qc jd__qc--issue">⚠ QC issue{v.qcNote ? ` · ${v.qcNote}` : ''}</span>
+                        ) : v.qcIssue && v.qcResolvedAt ? (
+                          <span className="jd__qc jd__qc--ok">✓ QC issue resolved</span>
+                        ) : v.qcChecked ? (
+                          <span className="jd__qc jd__qc--ok">✓ QC checked</span>
+                        ) : null}
                         {v.photoUrl && <img className="jd__visit-photo" src={v.photoUrl} alt="" />}
                       </div>
                     ))}
