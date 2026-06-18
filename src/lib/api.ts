@@ -531,6 +531,24 @@ export const createMaterialRequest = (jobId: string, input: { item: string; quan
 export const updateMaterialRequest = (id: string, input: { status?: string; vendor?: string; note?: string }) =>
   req<{ request: MaterialRequest }>('PATCH', `/api/v1/purchase/requests/${id}`, input)
 
+// ── FG inventory (docs/12 phase 5) ────────────────────────────────────────────
+export interface StockRow {
+  id: string
+  productId: string
+  modelId: string | null
+  size: string | null
+  onHand: number
+  reserved: number
+  available: number
+  product: { code: string; name: string }
+  model: { code: string; name: string } | null
+}
+export const getStock = () => req<{ items: StockRow[] }>('GET', '/api/v1/stock')
+export const getStockAvailable = (productId: string, modelId: string, size?: string) =>
+  req<{ stockItemId: string | null; onHand: number; reserved: number; available: number }>('GET', `/api/v1/stock/available?productId=${productId}&modelId=${modelId}${size ? `&size=${encodeURIComponent(size)}` : ''}`)
+export const adjustStock = (input: { productId: string; modelId: string; size?: string; onHand: number; note?: string; opening?: boolean }) =>
+  req<{ ok: boolean; onHand: number; reserved: number; available: number }>('POST', '/api/v1/stock/adjust', input)
+
 // ── orders (docs/12 phase 3) — Sales order → sub-jobs ─────────────────────────
 export interface OrderItem {
   id: string

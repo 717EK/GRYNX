@@ -97,11 +97,23 @@ function Section({ title, tone, orders, onOpen, empty }: { title: string; tone: 
 function PlanModal({ id, onClose, onOpenJob }: { id: string; onClose: () => void; onOpenJob: (j: string) => void }) {
   const [order, setOrder] = useState<Order | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
   function load() { getOrder(id).then((r) => setOrder(r.order)).catch(() => {}) }
   useEffect(() => { load() }, [id])
 
-  async function raise(itemId: string) { setBusy(itemId); try { await raiseOrderItemJob(id, itemId); load() } finally { setBusy(null) } }
-  async function stock(itemId: string, v: boolean) { setBusy(itemId); try { await markOrderItemFromStock(id, itemId, v); load() } finally { setBusy(null) } }
+  async function raise(itemId: string) { setBusy(itemId); setErr(null); try { await raiseOrderItemJob(id, itemId); load() } finally { setBusy(null) } }
+  async function stock(itemId: string, v: boolean) {
+    setBusy(itemId); setErr(null)
+    try { await markOrderItemFromStock(id, itemId, v); load() }
+    catch (e) {
+      const msg = e instanceof Error ? e.message : ''
+      if (/insufficient_stock/.test(msg)) {
+        let avail = ''
+        try { avail = String(JSON.parse(msg.replace(/^[^{]*/, '')).available ?? '') } catch { /* ignore */ }
+        setErr(`Not enough in FG stock to reserve${avail ? ` (only ${avail} available)` : ''} — raise a job instead.`)
+      } else setErr('Could not update — try again.')
+    } finally { setBusy(null) }
+  }
 
   return (
     <div className="mnt__overlay" onMouseDown={onClose}>
@@ -142,7 +154,8 @@ function PlanModal({ id, onClose, onOpenJob }: { id: string; onClose: () => void
                 )
               })}
             </div>
-            <span className="mono-label ppc__hint">ⓘ FG-stock check: mark items you already have in stock, raise jobs for the rest. The order is ready once every item is resolved.</span>
+            {err && <span className="mnt__err mono-label" style={{ display: 'block', marginTop: 8 }}>{err}</span>}
+            <span className="mono-label ppc__hint">ⓘ FG-stock check: "From stock" reserves the units from FG inventory (can't double-book); raise jobs for the rest. The order is ready once every item is resolved.</span>
           </>
         )}
       </div>

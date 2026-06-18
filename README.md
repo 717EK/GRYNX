@@ -46,6 +46,20 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.4 — FG inventory (docs/12 phase 5)
+- **Real finished-goods stock** per product · model · size: **on-hand / reserved /
+  available**. FG (and admin) enter opening stock and corrections on a new **Stock**
+  tab in the FG screen.
+- **PPC "From stock" now reserves** the units (available drops) so two orders can
+  never claim the same goods — guarded by an optimistic lock, **proven by a
+  concurrency test** (3 simultaneous reservations of 6 against on-hand 10 → exactly
+  1 succeeds, 2 refused, reserved never exceeds on-hand). Insufficient stock is
+  refused with the available count, prompting PPC to raise a job instead.
+- **Closing a job produces into stock** (on-hand += made units); a made-to-order
+  job also reserves them for its order. Every movement is audited
+  (opening/adjust/produced/reserve/release/dispatch). Dispatch deduction lands in
+  phase 6. Additive migration.
+
 ### v0.9.3 — PPC Hub: the planning desk
 - **PPC finally has a home.** PPC now lands on a **Planning hub** (was a bare request
   form): orders **to plan**, **in flight**, and completed, plus quick links to raise

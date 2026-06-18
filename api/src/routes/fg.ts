@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js'
 import { authenticate, requireRole, type AccessPayload } from '../lib/auth.js'
 import { writeAudit } from '../lib/audit.js'
 import { notifyAdmins, notifyUsers } from '../lib/notify.js'
+import { moveStock, normSize } from '../lib/stock.js'
 
 const jobBrief = {
   id: true,
@@ -75,6 +76,11 @@ export async function fgRoutes(app: FastifyInstance) {
       select: {
         displayLabel: true,
         status: true,
+        productId: true,
+        orderId: true,
+        orderItemId: true,
+        order: { select: { client: true } },
+        models: { select: { modelId: true, size: true, quantity: true } },
         steps: { where: { department: { code: 'FG_STOCK' } }, select: { id: true, status: true } },
         _count: { select: { serials: true } },
       },
@@ -135,6 +141,16 @@ export async function fgRoutes(app: FastifyInstance) {
         body: `${cjob.displayLabel} closed by FG (${totalSerials} serial${totalSerials > 1 ? 's' : ''})${missing.length ? ` · not scanned at: ${missing.join(', ')}` : ''}`,
       })
     })
+
+    // phase 5: produce the finished units into FG stock. For a made-to-order job
+    // they're also RESERVED for that order (claimed, not free) until dispatch.
+    for (const m of cjob.models) {
+      const key = { productId: cjob.productId, modelId: m.modelId, size: normSize(m.size) }
+      await moveStock({ key, kind: 'produced', qty: m.quantity, actorId: closeActorId, jobId, orderId: cjob.orderId, clientTag: cjob.order?.client ?? null, note: `produced · ${cjob.displayLabel}` })
+      if (cjob.orderId) {
+        await moveStock({ key, kind: 'reserve', qty: m.quantity, actorId: closeActorId, orderId: cjob.orderId, orderItemId: cjob.orderItemId, clientTag: cjob.order?.client ?? null, note: 'reserved (made to order)' })
+      }
+    }
     return { ok: true, closed: true, serials: totalSerials, missingCritical: missing }
   })
 
