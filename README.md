@@ -46,6 +46,19 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.6 — Design → PPC → forward/split → Cutting (docs/12 §1a)
+- **Design confirms back to PPC** (not straight to production). Design's tap is now
+  "Confirm design → PPC"; the job waits for PPC to forward it.
+- **PPC forwards to production, optionally SPLITTING** a job into N equal batches
+  (the parent is retired; each child goes straight to the floor with design already
+  done). New "Design confirmed · forward to production" section on the PPC hub.
+- **Raw material logged on the job sheet** — production/admin can add the material
+  consumed (item · qty · type · vendor · batch) on Job Detail, captured at Cutting
+  for traceability.
+- Verified e2e: design-confirm → awaiting-forward → forward (and 1×10 → 3 children
+  of 4+3+3, qty preserved) → production; guards (no double-forward). Additive
+  migration; the floor still works if production simply scans an un-forwarded job.
+
 ### v0.9.5 — Dispatch (docs/12 phase 6)
 - **Whole-order dispatch closes the loop.** An order ships only when **every** item
   is resolved (made or reserved from stock) — never partial. **Two-way trigger:**

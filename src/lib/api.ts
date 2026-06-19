@@ -430,9 +430,25 @@ export async function getJobRecordHtml(id: string): Promise<string> {
   return res.text()
 }
 
-/** Design confirms/forwards a job to Production (optional design file + note). */
+/** Design confirms a job → routes it back to PPC (optional drawing + note). */
 export const designRelease = (jobId: string, input?: { note?: string; fileUrl?: string }) =>
   req<{ ok: boolean }>('POST', `/api/v1/jobs/${jobId}/design-release`, input ?? {})
+
+// ── PPC forward (§1a): design-confirmed jobs PPC forwards (optionally split) ──
+export interface AwaitingForwardJob {
+  id: string
+  jobNo: string
+  displayLabel: string
+  name: string | null
+  totalQty: number
+  priority: string
+  hasDesignFile: boolean
+  product: { code: string; name: string }
+  order?: { orderNo: string; client: string } | null
+}
+export const getAwaitingForward = () => req<{ jobs: AwaitingForwardJob[] }>('GET', '/api/v1/jobs/awaiting-forward')
+export const forwardJob = (id: string, input?: { splitInto?: number; note?: string }) =>
+  req<{ ok: boolean; split: number; children?: string[] }>('POST', `/api/v1/jobs/${id}/forward`, input ?? {})
 
 // ── scan engine (pipeline-v2) ───────────────────────────────────────────────
 // Two scan kinds: STATION scan (stationId given) = production sub-station in/out;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
-import { getOrders, getOrder, raiseOrderItemJob, markOrderItemFromStock, requestDispatch, type Order } from '../lib/api'
+import { getOrders, getOrder, raiseOrderItemJob, markOrderItemFromStock, requestDispatch, getAwaitingForward, forwardJob, type Order, type AwaitingForwardJob } from '../lib/api'
 import ReportButton from '../components/ReportButton'
 import './DeptHome.css'
 import './Maintenance.css'
@@ -24,8 +24,13 @@ export default function PpcHub({
 }) {
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [planning, setPlanning] = useState<Order | null>(null)
+  const [forward, setForward] = useState<AwaitingForwardJob[] | null>(null)
+  const [forwardJobActive, setForwardJobActive] = useState<AwaitingForwardJob | null>(null)
 
-  function load() { getOrders().then((r) => setOrders(r.orders)).catch(() => setOrders([])) }
+  function load() {
+    getOrders().then((r) => setOrders(r.orders)).catch(() => setOrders([]))
+    getAwaitingForward().then((r) => setForward(r.jobs)).catch(() => setForward([]))
+  }
   useEffect(() => { load() }, [])
 
   const toPlan = (orders ?? []).filter((o) => ['submitted', 'planning'].includes(o.derivedStatus))
@@ -51,6 +56,25 @@ export default function PpcHub({
             <button className="ppc__qbtn" onClick={onInbox}>▤ My Requests</button>
           </div>
 
+          {(forward?.length ?? 0) > 0 && (
+            <section className="jsec">
+              <h2 className="jsec__title mono-label">Design confirmed · forward to production <span className="jsec__count">{forward!.length}</span></h2>
+              <ul className="dh__list">
+                {forward!.map((j) => (
+                  <li key={j.id}>
+                    <button className="dh__row" onClick={() => setForwardJobActive(j)}>
+                      <span className="dh__main">
+                        <span className="dh__label display">{j.name || j.displayLabel}</span>
+                        <span className="dh__meta mono-label">{j.product?.name} · {j.totalQty} units{j.order ? ` · ${j.order.orderNo}` : ''}{j.hasDesignFile ? ' · 📎 drawing' : ''}</span>
+                      </span>
+                      <span className="dh__right"><span className="dh__tag dh__tag--info mono-label">FORWARD →</span></span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {orders === null ? <span className="dh__empty mono-label">Loading…</span> : (
             <>
               <Section title="To plan" tone="urgent" orders={toPlan} onOpen={setPlanning} empty="No new orders waiting. Sales hands orders here." />
@@ -63,6 +87,46 @@ export default function PpcHub({
       </main>
       <BottomBar />
       {planning && <PlanModal id={planning.id} onClose={() => { setPlanning(null); load() }} onOpenJob={onOpenJob} />}
+      {forwardJobActive && <ForwardModal job={forwardJobActive} onClose={() => setForwardJobActive(null)} onDone={() => { setForwardJobActive(null); load() }} />}
+    </div>
+  )
+}
+
+// PPC forwards a design-confirmed job to production — optionally splitting it into
+// N equal batches (the parent is retired; children go straight to the floor).
+function ForwardModal({ job, onClose, onDone }: { job: AwaitingForwardJob; onClose: () => void; onDone: () => void }) {
+  const [split, setSplit] = useState(1)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const perBatch = Math.floor(job.totalQty / split)
+
+  async function go() {
+    setBusy(true); setErr(null)
+    try { await forwardJob(job.id, { splitInto: split, note: note.trim() || undefined }); onDone() }
+    catch { setErr('Could not forward — try again'); setBusy(false) }
+  }
+
+  return (
+    <div className="mnt__overlay" onMouseDown={onClose}>
+      <div className="mnt__modal" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="mnt__modal-head">
+          <span className="display mnt__modal-title">{job.name || job.displayLabel}</span>
+          <button className="modal__x" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <span className="mono-label" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{job.product?.name} · {job.totalQty} units · forward to production</span>
+        <label className="mnt__field">
+          <span className="mono-label">Split into batches</span>
+          <input className="mnt__input" type="number" min={1} max={20} value={split} onChange={(e) => setSplit(Math.max(1, Math.min(20, +e.target.value)))} />
+          <span className="mono-label" style={{ color: 'var(--text-secondary)', fontSize: 11, marginTop: 4 }}>{split === 1 ? 'one job (no split)' : `${split} jobs · ~${perBatch} units each`}</span>
+        </label>
+        <label className="mnt__field">
+          <span className="mono-label">Note to production · optional</span>
+          <input className="mnt__input" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="how to make it / priority…" />
+        </label>
+        {err && <span className="mnt__err mono-label">{err}</span>}
+        <button className="btn btn--solid btn--block" disabled={busy} onClick={go}>{busy ? '…' : split === 1 ? '▸ Forward to production' : `▸ Split into ${split} & forward`}</button>
+      </div>
     </div>
   )
 }

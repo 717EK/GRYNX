@@ -193,7 +193,7 @@ function DesignForwardModal({ job, onClose, onDone }: { job: QueueJob; onClose: 
           <button className="modal__x" onClick={onClose} aria-label="Close">×</button>
         </div>
         <span className="mono-label" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
-          {job.product?.name} · {job.totalQty} units — confirm design & forward to Production
+          {job.product?.name} · {job.totalQty} units — confirm design → back to PPC
         </span>
         <label className="mnt__field">
           <span className="mono-label">Note · optional</span>
@@ -210,7 +210,7 @@ function DesignForwardModal({ job, onClose, onDone }: { job: QueueJob; onClose: 
         </label>
         {err && <span className="mnt__err mono-label">{err}</span>}
         <button className="btn btn--solid btn--block" disabled={busy} onClick={forward}>
-          {busy ? 'Forwarding…' : '✓ Confirm & forward to Production'}
+          {busy ? 'Confirming…' : '✓ Confirm design → PPC'}
         </button>
       </div>
     </div>

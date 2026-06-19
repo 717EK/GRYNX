@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TopBar, BottomBar, type SessionUser } from '../components/UtilityBars'
 import JobCardModal from '../components/JobCardModal'
-import { getJob, getMaterials, getSerials, requestJobUpdate, type JobDTO, type MaterialLine } from '../lib/api'
+import { getJob, getMaterials, getSerials, requestJobUpdate, logMaterial, type JobDTO, type MaterialLine } from '../lib/api'
 import './JobDetail.css'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -49,6 +49,9 @@ export default function JobDetail({
   }
   const [showCard, setShowCard] = useState(false)
   const [showRecord, setShowRecord] = useState(false)
+  const [showMat, setShowMat] = useState(false)
+  const canLogMaterial = user.role === 'ADMIN' || user.role === 'Production'
+  function reloadMaterials() { if (jobId) getMaterials(jobId).then((r) => setMaterials(r.materials)).catch(() => {}) }
 
   useEffect(() => {
     if (!jobId) return
@@ -187,11 +190,16 @@ export default function JobDetail({
                 </div>
               )}
 
-              {/* raw-material genealogy */}
-              {materials.length > 0 && (
+              {/* raw-material genealogy — logged at Cutting (docs/12 §1a). Production
+                 + admin can add the raw material consumed onto the job sheet. */}
+              {(materials.length > 0 || canLogMaterial) && !closed && (
                 <div className="jd__section">
-                  <span className="jd__section-title mono-label">Raw Material ({materials.length})</span>
+                  <div className="jd__section-head">
+                    <span className="jd__section-title mono-label">Raw Material ({materials.length})</span>
+                    {canLogMaterial && <button className="jd__addbtn mono-label" onClick={() => setShowMat(true)}>＋ Log</button>}
+                  </div>
                   <div className="jd__matlist">
+                    {materials.length === 0 && <span className="jd__scannote mono-label">None logged yet — add what's cut for this job.</span>}
                     {materials.map((m) => (
                       <div key={m.id} className="jd__matline">
                         <b>{m.item}{m.quantity ? ` · ${m.quantity}` : ''}</b>
@@ -239,6 +247,41 @@ export default function JobDetail({
       <BottomBar />
       {showCard && job && <JobCardModal jobId={job.id} onClose={() => setShowCard(false)} />}
       {showRecord && job && <JobCardModal jobId={job.id} variant="record" onClose={() => setShowRecord(false)} />}
+      {showMat && job && <MaterialModal jobId={job.id} onClose={() => setShowMat(false)} onDone={() => { setShowMat(false); reloadMaterials() }} />}
+    </div>
+  )
+}
+
+// Log raw material consumed for a job (at Cutting, docs/12 §1a) — onto the job sheet.
+function MaterialModal({ jobId, onClose, onDone }: { jobId: string; onClose: () => void; onDone: () => void }) {
+  const [item, setItem] = useState('')
+  const [materialType, setType] = useState('')
+  const [vendor, setVendor] = useState('')
+  const [batchRef, setBatch] = useState('')
+  const [quantity, setQty] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  async function save() {
+    if (!item.trim()) return setErr('Item is required')
+    setBusy(true); setErr(null)
+    try { await logMaterial(jobId, { item: item.trim(), materialType: materialType.trim() || undefined, vendor: vendor.trim() || undefined, batchRef: batchRef.trim() || undefined, quantity: quantity.trim() || undefined }); onDone() }
+    catch { setErr('Could not log — try again'); setBusy(false) }
+  }
+  return (
+    <div className="mnt__overlay" onMouseDown={onClose}>
+      <div className="mnt__modal" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="mnt__modal-head">
+          <span className="display mnt__modal-title">Log raw material</span>
+          <button className="modal__x" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <label className="mnt__field"><span className="mono-label">Item / material *</span><input className="mnt__input" value={item} onChange={(e) => setItem(e.target.value)} placeholder="e.g. 50×50 box section" /></label>
+        <label className="mnt__field"><span className="mono-label">Quantity</span><input className="mnt__input" value={quantity} onChange={(e) => setQty(e.target.value)} placeholder="e.g. 120 kg / 40 pcs" /></label>
+        <label className="mnt__field"><span className="mono-label">Type</span><input className="mnt__input" value={materialType} onChange={(e) => setType(e.target.value)} placeholder="e.g. Aluminium 6061" /></label>
+        <label className="mnt__field"><span className="mono-label">Vendor</span><input className="mnt__input" value={vendor} onChange={(e) => setVendor(e.target.value)} /></label>
+        <label className="mnt__field"><span className="mono-label">Batch ref</span><input className="mnt__input" value={batchRef} onChange={(e) => setBatch(e.target.value)} placeholder="for traceability" /></label>
+        {err && <span className="mnt__err mono-label">{err}</span>}
+        <button className="btn btn--solid btn--block" disabled={busy} onClick={save}>{busy ? '…' : 'Add to job sheet'}</button>
+      </div>
     </div>
   )
 }
