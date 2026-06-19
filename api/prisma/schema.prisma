@@ -461,7 +461,9 @@ model Job {
   totalQty                Int
   status                  JobStatus @default(draft)
   pipelineTemplateId      String
-  parentJobId             String? // split (V2)
+  parentJobId             String? // split: child jobs point at the parent
+  designDoneAt            DateTime? // docs/12 §1a: Design confirmed → back to PPC (awaiting forward)
+  forwardedAt             DateTime? // §1a: PPC forwarded to Production (production may start)
   workflowVersionId       String? // workflow-engine: the version this job's steps were snapshotted from
   orderId                 String? // order-layer: the sales order this job fulfils
   orderItemId             String? // which order line-item this job makes

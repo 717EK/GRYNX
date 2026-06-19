@@ -314,3 +314,7 @@
 .jd__qc { display: inline-block; margin-top: 5px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; }
 .jd__qc--ok { background: color-mix(in srgb, #84cc16 16%, transparent); color: #4d7c0f; }
 .jd__qc--issue { background: color-mix(in srgb, #e5503a 15%, transparent); color: #c0392b; }
+
+/* §1a: raw-material log button on the job sheet */
+.jd__section-head { display: flex; align-items: center; justify-content: space-between; }
+.jd__addbtn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; color: var(--brand); font-weight: 600; cursor: pointer; font-size: 11px; }

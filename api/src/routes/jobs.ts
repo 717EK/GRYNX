@@ -6,7 +6,7 @@ import { authenticate, requireRole, type AccessPayload } from '../lib/auth.js'
 import { createJobFromInput } from '../lib/jobCreate.js'
 import { renderJobCard } from '../lib/jobcard.js'
 import { renderJobRecord } from '../lib/jobrecord.js'
-import { notifyDepartment } from '../lib/notify.js'
+import { notifyDepartment, notifyAdmins } from '../lib/notify.js'
 import { writeAudit } from '../lib/audit.js'
 
 const createSchema = z.object({
@@ -102,9 +102,10 @@ export async function jobRoutes(app: FastifyInstance) {
     return { ok: true, dept: cur.department.name }
   })
 
-  // ── Design confirms/forwards a job to Production (pipeline-v2) ───────────────
-  // Design is a double-check, not a drawing board: most jobs are standard, so the
-  // team just confirms; a new design gets its file attached. No card scan needed.
+  // ── Design confirms a job → back to PPC (docs/12 §1a) ───────────────────────
+  // Design is a double-check: most jobs are standard (just confirm), a new one gets
+  // a drawing attached. Confirming routes the job BACK TO PPC (not straight to
+  // production) — PPC then forwards it (and may split) to Production.
   app.post('/:id/design-release', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
     const body = z.object({ note: z.string().max(500).optional(), fileUrl: z.string().max(6_000_000).optional() }).safeParse(req.body ?? {})
@@ -127,19 +128,100 @@ export async function jobRoutes(app: FastifyInstance) {
     if (design.status === 'completed') return reply.code(409).send({ error: 'already_released' })
 
     const now = new Date()
-    const { stationDueAt } = await import('../lib/sla.js')
-    const dueAt = await stationDueAt(job.totalQty, now)
     await prisma.$transaction(async (tx) => {
       await tx.jobStep.update({ where: { id: design.id }, data: { status: 'completed', completedAt: now, completedById: u.sub, version: { increment: 1 } } })
+      // Production stays pending — PPC forwards it. Status reflects "awaiting PPC forward".
+      await tx.job.update({ where: { id }, data: { status: 'approved', designDoneAt: now, designFileUrl: body.data.fileUrl ?? undefined, version: { increment: 1 } } })
+      await tx.jobEvent.create({ data: { jobId: id, jobStepId: design.id, type: 'completed', actorId: u.sub, body: `Design${body.data.fileUrl ? ' · drawing attached' : ' · standard confirmed'}${body.data.note ? ` · ${body.data.note}` : ''} → back to PPC` } })
+      await notifyAdmins(tx, { type: 'ppc_approval', jobId: id, body: `${job.displayLabel} design confirmed — PPC to forward to production` })
+      await writeAudit('job', id, 'design_done', { actorId: u.sub, after: { file: !!body.data.fileUrl }, tx })
+    })
+    return { ok: true }
+  })
+
+  // ── PPC forwards a design-confirmed job to Production (§1a), optionally SPLIT ─
+  // PPC tells production what/how to make it. splitInto > 1 divides the job into N
+  // equal child jobs (the parent is retired); each child is forwarded to production.
+  app.post('/:id/forward', { preHandler: requireRole('admin', 'ppc') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const body = z.object({ splitInto: z.number().int().min(1).max(20).default(1), note: z.string().max(500).optional() }).safeParse(req.body ?? {})
+    if (!body.success) return reply.code(400).send({ error: 'bad_request' })
+    const u = req.user as AccessPayload
+    const job = await prisma.job.findUnique({
+      where: { id },
+      select: {
+        displayLabel: true, totalQty: true, status: true, designDoneAt: true, forwardedAt: true, productId: true, name: true, priority: true, orderId: true, orderItemId: true, source: true,
+        models: { select: { modelId: true, size: true, quantity: true } },
+        steps: { orderBy: { sequence: 'asc' }, select: { id: true, status: true, departmentId: true, department: { select: { code: true } } } },
+      },
+    })
+    if (!job) return reply.code(404).send({ error: 'not_found' })
+    if (!job.designDoneAt) return reply.code(409).send({ error: 'design_not_done', hint: 'design must confirm first' })
+    if (job.forwardedAt) return reply.code(409).send({ error: 'already_forwarded' })
+    const prod = job.steps.find((s) => s.department.code === 'PRODUCTION')
+    if (!prod) return reply.code(409).send({ error: 'no_production_step' })
+
+    const now = new Date()
+    const { stationDueAt } = await import('../lib/sla.js')
+    const dueAt = await stationDueAt(job.totalQty, now)
+    const splitInto = body.data.splitInto
+
+    // simple split: N children, each gets ceil/floor share of every model's qty
+    if (splitInto > 1) {
+      const children: string[] = []
+      for (let i = 0; i < splitInto; i++) {
+        const models = job.models
+          .map((m) => ({ modelId: m.modelId, size: m.size, quantity: Math.floor(m.quantity / splitInto) + (i < m.quantity % splitInto ? 1 : 0) }))
+          .filter((m) => m.quantity > 0)
+        if (models.length === 0) continue
+        const res = await createJobFromInput(
+          { productId: job.productId, name: job.name ? `${job.name} (${i + 1}/${splitInto})` : undefined, priority: job.priority as 'normal' | 'urgent', orderId: job.orderId, orderItemId: job.orderItemId, models },
+          { actorId: u.sub, source: job.source as 'admin' | 'ppc' },
+        )
+        if (res.ok) {
+          // children skip design (already done) → forward straight to production
+          await prisma.$transaction(async (tx) => {
+            const cd = await tx.jobStep.findFirst({ where: { jobId: res.job.id, department: { code: 'DESIGN' } }, select: { id: true } })
+            const cp = await tx.jobStep.findFirst({ where: { jobId: res.job.id, department: { code: 'PRODUCTION' } }, select: { id: true } })
+            if (cd) await tx.jobStep.update({ where: { id: cd.id }, data: { status: 'completed', completedAt: now, completedById: u.sub } })
+            if (cp) await tx.jobStep.update({ where: { id: cp.id }, data: { status: 'in_progress', acceptedAt: now, acceptedById: u.sub, slaDueAt: dueAt } })
+            await tx.job.update({ where: { id: res.job.id }, data: { status: 'in_production', parentJobId: id, designDoneAt: now, forwardedAt: now } })
+          })
+          children.push(res.job.displayLabel)
+        }
+      }
+      // retire the parent — it lives on through its children
+      await prisma.$transaction(async (tx) => {
+        await tx.jobStep.updateMany({ where: { jobId: id, status: { in: ['pending', 'waiting_acceptance', 'in_progress'] } }, data: { status: 'skipped' } })
+        await tx.job.update({ where: { id }, data: { status: 'cancelled', cancelledReason: `split into ${children.length}`, forwardedAt: now, version: { increment: 1 } } })
+        await tx.jobEvent.create({ data: { jobId: id, type: 'split', actorId: u.sub, body: `Split into ${children.length}: ${children.join(', ')}` } })
+        if (prod) await notifyDepartment(tx, prod.departmentId, { type: 'new_job', jobId: id, body: `${job.displayLabel} split into ${children.length} and forwarded to production` })
+        await writeAudit('job', id, 'forward_split', { actorId: u.sub, after: { children: children.length }, tx })
+      })
+      return { ok: true, split: children.length, children }
+    }
+
+    // no split — forward this job straight to production
+    await prisma.$transaction(async (tx) => {
       if (prod.status === 'pending' || prod.status === 'waiting_acceptance') {
         await tx.jobStep.update({ where: { id: prod.id }, data: { status: 'in_progress', acceptedAt: now, acceptedById: u.sub, slaDueAt: dueAt, version: { increment: 1 } } })
       }
-      await tx.job.update({ where: { id }, data: { status: 'in_production', designFileUrl: body.data.fileUrl ?? undefined, version: { increment: 1 } } })
-      await tx.jobEvent.create({ data: { jobId: id, jobStepId: design.id, type: 'completed', actorId: u.sub, body: `Design${body.data.fileUrl ? ' · design file attached' : ' · standard design confirmed'}${body.data.note ? ` · ${body.data.note}` : ''}` } })
-      await notifyDepartment(tx, prod.departmentId, { type: 'new_job', jobId: id, body: `${job.displayLabel} released to Production by Design` })
-      await writeAudit('job', id, 'design_release', { actorId: u.sub, after: { file: !!body.data.fileUrl }, tx })
+      await tx.job.update({ where: { id }, data: { status: 'in_production', forwardedAt: now, version: { increment: 1 } } })
+      await tx.jobEvent.create({ data: { jobId: id, type: 'accepted', actorId: u.sub, body: `PPC forwarded to Production${body.data.note ? ` · ${body.data.note}` : ''}` } })
+      await notifyDepartment(tx, prod.departmentId, { type: 'new_job', jobId: id, body: `${job.displayLabel} forwarded to Production by PPC` })
+      await writeAudit('job', id, 'forward', { actorId: u.sub, tx })
     })
-    return { ok: true }
+    return { ok: true, split: 1 }
+  })
+
+  // ── jobs awaiting PPC forward (design confirmed, not yet forwarded) ──────────
+  app.get('/awaiting-forward', { preHandler: requireRole('admin', 'ppc') }, async () => {
+    const jobs = await prisma.job.findMany({
+      where: { designDoneAt: { not: null }, forwardedAt: null, status: { notIn: ['cancelled', 'closed'] } },
+      orderBy: { designDoneAt: 'asc' },
+      select: { id: true, jobNo: true, displayLabel: true, name: true, totalQty: true, priority: true, designFileUrl: true, product: { select: { code: true, name: true } }, order: { select: { orderNo: true, client: true } } },
+    })
+    return { jobs: jobs.map((j) => ({ ...j, hasDesignFile: !!j.designFileUrl, designFileUrl: undefined })) }
   })
 
   // ── a station's queue: jobs arriving at / in progress at a department ────────
