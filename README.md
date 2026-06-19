@@ -46,6 +46,19 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.7 — Daily rhythm: Briefing desk (docs/12 phase 7)
+- **Briefing tab** (◑) in the desktop command centre — the owner's twice-a-day glance.
+  Morning: *Waiting on you* (6 decision counts — PPC requests, awaiting forward,
+  dispatch/closure approvals, open QC issues, maintenance) + *Needs attention*
+  (overdue station work, urgent + due-today orders, each click-through to the job).
+  Evening: *Today so far* — orders in, jobs raised/closed, orders shipped, station
+  scans, QC checks/issues, material needs (all since local midnight).
+- **One-tap "ask the floor"** — broadcast an update request to every floor department,
+  or ping a single head (Design / Production / QC / FG Stock). Notifies the dept head.
+- Backend: additive-only — `GET /admin/agenda`, `GET /admin/summary`,
+  `POST /admin/ask-update`. No schema change; the live floor is untouched.
+- Rule-based for now; the AI-written narrative briefing lands with local Ollama (docs/08).
+
 ### v0.9.6 — Design → PPC → forward/split → Cutting (docs/12 §1a)
 - **Design confirms back to PPC** (not straight to production). Design's tap is now
   "Confirm design → PPC"; the job waits for PPC to forward it.

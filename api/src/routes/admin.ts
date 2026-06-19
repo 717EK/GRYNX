@@ -2,7 +2,9 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { JobStatus, StepStatus } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
-import { authenticate, requireRole } from '../lib/auth.js'
+import { authenticate, requireRole, type AccessPayload } from '../lib/auth.js'
+import { notifyDepartment } from '../lib/notify.js'
+import { writeAudit } from '../lib/audit.js'
 
 const ACTIVE: JobStatus[] = [JobStatus.approved, JobStatus.in_production, JobStatus.in_qc, JobStatus.in_fg, JobStatus.close_requested]
 const AT_STATION: StepStatus[] = [StepStatus.waiting_acceptance, StepStatus.in_progress]
@@ -242,6 +244,66 @@ export async function adminRoutes(app: FastifyInstance) {
       .slice(0, 8)
 
     return { since: since.toISOString(), stations, operators, slowest, totalVisits: visits.length }
+  })
+
+  // ── daily rhythm (docs/12 phase 7) — the owner's twice-a-day glance ─────────
+  // Morning agenda: what's urgent / overdue / due today / waiting on a decision.
+  app.get('/agenda', { preHandler: requireRole('admin') }, async () => {
+    const now = new Date()
+    const dayEnd = new Date(now); dayEnd.setHours(23, 59, 59, 999)
+    const [overdue, urgentOrders, awaitingForward, ppcRequests, dispatchToApprove, closuresToApprove, openQcIssues, openTickets, dueOrders] = await Promise.all([
+      prisma.jobStep.findMany({
+        where: { slaDueAt: { lt: now }, status: { in: ['waiting_acceptance', 'in_progress'] }, job: { status: { notIn: ['closed', 'cancelled'] } } },
+        select: { slaDueAt: true, department: { select: { name: true } }, job: { select: { id: true, displayLabel: true, name: true } } },
+        orderBy: { slaDueAt: 'asc' }, take: 10,
+      }),
+      prisma.order.findMany({ where: { priority: 'urgent', status: { in: ['submitted', 'planning', 'in_production', 'ready'] } }, select: { id: true, orderNo: true, name: true, client: true, status: true }, take: 10 }),
+      prisma.job.count({ where: { designDoneAt: { not: null }, forwardedAt: null, status: { notIn: ['cancelled', 'closed'] } } }),
+      prisma.ppcRequest.count({ where: { status: 'submitted' } }),
+      prisma.dispatch.count({ where: { status: 'requested' } }),
+      prisma.closure.count({ where: { status: 'requested' } }),
+      prisma.stationVisit.count({ where: { qcIssue: true, qcResolvedAt: null } }),
+      prisma.maintenanceTicket.count({ where: { status: { notIn: ['closed', 'verified'] } } }),
+      prisma.order.findMany({ where: { targetDate: { lte: dayEnd }, status: { in: ['submitted', 'planning', 'in_production', 'ready'] } }, select: { id: true, orderNo: true, name: true, client: true, targetDate: true }, orderBy: { targetDate: 'asc' }, take: 10 }),
+    ])
+    return {
+      generatedAt: now.toISOString(),
+      overdue: overdue.map((s) => ({ jobId: s.job.id, label: s.job.name || s.job.displayLabel, station: s.department.name, mins: Math.round((now.getTime() - (s.slaDueAt?.getTime() ?? 0)) / 60000) })),
+      urgentOrders, dueOrders,
+      decisions: { ppcRequests, awaitingForward, dispatchToApprove, closuresToApprove, openQcIssues, openTickets },
+    }
+  })
+
+  // Evening summary: what actually happened today (rule-based; AI narration later).
+  app.get('/summary', { preHandler: requireRole('admin') }, async () => {
+    const start = new Date(); start.setHours(0, 0, 0, 0)
+    const [ordersCreated, jobsCreated, jobsClosed, shipped, scans, qcMarks, qcIssuesRaised, materialNeeds] = await Promise.all([
+      prisma.order.count({ where: { createdAt: { gte: start } } }),
+      prisma.job.count({ where: { createdAt: { gte: start } } }),
+      prisma.job.count({ where: { status: 'closed', completionDate: { gte: start } } }),
+      prisma.dispatch.count({ where: { status: 'shipped', shippedAt: { gte: start } } }),
+      prisma.stationVisit.count({ where: { scanInAt: { gte: start } } }),
+      prisma.stationVisit.count({ where: { qcAt: { gte: start } } }),
+      prisma.stationVisit.count({ where: { qcAt: { gte: start }, qcIssue: true } }),
+      prisma.materialRequest.count({ where: { createdAt: { gte: start } } }),
+    ])
+    return { date: start.toISOString(), ordersCreated, jobsCreated, jobsClosed, shipped, scans, qcMarks, qcIssuesRaised, materialNeeds }
+  })
+
+  // One-click "ask the floor for an update" — broadcast to all floor departments
+  // or a single one. Notifies the department head(s) (docs/12 §9 air-traffic-control).
+  app.post('/ask-update', { preHandler: requireRole('admin') }, async (req, reply) => {
+    const body = z.object({ departmentCode: z.string().optional(), note: z.string().max(300).optional() }).safeParse(req.body ?? {})
+    if (!body.success) return reply.code(400).send({ error: 'bad_request' })
+    const actorId = (req.user as AccessPayload).sub
+    const where = body.data.departmentCode ? { code: body.data.departmentCode } : { code: { in: ['DESIGN', 'PRODUCTION', 'QC', 'FG_STOCK'] } }
+    const depts = await prisma.department.findMany({ where, select: { id: true, name: true } })
+    if (depts.length === 0) return reply.code(404).send({ error: 'no_departments' })
+    await prisma.$transaction(async (tx) => {
+      for (const d of depts) await notifyDepartment(tx, d.id, { type: 'update_request', body: `Admin asked ${d.name} for a status update${body.data.note ? `: ${body.data.note}` : ''}` })
+      await writeAudit('floor', 'broadcast', 'ask_update', { actorId, after: { depts: depts.map((d) => d.name) }, tx })
+    })
+    return { ok: true, asked: depts.map((d) => d.name) }
   })
 
   app.get('/calendar', { preHandler: requireRole('admin') }, async (req) => {

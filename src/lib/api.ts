@@ -628,6 +628,23 @@ export const updateOrder = (id: string, input: Partial<{ status: string; name: s
 export const markOrderItemFromStock = (orderId: string, itemId: string, fromStock = true) => req<{ ok: boolean }>('POST', `/api/v1/orders/${orderId}/items/${itemId}/from-stock`, { fromStock })
 export const raiseOrderItemJob = (orderId: string, itemId: string, input?: { name?: string; startDate?: string }) => req<{ job: { id: string; displayLabel: string } }>('POST', `/api/v1/orders/${orderId}/items/${itemId}/job`, input ?? {})
 
+// ── daily rhythm (docs/12 phase 7) — admin agenda / summary / ask-floor ───────
+export interface Agenda {
+  generatedAt: string
+  overdue: { jobId: string; label: string; station: string; mins: number }[]
+  urgentOrders: { id: string; orderNo: string; name: string | null; client: string; status: string }[]
+  dueOrders: { id: string; orderNo: string; name: string | null; client: string; targetDate: string | null }[]
+  decisions: { ppcRequests: number; awaitingForward: number; dispatchToApprove: number; closuresToApprove: number; openQcIssues: number; openTickets: number }
+}
+export interface DaySummary {
+  date: string
+  ordersCreated: number; jobsCreated: number; jobsClosed: number; shipped: number
+  scans: number; qcMarks: number; qcIssuesRaised: number; materialNeeds: number
+}
+export const getAgenda = () => req<Agenda>('GET', '/api/v1/admin/agenda')
+export const getDaySummary = () => req<DaySummary>('GET', '/api/v1/admin/summary')
+export const askFloorUpdate = (departmentCode?: string, note?: string) => req<{ ok: boolean; asked: string[] }>('POST', '/api/v1/admin/ask-update', { departmentCode, note })
+
 // ── workflow engine (docs/12) — the company pipeline as versioned data ────────
 export interface WorkflowStage {
   id: string
