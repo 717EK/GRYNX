@@ -8,6 +8,7 @@ import MaintenanceDetail from './MaintenanceDetail'
 import Notifications from './Notifications'
 import OrdersDesktop from './OrdersDesktop'
 import DispatchDesktop from './DispatchDesktop'
+import BriefingDesktop from './BriefingDesktop'
 import CalendarWidget from '../components/CalendarWidget'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark-light.png'
@@ -33,7 +34,7 @@ function linePath(vals: number[], w: number, h: number, pad = 6) {
   return vals.map((v, i) => `${i ? 'L' : 'M'}${(i * step).toFixed(1)},${(h - pad - ((v - min) / range) * (h - 2 * pad)).toFixed(1)}`).join(' ')
 }
 
-type Nav = 'dashboard' | 'jobs' | 'ppc' | 'analytics' | 'workflow' | 'orders' | 'dispatch'
+type Nav = 'dashboard' | 'jobs' | 'ppc' | 'analytics' | 'workflow' | 'orders' | 'dispatch' | 'briefing'
 type Popup =
   | null
   | { kind: 'create' }
@@ -100,6 +101,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
       <aside className="dw__rail">
         <img className="dw__logo" src={grynxWordmark} alt="GRYNX" />
         <button className={`dw__i ${nav === 'dashboard' ? 'is-on' : ''}`} title="Control Centre" onClick={() => setNav('dashboard')}>⌂</button>
+        <button className={`dw__i ${nav === 'briefing' ? 'is-on' : ''}`} title="Briefing" onClick={() => setNav('briefing')}>◑</button>
         <button className={`dw__i ${nav === 'jobs' ? 'is-on' : ''}`} title="Job Board" onClick={() => setNav('jobs')}>▤</button>
         <button className={`dw__i ${nav === 'ppc' ? 'is-on' : ''}`} title="PPC Requests" onClick={() => setNav('ppc')}>◳</button>
         <button className={`dw__i ${nav === 'orders' ? 'is-on' : ''}`} title="Orders" onClick={() => setNav('orders')}>▦</button>
@@ -403,6 +405,8 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         {nav === 'orders' && <OrdersDesktop onOpenJob={openJob} />}
 
         {nav === 'dispatch' && <DispatchDesktop />}
+
+        {nav === 'briefing' && <BriefingDesktop onOpenJob={openJob} />}
 
         {nav === 'workflow' && (
           <section className="dw__view">

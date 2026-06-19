@@ -50,3 +50,25 @@
 .ord__grid--1 { grid-template-columns: 1fr; }
 .dsp { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: clamp(12px,1vw,24px); align-items: start; }
 .dsp__col h3 { margin-bottom: 10px; }
+
+/* daily-rhythm briefing (docs/12 phase 7) */
+.brf { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: clamp(12px,1vw,24px); align-items: start; }
+.brf__dec { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.brf__deccard { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--inset); border: 1px solid var(--line); }
+.brf__deccard--on { background: color-mix(in srgb, var(--amber) 12%, var(--card)); border-color: color-mix(in srgb, var(--amber) 40%, transparent); }
+.brf__ico { font-size: 14px; }
+.brf__n { font-family: var(--disp); font-weight: 800; font-size: clamp(20px,1.7vw,34px); line-height: 1; }
+.brf__deccard--on .brf__n { color: #9a5b06; }
+.brf__l { font-size: clamp(10px,0.78vw,15px); color: var(--ink2); }
+.brf__list { display: flex; flex-direction: column; margin-top: 10px; }
+.brf__row { display: flex; flex-direction: column; gap: 2px; padding: 9px 0; border-bottom: 1px solid var(--line); text-align: left; background: none; border-left: none; border-right: none; border-top: none; cursor: default; font-family: var(--sans); color: var(--ink); }
+.brf__row:last-child { border-bottom: none; }
+button.brf__row { cursor: pointer; }
+.brf__row b { font-size: clamp(13px,0.95vw,19px); }
+.brf__row span { font-size: clamp(11px,0.8vw,16px); color: var(--ink2); }
+.brf__row--red b { color: var(--red); } .brf__row--amber b { color: #9a5b06; }
+.brf__stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.brf__stat { display: flex; flex-direction: column; }
+.brf__sn { font-family: var(--disp); font-weight: 800; font-size: clamp(24px,2vw,44px); line-height: 1; }
+.brf__sl { font-size: clamp(10px,0.78vw,15px); color: var(--ink2); }
+.brf__ask { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
