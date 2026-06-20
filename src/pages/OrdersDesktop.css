@@ -72,3 +72,43 @@ button.brf__row { cursor: pointer; }
 .brf__sn { font-family: var(--disp); font-weight: 800; font-size: clamp(24px,2vw,44px); line-height: 1; }
 .brf__sl { font-size: clamp(10px,0.78vw,15px); color: var(--ink2); }
 .brf__ask { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+/* ── ord button variants (shared by QC/PPC desktop) ───────────────────── */
+.ord__btn--solid { background: var(--lime); color: var(--lime-ink); }
+.ord__btn--danger { background: var(--red); color: #fff; }
+.ord__btn:disabled { opacity: .55; cursor: default; }
+
+/* ── QC Oversight desktop (docs/12 parallel QC) ───────────────────────── */
+.qcw { display: flex; flex-direction: column; gap: clamp(12px, 1vw, 22px); }
+.qcw__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.qcw__card { background: var(--inset); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: var(--r-sm); padding: 12px 14px; }
+.qcw__card--req { border-left-color: var(--amber); }
+.qcw__card--held { border-left-color: var(--red); background: color-mix(in srgb, var(--red) 6%, var(--inset)); }
+.qcw__top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.qcw__job { background: none; border: none; cursor: pointer; font-family: var(--disp); font-size: clamp(14px, 1vw, 18px); color: var(--ink); font-weight: 700; padding: 0; text-align: left; }
+.qcw__job:hover { color: var(--teal); }
+.qcw__kind { font-size: 11px; color: var(--ink2); white-space: nowrap; text-transform: capitalize; }
+.qcw__meta { font-family: var(--mono); font-size: 11px; color: var(--ink3); margin: 2px 0 6px; }
+.qcw__note { font-size: 13px; color: var(--ink); white-space: pre-wrap; }
+.qcw__photo { margin-top: 8px; max-height: 150px; border-radius: var(--r-sm); border: 1px solid var(--line); }
+.qcw__actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+/* ── PPC Hub desktop (docs/12) ────────────────────────────────────────── */
+.ppw { display: flex; flex-direction: column; gap: clamp(12px, 1vw, 22px); }
+.ppw__stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: clamp(12px, 1vw, 22px); }
+.ppw__stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 14px 16px; box-shadow: var(--shadow-sm); }
+.ppw__sn { display: block; font-family: var(--disp); font-size: clamp(22px, 2vw, 34px); font-weight: 800; color: var(--ink); line-height: 1; }
+.ppw__sl { font-family: var(--mono); font-size: 11px; color: var(--ink3); text-transform: uppercase; letter-spacing: .4px; }
+.ppw__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.ppw__fcard { background: var(--inset); border: 1px solid var(--line); border-left: 3px solid var(--teal); border-radius: var(--r-sm); padding: 12px 14px; }
+.ppw__ftop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ppw__fact { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.ppw__split { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--ink2); }
+.ppw__split input { width: 52px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; font-family: var(--mono); background: var(--card); color: var(--ink); }
+.ppw__err { display: block; margin-top: 6px; color: var(--red); font-size: 12px; }
+.ppw__link { float: right; background: none; border: none; color: var(--teal); font-size: 12px; cursor: pointer; }
+.ppw__orows { display: flex; flex-direction: column; gap: 6px; }
+.ppw__orow { display: flex; flex-direction: column; gap: 1px; text-align: left; padding: 9px 12px; background: var(--inset); border: 1px solid var(--line); border-radius: var(--r-sm); cursor: pointer; }
+.ppw__orow:hover { border-color: var(--teal); }
+.ppw__orow b { font-family: var(--disp); font-size: 14px; color: var(--ink); }
+.ppw__orow span { font-family: var(--mono); font-size: 11px; color: var(--ink3); }

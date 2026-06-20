@@ -82,6 +82,21 @@ export async function dispatchRoutes(app: FastifyInstance) {
     if (d.status === 'shipped') return reply.code(409).send({ error: 'already_shipped' })
     if (d.status !== 'approved') return reply.code(409).send({ error: 'not_approved', hint: 'admin must approve the dispatch first' })
 
+    // QC hard-hold guard: an admin-approved hard hold on ANY job in this order blocks
+    // the shipment until it's resolved (parallel QC retains a real stop lever).
+    const heldJobs = await prisma.qcObservation.findMany({
+      where: { status: 'open', holdApproved: true, job: { orderId: d.orderId } },
+      select: { note: true, job: { select: { displayLabel: true } } },
+    })
+    if (heldJobs.length > 0) {
+      return reply.code(409).send({
+        error: 'qc_hard_hold',
+        count: heldJobs.length,
+        holds: heldJobs.map((h) => ({ job: h.job.displayLabel, note: h.note })),
+        hint: 'a QC hard hold is active on this order — resolve it before shipping',
+      })
+    }
+
     // deduct each item's quantity from FG stock (reserved → out)
     for (const item of d.order.items) {
       const modelId = await resolveModelId(item.productId, item.modelId)

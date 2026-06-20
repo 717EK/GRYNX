@@ -204,4 +204,149 @@ export async function qcRoutes(app: FastifyInstance) {
     })
     return { ok: true, sentBackTo: targetStation?.name ?? 'Production' }
   })
+
+  // ══════════════════════ QC as a PARALLEL department (docs/12) ══════════════════
+  // QC stands at every station and may raise a report against ANY active job at ANY
+  // time — no gate, no handoff. Reports auto-tag to the station the inspector is at.
+  // issue = SOFT-flag by default (work continues, FG close flagged + admin notified);
+  // QC may request a HARD HOLD which needs ADMIN APPROVAL to engage and then blocks
+  // FG/dispatch. suggestion/note are advisory. Resolved by QC or the Production head.
+
+  const obsJob = { id: true, jobNo: true, displayLabel: true, status: true, product: { select: { code: true, name: true } } }
+
+  async function withNames<T extends { raisedById: string; resolvedById: string | null }>(rows: T[]) {
+    const ids = [...new Set(rows.flatMap((r) => [r.raisedById, r.resolvedById]).filter(Boolean) as string[])]
+    const users = ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, fullName: true } }) : []
+    const m = Object.fromEntries(users.map((u) => [u.id, u.fullName]))
+    return rows.map((r) => ({ ...r, raisedByName: m[r.raisedById] ?? '—', resolvedByName: r.resolvedById ? m[r.resolvedById] ?? '—' : null }))
+  }
+
+  // stations the QC inspector can stand at (for the desk picker)
+  app.get('/stations', { preHandler: requireRole('admin', 'qc') }, async () => {
+    const stations = await prisma.station.findMany({ orderBy: { sortOrder: 'asc' }, select: { id: true, code: true, name: true } })
+    return { stations }
+  })
+
+  // active jobs QC can report on (not closed/cancelled), newest first
+  app.get('/reportable-jobs', { preHandler: requireRole('admin', 'qc') }, async () => {
+    const jobs = await prisma.job.findMany({
+      where: { status: { notIn: ['closed', 'cancelled', 'draft'] } },
+      orderBy: { updatedAt: 'desc' },
+      take: 200,
+      select: { ...obsJob, _count: { select: { qcObservations: { where: { status: 'open' } } } } },
+    })
+    return { jobs: jobs.map((j) => ({ ...j, openReports: j._count.qcObservations })) }
+  })
+
+  // QC raises a report. Auto-tagged to the inspector's current station.
+  app.post('/report', { preHandler: requireRole('admin', 'qc') }, async (req, reply) => {
+    const body = z
+      .object({
+        jobId: z.string().uuid(),
+        stationId: z.string().uuid().optional(), // the station QC is standing at
+        kind: z.enum(['issue', 'suggestion', 'note']).default('issue'),
+        severity: z.enum(['minor', 'major', 'critical']).optional(),
+        note: z.string().trim().min(1).max(1000),
+        photoUrl: z.string().max(3_000_000).optional(),
+        holdRequested: z.boolean().optional(), // issue only
+      })
+      .safeParse(req.body)
+    if (!body.success) return reply.code(400).send({ error: 'bad_request', detail: body.error.issues[0]?.message })
+    const actorId = (req.user as AccessPayload).sub
+    const { jobId, stationId, kind, note, photoUrl } = body.data
+    const job = await prisma.job.findUnique({ where: { id: jobId }, select: { displayLabel: true, status: true } })
+    if (!job) return reply.code(404).send({ error: 'not_found' })
+    if (job.status === 'closed' || job.status === 'cancelled') return reply.code(409).send({ error: 'job_terminal' })
+    const station = stationId ? await prisma.station.findUnique({ where: { id: stationId }, select: { name: true } }) : null
+    if (stationId && !station) return reply.code(400).send({ error: 'invalid_station' })
+    // hold only applies to issues
+    const holdRequested = kind === 'issue' ? !!body.data.holdRequested : false
+    const severity = kind === 'issue' ? body.data.severity ?? null : null
+    const at = station ? ` @ ${station.name}` : ''
+
+    const created = await prisma.$transaction(async (tx) => {
+      const obs = await tx.qcObservation.create({
+        data: { jobId, stationId: stationId ?? null, kind, severity, note, photoUrl: photoUrl ?? null, holdRequested, raisedById: actorId },
+        select: { id: true },
+      })
+      const tag = kind === 'issue' ? `⚠ QC issue${severity ? ` (${severity})` : ''}` : kind === 'suggestion' ? '💡 QC suggestion' : '📝 QC note'
+      await tx.jobEvent.create({ data: { jobId, type: 'qc_result', actorId, body: `${tag}${at}: ${note}` } })
+      if (kind === 'issue') {
+        await notifyAdmins(tx, {
+          type: 'escalation',
+          jobId,
+          body: holdRequested
+            ? `QC requests HARD HOLD on ${job.displayLabel}${at} — needs your approval: ${note}`
+            : `QC issue on ${job.displayLabel}${at}${severity ? ` (${severity})` : ''}: ${note}`,
+        })
+      }
+      await writeAudit('qc_observation', obs.id, 'raise', { actorId, after: { jobId, kind, severity, holdRequested }, tx })
+      return obs
+    })
+    return { ok: true, id: created.id, holdRequested }
+  })
+
+  // station-scoped feed: all reports raised at a station (+ optional status filter).
+  // Omit stationId to see every QC report. Newest first.
+  app.get('/reports', { preHandler: requireRole('admin', 'qc') }, async (req) => {
+    const q = z.object({ stationId: z.string().uuid().optional(), status: z.enum(['open', 'resolved', 'dismissed']).optional(), scope: z.enum(['station', 'all']).optional() }).parse(req.query ?? {})
+    const rows = await prisma.qcObservation.findMany({
+      where: { ...(q.scope === 'all' ? {} : q.stationId ? { stationId: q.stationId } : {}), ...(q.status ? { status: q.status } : {}) },
+      orderBy: [{ status: 'asc' }, { raisedAt: 'desc' }],
+      take: 200,
+      select: {
+        id: true, jobId: true, stationId: true, kind: true, severity: true, note: true, photoUrl: true,
+        holdRequested: true, holdApproved: true, status: true, raisedById: true, raisedAt: true,
+        resolvedById: true, resolvedAt: true, resolutionNote: true,
+        job: { select: obsJob }, station: { select: { code: true, name: true } },
+      },
+    })
+    return { reports: await withNames(rows) }
+  })
+
+  // ADMIN approves a requested hard hold → block engages (FG/dispatch now blocked).
+  app.post('/reports/:id/approve-hold', { preHandler: requireRole('admin') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const actorId = (req.user as AccessPayload).sub
+    const obs = await prisma.qcObservation.findUnique({ where: { id }, select: { id: true, status: true, kind: true, holdApproved: true, jobId: true, job: { select: { displayLabel: true } } } })
+    if (!obs) return reply.code(404).send({ error: 'not_found' })
+    if (obs.status !== 'open') return reply.code(409).send({ error: 'not_open' })
+    if (obs.holdApproved) return reply.code(409).send({ error: 'already_held' })
+    await prisma.$transaction(async (tx) => {
+      await tx.qcObservation.update({ where: { id }, data: { holdRequested: true, holdApproved: true, holdApprovedById: actorId, holdApprovedAt: new Date() } })
+      await tx.jobEvent.create({ data: { jobId: obs.jobId, type: 'hold', actorId, body: '⛔ Hard hold engaged (admin approved) — FG/dispatch blocked until resolved' } })
+      await writeAudit('qc_observation', id, 'approve_hold', { actorId, tx })
+    })
+    return { ok: true, held: true }
+  })
+
+  // resolve a report (QC or the Production head). Lifts any hard hold.
+  app.post('/reports/:id/resolve', { preHandler: requireRole('admin', 'qc', 'dept_head') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const body = z.object({ note: z.string().max(500).optional() }).parse(req.body ?? {})
+    const actorId = (req.user as AccessPayload).sub
+    const obs = await prisma.qcObservation.findUnique({ where: { id }, select: { id: true, status: true, kind: true, holdApproved: true, jobId: true, raisedById: true, job: { select: { displayLabel: true } } } })
+    if (!obs) return reply.code(404).send({ error: 'not_found' })
+    if (obs.status !== 'open') return reply.code(409).send({ error: 'not_open' })
+    await prisma.$transaction(async (tx) => {
+      await tx.qcObservation.update({ where: { id }, data: { status: 'resolved', resolvedById: actorId, resolvedAt: new Date(), resolutionNote: body.note ?? null, holdApproved: false } })
+      await tx.jobEvent.create({ data: { jobId: obs.jobId, type: 'qc_result', actorId, body: `✓ QC report resolved${obs.holdApproved ? ' (hold lifted)' : ''}${body.note ? `: ${body.note}` : ''}` } })
+      if (obs.holdApproved) await notifyAdmins(tx, { type: 'escalation', jobId: obs.jobId, body: `Hard hold lifted on ${obs.job.displayLabel}` })
+      await writeAudit('qc_observation', id, 'resolve', { actorId, tx })
+    })
+    return { ok: true }
+  })
+
+  // dismiss a suggestion/note that won't be actioned (QC or admin)
+  app.post('/reports/:id/dismiss', { preHandler: requireRole('admin', 'qc') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const actorId = (req.user as AccessPayload).sub
+    const obs = await prisma.qcObservation.findUnique({ where: { id }, select: { status: true, holdApproved: true, jobId: true } })
+    if (!obs) return reply.code(404).send({ error: 'not_found' })
+    if (obs.status !== 'open') return reply.code(409).send({ error: 'not_open' })
+    if (obs.holdApproved) return reply.code(409).send({ error: 'held_cannot_dismiss', hint: 'resolve the hold instead' })
+    await prisma.qcObservation.update({ where: { id }, data: { status: 'dismissed', resolvedById: actorId, resolvedAt: new Date() } })
+    await writeAudit('qc_observation', id, 'dismiss', { actorId })
+    return { ok: true }
+  })
 }

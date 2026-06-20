@@ -251,7 +251,7 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/agenda', { preHandler: requireRole('admin') }, async () => {
     const now = new Date()
     const dayEnd = new Date(now); dayEnd.setHours(23, 59, 59, 999)
-    const [overdue, urgentOrders, awaitingForward, ppcRequests, dispatchToApprove, closuresToApprove, openQcIssues, openTickets, dueOrders] = await Promise.all([
+    const [overdue, urgentOrders, awaitingForward, ppcRequests, dispatchToApprove, closuresToApprove, openQcIssues, qcHoldsToApprove, openTickets, dueOrders] = await Promise.all([
       prisma.jobStep.findMany({
         where: { slaDueAt: { lt: now }, status: { in: ['waiting_acceptance', 'in_progress'] }, job: { status: { notIn: ['closed', 'cancelled'] } } },
         select: { slaDueAt: true, department: { select: { name: true } }, job: { select: { id: true, displayLabel: true, name: true } } },
@@ -262,7 +262,8 @@ export async function adminRoutes(app: FastifyInstance) {
       prisma.ppcRequest.count({ where: { status: 'submitted' } }),
       prisma.dispatch.count({ where: { status: 'requested' } }),
       prisma.closure.count({ where: { status: 'requested' } }),
-      prisma.stationVisit.count({ where: { qcIssue: true, qcResolvedAt: null } }),
+      prisma.qcObservation.count({ where: { kind: 'issue', status: 'open' } }),
+      prisma.qcObservation.count({ where: { status: 'open', holdRequested: true, holdApproved: false } }),
       prisma.maintenanceTicket.count({ where: { status: { notIn: ['closed', 'verified'] } } }),
       prisma.order.findMany({ where: { targetDate: { lte: dayEnd }, status: { in: ['submitted', 'planning', 'in_production', 'ready'] } }, select: { id: true, orderNo: true, name: true, client: true, targetDate: true }, orderBy: { targetDate: 'asc' }, take: 10 }),
     ])
@@ -270,7 +271,7 @@ export async function adminRoutes(app: FastifyInstance) {
       generatedAt: now.toISOString(),
       overdue: overdue.map((s) => ({ jobId: s.job.id, label: s.job.name || s.job.displayLabel, station: s.department.name, mins: Math.round((now.getTime() - (s.slaDueAt?.getTime() ?? 0)) / 60000) })),
       urgentOrders, dueOrders,
-      decisions: { ppcRequests, awaitingForward, dispatchToApprove, closuresToApprove, openQcIssues, openTickets },
+      decisions: { ppcRequests, awaitingForward, dispatchToApprove, closuresToApprove, openQcIssues, qcHoldsToApprove, openTickets },
     }
   })
 
@@ -283,8 +284,8 @@ export async function adminRoutes(app: FastifyInstance) {
       prisma.job.count({ where: { status: 'closed', completionDate: { gte: start } } }),
       prisma.dispatch.count({ where: { status: 'shipped', shippedAt: { gte: start } } }),
       prisma.stationVisit.count({ where: { scanInAt: { gte: start } } }),
-      prisma.stationVisit.count({ where: { qcAt: { gte: start } } }),
-      prisma.stationVisit.count({ where: { qcAt: { gte: start }, qcIssue: true } }),
+      prisma.qcObservation.count({ where: { raisedAt: { gte: start } } }),
+      prisma.qcObservation.count({ where: { raisedAt: { gte: start }, kind: 'issue' } }),
       prisma.materialRequest.count({ where: { createdAt: { gte: start } } }),
     ])
     return { date: start.toISOString(), ordersCreated, jobsCreated, jobsClosed, shipped, scans, qcMarks, qcIssuesRaised, materialNeeds }
