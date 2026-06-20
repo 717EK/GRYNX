@@ -963,3 +963,27 @@ export const resolveFeedback = (id: string, status: 'open' | 'resolved' = 'resol
   DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/feedback/${id}/resolve`, { status })
 export const setFeedbackSeverity = (id: string, severity: FeedbackSeverity) =>
   DEMO ? Promise.resolve({ ok: true }) : req<{ ok: boolean }>('POST', `/api/v1/feedback/${id}/severity`, { severity })
+
+// ── App Studio (docs/13) — visual app platform, SuperUser only ────────────────
+export type AppFieldType = 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'select' | 'relation' | 'json' | 'file'
+export interface AppField { key: string; name: string; type: AppFieldType; required?: boolean; unique?: boolean; options?: string[]; to?: string; many?: boolean; default?: unknown }
+export interface AppEntity { key: string; name: string; fields: AppField[]; storage?: { kind: string } }
+export interface AppGraphNode { id: string; x: number; y: number }
+export interface AppGraphEdge { id: string; source: string; target: string }
+export interface AppDefinition { entities?: AppEntity[]; flows?: unknown[]; pages?: unknown[]; connectors?: unknown[]; graph?: { nodes?: AppGraphNode[]; edges?: AppGraphEdge[] } }
+export interface AppSummary { id: string; key: string; name: string; isActive: boolean; publishedVersionId: string | null; _count: { versions: number; records: number } }
+export interface AppVersionFull { id: string; appId: string; version: number; status: 'draft' | 'published' | 'archived'; note: string | null; definition: AppDefinition; publishedAt: string | null }
+export type AppRecordRow = Record<string, unknown> & { id: string }
+
+export const getApps = () => req<{ apps: AppSummary[] }>('GET', '/api/v1/apps')
+export const createApp = (key: string, name: string) => req<{ app: { id: string; key: string } }>('POST', '/api/v1/apps', { key, name })
+export const getAppVersions = (appKey: string) => req<{ appId: string; publishedVersionId: string | null; versions: AppVersionFull[] }>('GET', `/api/v1/apps/${appKey}/versions`)
+export const createAppVersion = (appKey: string, definition: AppDefinition, note?: string) => req<{ version: AppVersionFull }>('POST', `/api/v1/apps/${appKey}/versions`, { definition, note })
+export const updateAppVersion = (appKey: string, id: string, definition: AppDefinition, note?: string) => req<{ version: AppVersionFull }>('PATCH', `/api/v1/apps/${appKey}/versions/${id}`, { definition, note })
+export const publishAppVersion = (appKey: string, id: string) => req<{ ok: boolean; rolledBack: boolean }>('POST', `/api/v1/apps/${appKey}/versions/${id}/publish`)
+export const deleteAppVersion = (appKey: string, id: string) => req<{ ok: boolean }>('DELETE', `/api/v1/apps/${appKey}/versions/${id}`)
+// data engine
+export const listRecords = (appKey: string, entityKey: string) => req<{ entity: AppEntity; records: AppRecordRow[] }>('GET', `/api/v1/apps/${appKey}/data/${entityKey}`)
+export const createRecord = (appKey: string, entityKey: string, data: Record<string, unknown>) => req<{ record: AppRecordRow }>('POST', `/api/v1/apps/${appKey}/data/${entityKey}`, data)
+export const updateRecord = (appKey: string, entityKey: string, id: string, data: Record<string, unknown>) => req<{ record: AppRecordRow }>('PATCH', `/api/v1/apps/${appKey}/data/${entityKey}/${id}`, data)
+export const deleteRecord = (appKey: string, entityKey: string, id: string) => req<{ ok: boolean }>('DELETE', `/api/v1/apps/${appKey}/data/${entityKey}/${id}`)

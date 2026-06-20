@@ -12,6 +12,7 @@ import BriefingDesktop from './BriefingDesktop'
 import PpcDesktop from './PpcDesktop'
 import QcDesktop from './QcDesktop'
 import WorkflowStudio from './WorkflowStudio'
+import AppStudio from './AppStudio'
 import DashboardBoard from './DashboardBoard'
 import CalendarWidget from '../components/CalendarWidget'
 import grynxWordmark from '../assets/grynx-wordmark.png'
@@ -38,7 +39,7 @@ function linePath(vals: number[], w: number, h: number, pad = 6) {
   return vals.map((v, i) => `${i ? 'L' : 'M'}${(i * step).toFixed(1)},${(h - pad - ((v - min) / range) * (h - 2 * pad)).toFixed(1)}`).join(' ')
 }
 
-type Nav = 'dashboard' | 'board' | 'jobs' | 'ppc' | 'qc' | 'analytics' | 'workflow' | 'orders' | 'dispatch' | 'briefing'
+type Nav = 'dashboard' | 'board' | 'jobs' | 'ppc' | 'qc' | 'analytics' | 'workflow' | 'appstudio' | 'orders' | 'dispatch' | 'briefing'
 type Popup =
   | null
   | { kind: 'create' }
@@ -112,6 +113,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         <button className={`dw__i ${nav === 'dispatch' ? 'is-on' : ''}`} title="Dispatch" onClick={() => setNav('dispatch')}>🚚</button>
         <button className={`dw__i ${nav === 'analytics' ? 'is-on' : ''}`} title="Dwell Analytics" onClick={() => { setAna(null); setNav('analytics') }}>◫</button>
         {isSuper && <button className={`dw__i ${nav === 'workflow' ? 'is-on' : ''}`} title="Workflow Studio" onClick={() => setNav('workflow')}>⛓</button>}
+        {isSuper && <button className={`dw__i ${nav === 'appstudio' ? 'is-on' : ''}`} title="App Studio" onClick={() => setNav('appstudio')}>⛁</button>}
         <button className="dw__i" title="Maintenance" onClick={() => setPopup({ kind: 'maintenance' })}>⚙</button>
         <div className="dw__rail-sp" />
         <button className="dw__i" title="Notifications" onClick={() => setPopup({ kind: 'notifications' })}>◔{unread > 0 && <span className="pip" />}</button>
@@ -402,6 +404,8 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         {nav === 'board' && <DashboardBoard onOpenJob={openJob} />}
 
         {nav === 'workflow' && isSuper && <WorkflowStudio />}
+
+        {nav === 'appstudio' && isSuper && <AppStudio />}
       </main>
      </div>
 

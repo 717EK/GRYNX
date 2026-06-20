@@ -1060,3 +1060,59 @@ model Dispatch {
   createdAt     DateTime       @default(now())
   order         Order          @relation(fields: [orderId], references: [id])
 }
+
+// ───────────────────────── App Studio (docs/13) — visual app platform ─────────
+// A built app stored as VERSIONED METADATA (mirrors the workflow engine). App →
+// AppVersion (definition JSON: entities/flows/pages/connectors). AppRecord is the
+// generic run-time row store (Budibase-style), scoped by appId + entityKey so many
+// apps stay isolated. ENTIRELY ADDITIVE & SuperUser-only — it runs beside the live
+// GRYNX and touches none of the models above.
+enum AppVersionStatus {
+  draft
+  published
+  archived
+}
+
+model App {
+  id                 String           @id @default(uuid())
+  key                String           @unique // "grynx"
+  name               String
+  isActive           Boolean          @default(true)
+  publishedVersionId String?          @unique
+  createdById        String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  versions           AppVersion[]     @relation("AppVersions")
+  publishedVersion   AppVersion?      @relation("AppPublished", fields: [publishedVersionId], references: [id])
+  records            AppRecord[]
+}
+
+model AppVersion {
+  id           String           @id @default(uuid())
+  appId        String
+  version      Int
+  status       AppVersionStatus @default(draft)
+  note         String?
+  definition   Json             @default("{}") // { entities[], flows[], pages[], connectors[] }
+  createdById  String
+  createdAt    DateTime         @default(now())
+  publishedAt  DateTime?
+  app          App              @relation("AppVersions", fields: [appId], references: [id])
+  publishedFor App?             @relation("AppPublished")
+
+  @@unique([appId, version])
+}
+
+model AppRecord {
+  id          String   @id @default(uuid())
+  appId       String
+  entityKey   String
+  data        Json     @default("{}")
+  version     Int      @default(0) // optimistic lock
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  app         App      @relation(fields: [appId], references: [id])
+
+  @@index([appId, entityKey])
+}

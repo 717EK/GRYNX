@@ -24,6 +24,7 @@ import { orderRoutes } from './routes/orders.js'
 import { stockRoutes } from './routes/stock.js'
 import { dispatchRoutes } from './routes/dispatch.js'
 import { feedbackRoutes } from './routes/feedback.js'
+import { appsRoutes } from './routes/apps.js'
 
 // bodyLimit raised from Fastify's 1 MB default so feedback reports can carry a
 // screenshot + image + short voice note (base64). Client compresses images first.
@@ -79,6 +80,7 @@ await app.register(orderRoutes, { prefix: '/api/v1/orders' })
 await app.register(stockRoutes, { prefix: '/api/v1/stock' })
 await app.register(dispatchRoutes, { prefix: '/api/v1/dispatch' })
 await app.register(feedbackRoutes, { prefix: '/api/v1/feedback' })
+await app.register(appsRoutes, { prefix: '/api/v1/apps' }) // App Studio (docs/13) — SuperUser only
 
 const port = Number(process.env.PORT ?? 4000)
 app

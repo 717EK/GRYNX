@@ -46,6 +46,22 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.12.0 — App Studio: Data pillar (docs/13 Phase 1)
+- First slice of the **App Studio** — the visual app-builder platform. An app is
+  stored as **versioned metadata** (mirrors the workflow engine); a generic runtime
+  interprets it. **SuperUser-only**, built entirely **beside** the live GRYNX.
+- **Data pillar:** model entities on an **ER node-canvas** (entities = nodes, fields
+  inside, relations draw as edges), edit fields in an inspector (type, required,
+  unique, select options, relations), save a draft, publish the schema, roll back.
+- **Definition-driven runtime:** auto-CRUD at `/apps/:appKey/data/:entityKey`,
+  validated against the entity schema (required/type/unique/defaults). The "Data"
+  tab is a live try-it — add records through a schema-generated form, see them in a
+  table. Records live in a generic `AppRecord` store, isolated per app (multi-app
+  ready).
+- Additive schema only (`App` / `AppVersion` / `AppRecord`); **20/20 regression
+  checks pass** — every existing role login, endpoint, and the workflow routing are
+  unchanged. The factory floor is untouched.
+
 ### v0.11.0 — Warm theme everywhere · SuperUser console · live workflow loaded
 - **One theme, app-wide.** The whole app (mobile + web) now uses the warm
   "Work OS" palette that the Command Centre already had — cream canvas, ink text,
