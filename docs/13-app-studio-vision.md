@@ -1,8 +1,19 @@
 # 13 · App Studio — vision & discussion sheet
 
-**Status: DISCUSSION (no code yet).** This sheet is to get aligned on what we are
-actually building before we write anything. Read it, mark it up, answer the
-questions at the end.
+**Status: ALIGNED — spec'd, ready to build Phase 1 on your go.** This sheet got us
+aligned on what we're building; §0 has the locked decisions and §9 is the concrete
+Phase-1 spec.
+
+## 0. Decisions (LOCKED · 2026-06-20)
+
+| # | Decision | Choice |
+|---|---|---|
+| A | Scope | **Factory/ops-domain app builder** (not a general Bubble competitor) |
+| B | Foundation | **Build native on the GRYNX stack** (Fastify/Prisma/Neon/React) — no fork |
+| C | Editor model | **Three specialised surfaces over ONE app-definition** (data modeller · logic flow · page builder) |
+| D | First pillar | **Data model + storage** |
+| E | Tenancy | **Multi-app-ready, run GRYNX first** (definition + storage hold many apps; build one now) |
+| F | Code escapes | **Allow JS snippets in nodes** (visual-first, code for the hard cases) |
 
 ---
 
@@ -181,19 +192,103 @@ Nothing here is built yet — this is the order I'd propose so each phase ships 
 
 ---
 
-## 8. Open questions for you (let's answer these)
+## 8. Open questions — ANSWERED
 
-1. **Scope:** factory/ops-domain builder, or fully general? (recommend domain.)
-2. **Foundation:** build native on GRYNX's stack, or fork an OSS platform as the base?
-3. **Editor model:** three specialised surfaces (data / logic / page) sharing one
-   definition, or one literal node-graph for everything?
-4. **First milestone:** which pillar do we prototype first — **Data** (model+storage),
-   **Logic** (flow engine), or **UI** (page builder)?
-5. **Multi-tenant?** One app (GRYNX) for now, or many client apps from day one?
-   (Affects the definition schema + storage isolation heavily.)
-6. **Who writes "code" escapes?** Pure no-code, or allow JS snippets in nodes (like
-   Retool/n8n) for power cases?
+All six settled — see §0. Summary: domain builder · build native · three surfaces ·
+data pillar first · multi-app-ready · allow JS escapes.
 
-Answer inline or in the chat — once these are settled I'll turn this into a concrete
-technical spec (schema, registry, runtime contract) and *then* we build, phase by
-phase.
+---
+
+## 9. Phase-1 technical spec (App-Definition kernel + Data pillar)
+
+Goal of Phase 1: stand up the **kernel** (how an app is stored & versioned) and the
+**Data pillar** (model entities + store records + auto-CRUD) — *beside* the running
+GRYNX, touching nothing live. All additive.
+
+### 9.1 The kernel — App-Definition (mirrors the workflow engine we already have)
+
+Three additive tables, same pattern as `WorkflowDefinition/Version`:
+
+```
+App         { id, key (unique e.g. "grynx"), name, isActive, publishedVersionId? }
+AppVersion  { id, appId, version, status(draft|published|archived),
+              definition Json,  createdById, publishedAt? }     // the whole app, versioned
+AppRecord   { id, appId, entityKey, data Json, createdAt, updatedAt, version }  // run-time rows
+```
+
+`AppVersion.definition` (JSON) is the single source of truth for an app:
+
+```jsonc
+{
+  "entities": [
+    { "key": "order", "name": "Order",
+      "fields": [
+        { "key": "orderNo", "name": "Order No", "type": "text", "required": true, "unique": true },
+        { "key": "client",  "name": "Client",   "type": "text", "required": true },
+        { "key": "status",  "name": "Status",   "type": "select", "options": ["new","planning","..."] },
+        { "key": "items",   "name": "Items",     "type": "relation", "to": "orderItem", "many": true }
+      ],
+      "storage": { "kind": "native" }   // P1: native JSON-row store; later: external/own-table
+    }
+  ],
+  "flows": [],   // Phase 2 (logic)
+  "pages": [],   // Phase 3 (UI)
+  "connectors": []
+}
+```
+
+Field types (P1): `text · number · boolean · date · datetime · select · relation · json · file`.
+**Multi-app-ready:** many `App` rows; every `AppRecord` is scoped by `appId` →
+isolation by construction. GRYNX = one `App{key:"grynx"}`. A 2nd client = another row.
+
+### 9.2 Storage model (P1 = native JSON-row store)
+
+Each entity's rows live in the generic `AppRecord` table (`appId + entityKey + data`),
+**not** a per-entity Postgres table. This is the Budibase-internal-DB approach: no
+per-entity DDL/migrations, fully dynamic, validated against the entity schema at write
+time. (A later "own real table" storage option can be added for heavy entities.)
+
+### 9.3 Auto-CRUD runtime (the data engine)
+
+Generic, definition-driven endpoints (the runtime that *interprets* the schema):
+
+```
+GET    /api/v1/apps/:appKey/data/:entityKey        list (filter/sort/paginate)
+POST   /api/v1/apps/:appKey/data/:entityKey        create (validated vs entity schema)
+GET    /api/v1/apps/:appKey/data/:entityKey/:id     read
+PATCH  /api/v1/apps/:appKey/data/:entityKey/:id     update
+DELETE /api/v1/apps/:appKey/data/:entityKey/:id     delete
+```
+
+One handler reads the published `AppVersion.definition`, finds the entity, validates the
+payload (Zod built from the field list), and reads/writes `AppRecord`. Unique/required/
+relation checks enforced from the schema. (Permissions land with the UI/role phase.)
+
+### 9.4 The Data-modeller surface (Studio, SuperUser-only)
+
+An **ER-style node canvas** (reuse React Flow — consistent with the logic pillar):
+entities are nodes (showing their fields), relations are edges. A side panel edits the
+selected entity's fields (key/name/type/required/unique/options/relation). Save → writes
+a draft `AppVersion`; Publish/rollback reuse the exact mechanism the Workflow Studio
+already has. So "every feature is a selectable node" holds for data too.
+
+### 9.5 Scope guards (what Phase 1 deliberately does NOT do)
+
+- Does **not** migrate GRYNX's real models — it runs the generic engine *beside* them.
+- No page builder, no logic flows yet (Phases 3 & 2).
+- No external/own-table storage yet (native JSON-row store only).
+- Lives under the SuperUser Studio; built apps aren't user-facing until the UI phase.
+
+### 9.6 Phase-1 deliverable checklist
+
+1. Additive migration: `App`, `AppVersion`, `AppRecord`.
+2. `/apps` routes: create app + versions + publish/rollback (clone of workflow routes,
+   SuperUser-gated).
+3. Generic auto-CRUD `/apps/:appKey/data/:entityKey` (schema-validated).
+4. Studio **Data** surface: ER node-canvas + field editor + save/publish.
+5. Seed `App{key:"grynx"}` with a couple of example entities to prove the loop
+   (model → store a record → read it back).
+
+> On your **go**, I build Phase 1 to this spec (additive, nothing live touched),
+> deploy it behind the SuperUser Studio, and demo the model→store→read loop. Phases
+> 2 (logic flows) and 3 (page builder) follow, then P5 re-expresses GRYNX itself.
