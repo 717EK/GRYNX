@@ -34,16 +34,17 @@
   color-scheme: dark;
 }
 
-/* ---- Day (light) mode ---- */
+/* ---- Day (light) mode = the warm "Work OS" theme, matching the Command Centre ---- */
 [data-mode='light'] {
-  --bg: #f5f6f8;
-  --surface: #ffffff;
-  --surface-raised: #eceef2;
-  --border: #e1e4e9;
-  --border-strong: #c8cdd5;
-  --text: #0e1116;
-  --text-secondary: #5b626c;
-  --text-tertiary: #8a9099;
+  --bg: #efe7d8; /* warm cream canvas */
+  --surface: #fbf7ee; /* card */
+  --surface-raised: #f3ecdd; /* inset */
+  --border: #e0d6c2; /* warm line */
+  --border-strong: #cabfa6;
+  --text: #262119; /* ink */
+  --text-secondary: #5f5849;
+  --text-tertiary: #9c937f;
+  --brand-dim: #b8741f;
   color-scheme: light;
 }
 /* white wordmarks need inverting on a light canvas */

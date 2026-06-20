@@ -46,3 +46,5 @@ android/local.properties
 # Built APK artifact (reproducible via the Capacitor build)
 GRYNX-debug.apk
 *.apk
+GRYNX-Admin-Command-Centre.pdf
+GRYNX-How-It-Works.pdf

@@ -46,6 +46,21 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.11.0 — Warm theme everywhere · SuperUser console · live workflow loaded
+- **One theme, app-wide.** The whole app (mobile + web) now uses the warm
+  "Work OS" palette that the Command Centre already had — cream canvas, ink text,
+  amber/lime accents — as the **default** (Day mode). Night mode still available.
+- **SuperUser gets the command centre too.** The developer account (SuperUser)
+  now opens the desktop command centre on a wide screen, just like the Admin.
+- **Workflow Studio is SuperUser-only.** Editing the company pipeline is the
+  developer's job, not the factory owner's — the Admin (owner) no longer sees the
+  ⛓ Workflow Studio, and the workflow write endpoints are locked to the SuperUser
+  on the backend (403 `superuser_only`).
+- **The live workflow is pre-loaded** in the Studio as a node-graph:
+  Sales → PPC Intake → Design → PPC Forward → Production → FG Stock → Dispatch.
+  Routing is unchanged — only Design/Production/FG carry departments, so jobs
+  still flow exactly as before (QC stays parallel, not a gate).
+
 ### v0.10.1 — Composable dashboard (Board) — modular studio editor ring 3
 - New **Board** tab (⊞) in the command centre: a **drag-and-resize widget board**
   you compose yourself. Toggle Edit, add / remove / arrange widgets, Done.

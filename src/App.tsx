@@ -389,9 +389,10 @@ export default function App() {
     }
   }
 
-  // Admins on a wide screen get the desktop panel (single page + popups);
-  // everyone else, and admins on a phone, get the mobile app.
-  if (wide && user.role === 'ADMIN') {
+  // The Admin (factory owner) and the SuperUser (developer) on a wide screen get
+  // the desktop command centre. Everyone else, and these two on a phone, get the
+  // mobile app. The Workflow Studio inside is gated to the SuperUser only.
+  if (wide && (user.role === 'ADMIN' || user.role === 'SUPERUSER')) {
     return (
       <>
         <DesktopAdminWarm user={user} onLock={handleLock} />

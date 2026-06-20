@@ -49,6 +49,9 @@ type Popup =
   | { kind: 'notifications' }
 
 export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; onLock: () => void }) {
+  // The Workflow Studio is the developer's tool — only the SuperUser sees it; the
+  // Admin (factory owner) gets the rest of the command centre.
+  const isSuper = user.role === 'SUPERUSER'
   const [nav, setNav] = useState<Nav>('dashboard')
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [jobs, setJobs] = useState<JobDTO[] | null>(null)
@@ -108,7 +111,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         <button className={`dw__i ${nav === 'orders' ? 'is-on' : ''}`} title="Orders" onClick={() => setNav('orders')}>▦</button>
         <button className={`dw__i ${nav === 'dispatch' ? 'is-on' : ''}`} title="Dispatch" onClick={() => setNav('dispatch')}>🚚</button>
         <button className={`dw__i ${nav === 'analytics' ? 'is-on' : ''}`} title="Dwell Analytics" onClick={() => { setAna(null); setNav('analytics') }}>◫</button>
-        <button className={`dw__i ${nav === 'workflow' ? 'is-on' : ''}`} title="Workflow Studio" onClick={() => setNav('workflow')}>⛓</button>
+        {isSuper && <button className={`dw__i ${nav === 'workflow' ? 'is-on' : ''}`} title="Workflow Studio" onClick={() => setNav('workflow')}>⛓</button>}
         <button className="dw__i" title="Maintenance" onClick={() => setPopup({ kind: 'maintenance' })}>⚙</button>
         <div className="dw__rail-sp" />
         <button className="dw__i" title="Notifications" onClick={() => setPopup({ kind: 'notifications' })}>◔{unread > 0 && <span className="pip" />}</button>
@@ -398,7 +401,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
 
         {nav === 'board' && <DashboardBoard onOpenJob={openJob} />}
 
-        {nav === 'workflow' && <WorkflowStudio />}
+        {nav === 'workflow' && isSuper && <WorkflowStudio />}
       </main>
      </div>
 

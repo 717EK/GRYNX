@@ -28,6 +28,12 @@ async function activeDefinition() {
 export async function workflowRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate)
 
+  // Editing the company workflow is the developer's job, not the factory owner's.
+  // Reads stay admin-visible; all writes are locked to the SuperUser account.
+  const requireSuper = async (req: { user?: unknown }, reply: { code: (n: number) => { send: (b: unknown) => unknown } }) => {
+    if ((req.user as AccessPayload).username !== 'admin') return reply.code(403).send({ error: 'superuser_only', hint: 'workflow editing is restricted to the SuperUser' })
+  }
+
   // the published workflow (for the flow map + job creation reference)
   app.get('/', async () => {
     const def = await prisma.workflowDefinition.findFirst({
@@ -78,7 +84,7 @@ export async function workflowRoutes(app: FastifyInstance) {
   }
 
   // create a new DRAFT version (next version number) from an explicit stage list
-  app.post('/versions', { preHandler: requireRole('admin') }, async (req, reply) => {
+  app.post('/versions', { preHandler: [requireRole('admin'), requireSuper] }, async (req, reply) => {
     const body = z.object({ note: z.string().max(300).optional(), stages: z.array(stageInput).min(1), graph: z.record(z.unknown()).optional() }).safeParse(req.body)
     if (!body.success) return reply.code(400).send({ error: 'bad_request', detail: body.error.issues })
     const actorId = (req.user as AccessPayload).sub
@@ -108,7 +114,7 @@ export async function workflowRoutes(app: FastifyInstance) {
   // edit a DRAFT in place (replace its stage list). Published/archived are immutable —
   // to change a live flow you publish a new version (jobs already on the floor keep
   // their snapshot). Editing a draft repeatedly avoids version sprawl while designing.
-  app.patch('/versions/:id', { preHandler: requireRole('admin') }, async (req, reply) => {
+  app.patch('/versions/:id', { preHandler: [requireRole('admin'), requireSuper] }, async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
     const body = z.object({ note: z.string().max(300).optional(), stages: z.array(stageInput).min(1), graph: z.record(z.unknown()).optional() }).safeParse(req.body)
     if (!body.success) return reply.code(400).send({ error: 'bad_request', detail: body.error.issues })
@@ -134,7 +140,7 @@ export async function workflowRoutes(app: FastifyInstance) {
   })
 
   // delete a DRAFT (never a published/archived version — those are the audit trail)
-  app.delete('/versions/:id', { preHandler: requireRole('admin') }, async (req, reply) => {
+  app.delete('/versions/:id', { preHandler: [requireRole('admin'), requireSuper] }, async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
     const actorId = (req.user as AccessPayload).sub
     const def = await activeDefinition()
@@ -154,7 +160,7 @@ export async function workflowRoutes(app: FastifyInstance) {
   // is archived. Publishing a DRAFT = release; publishing an ARCHIVED version =
   // rollback (docs/12 safety: one-tap rollback to any version). In-flight jobs keep
   // their snapshot regardless (proven by the R5 test).
-  app.post('/versions/:id/publish', { preHandler: requireRole('admin') }, async (req, reply) => {
+  app.post('/versions/:id/publish', { preHandler: [requireRole('admin'), requireSuper] }, async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
     const actorId = (req.user as AccessPayload).sub
     const def = await activeDefinition()
