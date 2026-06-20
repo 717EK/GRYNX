@@ -46,6 +46,18 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.11 — Safety & polish: QC escapes, hold escalation, pipeline lint
+- **QC Escapes** — a job that closed with an open QC issue (the soft-flag-and-ship
+  path) now surfaces as an *escape* on the QC Oversight board + a Briefing count.
+  The accountability backstop so defects can't quietly leave the building.
+- **Hard-hold escalation** — an admin-approved hold open >4h is flagged
+  **ESCALATED** (red) on QC Oversight, with its age, plus a "Stale holds (>4h)"
+  Briefing card. Holds can no longer silently freeze an order forever.
+- **Workflow Studio pipeline lint** — soft warnings when a draft can't work (no
+  FG/terminal stage, no Production, Design after Production, duplicate stages),
+  shown in the editor and repeated in the publish confirm. Warns, never blocks.
+- Backend additive: `GET /qc/escapes`; agenda gains `qcStaleHolds` + `qcEscapes`.
+
 ### v0.9.10 — Hardening: nav-leak fix + safer FG close + Studio guards
 - **Fix (reported by PPC): floor users could reach the admin home.** The
   notifications back button — and the QC/FG/Purchase dept-home back buttons — sent

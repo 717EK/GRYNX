@@ -30,7 +30,8 @@ export default function BriefingDesktop({ onOpenJob }: { onOpenJob?: (id: string
   const decisionCards: [string, number, string][] = d ? [
     ['PPC requests', d.ppcRequests, '◳'], ['Awaiting forward', d.awaitingForward, '▸'], ['Dispatch to approve', d.dispatchToApprove, '🚚'],
     ['Closures', d.closuresToApprove, '✓'], ['Open QC issues', d.openQcIssues, '⚠'],
-    ['QC holds to approve', d.qcHoldsToApprove, '⛔'], ['Maintenance', d.openTickets, '⚙'],
+    ['QC holds to approve', d.qcHoldsToApprove, '⛔'], ['Stale holds (>4h)', d.qcStaleHolds, '⏱'],
+    ['QC escapes', d.qcEscapes, '🚨'], ['Maintenance', d.openTickets, '⚙'],
   ] : []
 
   return (

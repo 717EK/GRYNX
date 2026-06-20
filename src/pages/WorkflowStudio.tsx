@@ -22,6 +22,21 @@ const REQUIRES_DEPT = new Set<StageType>(['design', 'production', 'qc', 'fg_stoc
 type EditStage = { key: string; stageType: StageType; departmentId: string | null; label: string }
 const newKey = () => Math.random().toString(36).slice(2)
 
+// soft pipeline-sanity checks (warn, never block — a factory's flow is its own).
+function lintStages(stages: { stageType: StageType }[]): string[] {
+  const w: string[] = []
+  const types = stages.map((s) => s.stageType)
+  if (!types.includes('production')) w.push('No Production stage — nothing gets made.')
+  if (!types.includes('fg_stock')) w.push('No FG Stock stage — jobs can never be closed.')
+  else if (types[types.length - 1] !== 'fg_stock') w.push('FG Stock is not the last stage — it normally ends the flow.')
+  const di = types.indexOf('design'), pi = types.indexOf('production')
+  if (di >= 0 && pi >= 0 && di > pi) w.push('Design comes after Production — usually design is first.')
+  const seen = new Set<string>(), dup = new Set<string>()
+  for (const t of types) { if (seen.has(t)) dup.add(t); seen.add(t) }
+  if (dup.size) w.push(`Duplicate stage type${dup.size > 1 ? 's' : ''}: ${[...dup].join(', ')}.`)
+  return w
+}
+
 export default function WorkflowStudio() {
   const [versions, setVersions] = useState<WorkflowVersionFull[] | null>(null)
   const [publishedId, setPublishedId] = useState<string | null>(null)
@@ -71,6 +86,7 @@ export default function WorkflowStudio() {
   // backend guard). A stage missing it is flagged inline and blocks save/publish.
   const stageNeedsDept = (s: EditStage) => REQUIRES_DEPT.has(s.stageType) && !s.departmentId
   const validEdit = !!edit && edit.length > 0 && edit.every((s) => s.label.trim() && !stageNeedsDept(s))
+  const warnings = edit ? lintStages(edit) : []
 
   async function run(fn: () => Promise<unknown>, after?: string) {
     setBusy(true); setErr(null); setMsg(null)
@@ -84,10 +100,12 @@ export default function WorkflowStudio() {
     const live = versions?.find((x) => x.id === publishedId)
     const liveSeq = live ? live.stages.map((s) => s.label).join('  →  ') : '(none yet)'
     const newSeq = (edit ?? selected.stages).map((s) => s.label).join('  →  ')
+    const warns = lintStages(edit ?? selected.stages.map((s) => ({ stageType: s.stageType as StageType })))
     const ok = window.confirm(
       `Publish v${selected.version} as the LIVE workflow?\n\n` +
       `Currently live${live ? ` (v${live.version})` : ''}:\n  ${liveSeq}\n\n` +
       `Publishing (v${selected.version}):\n  ${newSeq}\n\n` +
+      (warns.length ? `⚠ Warnings:\n${warns.map((w) => `  • ${w}`).join('\n')}\n\n` : '') +
       `Future jobs use the new flow. Jobs already on the floor keep their original route.`,
     )
     if (!ok) return
@@ -159,6 +177,11 @@ export default function WorkflowStudio() {
                   ))}
                   <button className="wstu__add" onClick={addStage}>＋ Add stage</button>
                 </div>
+                {warnings.length > 0 && (
+                  <div className="wstu__warns">
+                    {warnings.map((w) => <div key={w} className="wstu__warn">⚠ {w}</div>)}
+                  </div>
+                )}
                 <div className="wstu__actions">
                   <button className="ord__btn ord__btn--ghost" disabled={busy || !isDraft} onClick={() => del(selId!)}>Delete draft</button>
                   <div style={{ flex: 1 }} />

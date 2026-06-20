@@ -213,6 +213,12 @@ export async function qcRoutes(app: FastifyInstance) {
   // FG/dispatch. suggestion/note are advisory. Resolved by QC or the Production head.
 
   const obsJob = { id: true, jobNo: true, displayLabel: true, status: true, product: { select: { code: true, name: true } } }
+  const reportSelect = {
+    id: true, jobId: true, stationId: true, kind: true, severity: true, note: true, photoUrl: true,
+    holdRequested: true, holdApproved: true, holdApprovedAt: true, status: true, raisedById: true, raisedAt: true,
+    resolvedById: true, resolvedAt: true, resolutionNote: true,
+    job: { select: obsJob }, station: { select: { code: true, name: true } },
+  } as const
 
   async function withNames<T extends { raisedById: string; resolvedById: string | null }>(rows: T[]) {
     const ids = [...new Set(rows.flatMap((r) => [r.raisedById, r.resolvedById]).filter(Boolean) as string[])]
@@ -294,12 +300,19 @@ export async function qcRoutes(app: FastifyInstance) {
       where: { ...(q.scope === 'all' ? {} : q.stationId ? { stationId: q.stationId } : {}), ...(q.status ? { status: q.status } : {}) },
       orderBy: [{ status: 'asc' }, { raisedAt: 'desc' }],
       take: 200,
-      select: {
-        id: true, jobId: true, stationId: true, kind: true, severity: true, note: true, photoUrl: true,
-        holdRequested: true, holdApproved: true, status: true, raisedById: true, raisedAt: true,
-        resolvedById: true, resolvedAt: true, resolutionNote: true,
-        job: { select: obsJob }, station: { select: { code: true, name: true } },
-      },
+      select: reportSelect,
+    })
+    return { reports: await withNames(rows) }
+  })
+
+  // QC ESCAPES: open issues on jobs that already CLOSED — a defect that left the
+  // building without being resolved. The accountability backstop for the
+  // soft-flag-and-ship path (an issue doesn't block the close, so it can escape).
+  app.get('/escapes', { preHandler: requireRole('admin', 'qc') }, async () => {
+    const rows = await prisma.qcObservation.findMany({
+      where: { status: 'open', kind: 'issue', job: { status: 'closed' } },
+      orderBy: { raisedAt: 'desc' }, take: 100,
+      select: reportSelect,
     })
     return { reports: await withNames(rows) }
   })

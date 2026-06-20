@@ -112,3 +112,8 @@ button.brf__row { cursor: pointer; }
 .ppw__orow:hover { border-color: var(--teal); }
 .ppw__orow b { font-family: var(--disp); font-size: 14px; color: var(--ink); }
 .ppw__orow span { font-family: var(--mono); font-size: 11px; color: var(--ink3); }
+
+/* QC oversight: escapes + escalated holds */
+.qcw__c--escape { border: 1px solid var(--red); }
+.qcw__card--stale { border-left-color: var(--red); box-shadow: 0 0 0 1px var(--red) inset; }
+.qcw__esc { font-family: var(--mono); font-size: 10px; font-weight: 700; color: #fff; background: var(--red); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
