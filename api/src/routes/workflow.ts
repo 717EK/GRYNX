@@ -92,6 +92,52 @@ export async function workflowRoutes(app: FastifyInstance) {
     return reply.code(201).send({ version: created })
   })
 
+  // edit a DRAFT in place (replace its stage list). Published/archived are immutable —
+  // to change a live flow you publish a new version (jobs already on the floor keep
+  // their snapshot). Editing a draft repeatedly avoids version sprawl while designing.
+  app.patch('/versions/:id', { preHandler: requireRole('admin') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const body = z.object({ note: z.string().max(300).optional(), stages: z.array(stageInput).min(1) }).safeParse(req.body)
+    if (!body.success) return reply.code(400).send({ error: 'bad_request', detail: body.error.issues })
+    const actorId = (req.user as AccessPayload).sub
+    const def = await activeDefinition()
+    const ver = await prisma.workflowVersion.findFirst({ where: { id, definitionId: def.id }, select: { id: true, status: true } })
+    if (!ver) return reply.code(404).send({ error: 'not_found' })
+    if (ver.status !== 'draft') return reply.code(409).send({ error: 'not_draft', hint: 'only draft versions can be edited; publish a new version to change a live flow' })
+
+    const codes = body.data.stages.map((s) => s.departmentCode).filter((c): c is string => !!c)
+    const depts = codes.length ? await prisma.department.findMany({ where: { code: { in: codes } }, select: { id: true, code: true } }) : []
+    const deptIdOf = (s: z.infer<typeof stageInput>) => s.departmentId ?? (s.departmentCode ? depts.find((d) => d.code === s.departmentCode)?.id ?? null : null)
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.workflowStage.deleteMany({ where: { versionId: id } })
+      await tx.workflowVersion.update({
+        where: { id },
+        data: { note: body.data.note ?? null, stages: { create: body.data.stages.map((s, i) => ({ stageType: s.stageType, departmentId: deptIdOf(s), label: s.label, sequence: (i + 1) * 10, config: (s.config ?? {}) as object })) } },
+      })
+      return tx.workflowVersion.findUnique({ where: { id }, include: { stages: { orderBy: { sequence: 'asc' }, select: stageSelect } } })
+    })
+    await writeAudit('workflow_version', id, 'edit_draft', { actorId, after: { stages: body.data.stages.length } })
+    return { version: updated }
+  })
+
+  // delete a DRAFT (never a published/archived version — those are the audit trail)
+  app.delete('/versions/:id', { preHandler: requireRole('admin') }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
+    const actorId = (req.user as AccessPayload).sub
+    const def = await activeDefinition()
+    const ver = await prisma.workflowVersion.findFirst({ where: { id, definitionId: def.id }, select: { id: true, status: true, _count: { select: { jobs: true } } } })
+    if (!ver) return reply.code(404).send({ error: 'not_found' })
+    if (ver.status !== 'draft') return reply.code(409).send({ error: 'not_draft' })
+    if (ver._count.jobs > 0) return reply.code(409).send({ error: 'has_jobs', hint: 'a draft with jobs cannot be deleted' })
+    await prisma.$transaction(async (tx) => {
+      await tx.workflowStage.deleteMany({ where: { versionId: id } })
+      await tx.workflowVersion.delete({ where: { id } })
+    })
+    await writeAudit('workflow_version', id, 'delete_draft', { actorId })
+    return { ok: true }
+  })
+
   // publish a version → it becomes the active workflow; the previous published one
   // is archived. Publishing a DRAFT = release; publishing an ARCHIVED version =
   // rollback (docs/12 safety: one-tap rollback to any version). In-flight jobs keep

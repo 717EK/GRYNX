@@ -46,6 +46,21 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.9 — Workflow Studio: edit the pipeline on the fly (editor ring 1)
+- The read-only **Workflow Map** (⛓) becomes the **Workflow Studio** — a no-code
+  canvas to edit the company pipeline as **versioned data**.
+- **Build a draft**: add / remove / reorder stages, set each stage's type
+  (design, production, qc, fg, dispatch…) + department + label, all inline.
+- **Publish** makes the draft the live workflow and **archives** the previous
+  version. **Roll back** to any earlier version in one click. Jobs snapshot the
+  published version at creation, so editing never re-routes jobs already on the
+  floor (R5).
+- Drafts are editable in place (no version sprawl) and deletable; published /
+  archived versions are immutable (the audit trail) and clone to a new draft.
+- Backend additive: `PATCH /workflow/versions/:id` (edit draft) +
+  `DELETE /workflow/versions/:id` (delete draft); create/publish already existed.
+- First slice of the Modular Studio (docs/11); node-graph + widget binding next.
+
 ### v0.9.8 — QC as a parallel department + PPC Hub on desktop (docs/12)
 - **QC is no longer a gate.** It's an independent department that stands at every
   station and raises a report against **any active job at any time** — issue,

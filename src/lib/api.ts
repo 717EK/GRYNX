@@ -661,6 +661,28 @@ export interface WorkflowView {
 }
 export const getWorkflow = () => req<WorkflowView>('GET', '/api/v1/workflow')
 
+// ── Workflow Studio (editor rings / modular studio) ─────────────────────────
+export type StageType = 'sales' | 'ppc_requirements' | 'fg_check' | 'design' | 'ppc_final' | 'production' | 'qc' | 'fg_stock' | 'dispatch' | 'maintenance'
+export interface WorkflowVersionFull {
+  id: string
+  version: number
+  status: 'draft' | 'published' | 'archived'
+  note: string | null
+  publishedAt: string | null
+  stages: WorkflowStage[]
+}
+export interface StageDraft { stageType: StageType; departmentId?: string | null; label: string; config?: Record<string, unknown> }
+export const getWorkflowVersions = () =>
+  req<{ definitionId: string; publishedVersionId: string | null; versions: WorkflowVersionFull[] }>('GET', '/api/v1/workflow/versions')
+export const createWorkflowDraft = (stages: StageDraft[], note?: string) =>
+  req<{ version: WorkflowVersionFull }>('POST', '/api/v1/workflow/versions', { stages, note })
+export const updateWorkflowDraft = (id: string, stages: StageDraft[], note?: string) =>
+  req<{ version: WorkflowVersionFull }>('PATCH', `/api/v1/workflow/versions/${id}`, { stages, note })
+export const deleteWorkflowDraft = (id: string) =>
+  req<{ ok: boolean }>('DELETE', `/api/v1/workflow/versions/${id}`)
+export const publishWorkflowVersion = (id: string) =>
+  req<{ ok: boolean; publishedVersionId: string; rolledBack: boolean }>('POST', `/api/v1/workflow/versions/${id}/publish`)
+
 // ── dwell analytics (admin, last 30d, from the StationVisit trail) ────────────
 export interface DwellAnalytics {
   since: string
