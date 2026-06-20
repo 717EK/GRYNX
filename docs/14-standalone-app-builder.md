@@ -1,11 +1,24 @@
 # 14 · Standalone App Builder — feasibility, architecture, build process & PoC
 
-**Status: DISCUSSION (no code).** This supersedes the direction in
+**Status: ALIGNED — PoC plan ready, awaiting GO to build.** Supersedes
 [docs/13](13-app-studio-vision.md): the builder becomes a **standalone, general-
 purpose app** (UI-first → backend → working app), not a GRYNX feature. GRYNX becomes
 *one app built in it* later. docs/13's shipped Data pillar inside GRYNX (v0.12.0) is
-kept as a **proof that the kernel works** (versioned definition → runtime) — we carry
-its ideas over.
+kept as a **proof the kernel works** (versioned definition → runtime).
+
+## 0. Decisions (LOCKED · 2026-06-20)
+
+| # | Decision | Choice |
+|---|---|---|
+| 1 | Runtime | **Interpreted Player** — app-definition JSON, one fixed core renders/runs every built app (Bubble model) |
+| 2 | Target | **Web apps first** (responsive / installable PWA); mobile later |
+| 3 | "Static" meant | **The BUILDER is a fixed/static CORE** that produces many apps — *not* static built-apps, *not* desktop |
+| 4 | IoT line | **Control app only** — talks to devices via MQTT/HTTP/WS/BLE; **device firmware stays hand-coded** |
+| 5 | Backend | **Built-in storage** (reuse the kernel we already built) |
+| 6 | GRYNX | Stays as-is; becomes *an app built in the builder* later (not migrated now) |
+
+> "Builder is a fixed core" + "interpreted Player" line up exactly: **one stable engine,
+> infinitely many built apps.** That's the whole architecture in one sentence.
 
 ---
 
@@ -139,6 +152,40 @@ standalone builder — small, but exercises every layer:
    message** — proving the control-app path to hardware without any firmware on our side.
 
 If that PoC works, the architecture is sound and every later phase is "more nodes."
+
+### 6.1 Concrete PoC build plan (what I'd actually do on GO)
+
+**Where it lives:** a **new standalone web app** at `builder/` (its own Vite + React
+project, separate from GRYNX's `src/`). It has two routes:
+- `/build` — the **Builder** (page canvas + component palette + entity + wiring).
+- `/play/:appKey` — the **Player** (renders a published app-definition as a real app).
+
+**Backend for the PoC:** **reuse the kernel we already shipped** — the
+`App / AppVersion / AppRecord` tables + `/api/v1/apps` data engine (docs/13 P1) already
+store a versioned definition + records. We only **extend the definition JSON with a
+`pages[]` shape** (the schema already has the field) and add a tiny public read for the
+Player. *No new backend tables.* (Later, when we fully separate, the kernel extracts
+into the builder's own service — but for the PoC, reuse = fastest proof.)
+
+**The vertical slice (one week-ish of focused work):**
+1. `builder/` scaffold + the App-Definition TS types (`pages`, `components`, `entity`,
+   `bindings`, `actions`).
+2. Builder UI: a page list (Login, Home), a canvas, a small palette (text, input,
+   button, table), a property panel. Drop components, set props, save the definition.
+3. One entity (`note { text }`) via the existing data engine; bind the table to it.
+4. Wire the button: `onClick → createRecord(note, input) → refresh table`.
+5. The Player at `/play/:appKey`: fetch the published definition + render pages +
+   run bindings/actions live. Login → Home → add note → it lists & persists.
+6. Stretch: a "Send" button → `action: http/mqtt publish` → proves the IoT control path.
+
+**Definition of done for the PoC:** in a standalone app, a non-coder builds a 2-page
+app with a working data form and opens it live at its own URL — proving UI + data +
+logic + runtime end-to-end. Then we decide whether to invest in the full platform.
+
+### 6.2 What the PoC deliberately skips
+No drag-resize polish, no auth-per-built-app, no theming UI, no logic node-graph yet
+(buttons get a simple action dropdown), no mobile, no real device (HTTP/MQTT stub).
+Those are phases P1–P5 once the PoC proves the spine.
 
 ---
 
