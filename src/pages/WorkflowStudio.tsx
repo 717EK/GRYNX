@@ -1,34 +1,39 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  ReactFlow, Background, Controls, MiniMap, Handle, Position,
+  applyNodeChanges, applyEdgeChanges, addEdge,
+  type Node, type Edge, type Connection, type NodeChange, type EdgeChange, type NodeProps,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
 import {
   getWorkflowVersions, getDepartments, createWorkflowDraft, updateWorkflowDraft, deleteWorkflowDraft, publishWorkflowVersion,
-  type WorkflowVersionFull, type StageType, type StageDraft,
+  type WorkflowVersionFull, type StageType, type StageDraft, type WorkflowGraph,
 } from '../lib/api'
 import './OrdersDesktop.css'
 import './WorkflowStudio.css'
 
-// Workflow Studio (editor ring 1 / modular studio). A no-code canvas to edit the
-// company pipeline as VERSIONED data: build a draft, publish it (the old version is
-// archived), roll back to any version. Jobs snapshot the published version when
-// created, so editing never re-routes jobs already on the floor (R5).
+// Workflow Studio — visual node-graph canvas (editor ring 2, docs/11). Stages are
+// nodes; edges are drawn connections (branches / parallel paths / loops). Routing
+// still uses the linear `stages` projection (left→right by x), so editing the graph
+// never re-routes jobs already on the floor (R5). Visual-branching-first.
 const STAGE_TYPES: { value: StageType; label: string }[] = [
   { value: 'sales', label: 'Sales' }, { value: 'ppc_requirements', label: 'PPC requirements' }, { value: 'fg_check', label: 'FG check' },
   { value: 'design', label: 'Design' }, { value: 'ppc_final', label: 'PPC final' }, { value: 'production', label: 'Production' },
   { value: 'qc', label: 'QC' }, { value: 'fg_stock', label: 'FG Stock' }, { value: 'dispatch', label: 'Dispatch' }, { value: 'maintenance', label: 'Maintenance' },
 ]
 const DEFAULT_DEPT_CODE: Partial<Record<StageType, string>> = { design: 'DESIGN', production: 'PRODUCTION', qc: 'QC', fg_stock: 'FG_STOCK', ppc_requirements: 'PPC', ppc_final: 'PPC', sales: 'SALES', fg_check: 'FG_STOCK', maintenance: 'MAINTENANCE' }
-// stage types that become job steps and need an owning department (mirrors backend)
 const REQUIRES_DEPT = new Set<StageType>(['design', 'production', 'qc', 'fg_stock'])
-
-type EditStage = { key: string; stageType: StageType; departmentId: string | null; label: string }
 const newKey = () => Math.random().toString(36).slice(2)
+const typeLabel = (t: StageType) => STAGE_TYPES.find((x) => x.value === t)?.label ?? t
 
-// soft pipeline-sanity checks (warn, never block — a factory's flow is its own).
-function lintStages(stages: { stageType: StageType }[]): string[] {
+type StageData = { label: string; stageType: StageType; departmentId: string | null; deptName: string | null }
+type SNode = Node<StageData>
+
+function lintStages(types: StageType[]): string[] {
   const w: string[] = []
-  const types = stages.map((s) => s.stageType)
   if (!types.includes('production')) w.push('No Production stage — nothing gets made.')
   if (!types.includes('fg_stock')) w.push('No FG Stock stage — jobs can never be closed.')
-  else if (types[types.length - 1] !== 'fg_stock') w.push('FG Stock is not the last stage — it normally ends the flow.')
+  else if (types[types.length - 1] !== 'fg_stock') w.push('FG Stock is not the last (right-most) stage — it normally ends the flow.')
   const di = types.indexOf('design'), pi = types.indexOf('production')
   if (di >= 0 && pi >= 0 && di > pi) w.push('Design comes after Production — usually design is first.')
   const seen = new Set<string>(), dup = new Set<string>()
@@ -37,56 +42,121 @@ function lintStages(stages: { stageType: StageType }[]): string[] {
   return w
 }
 
+// custom node: shows the stage label + type + department, coloured by type
+function StageNode({ data, selected }: NodeProps<SNode>) {
+  return (
+    <div className={`wsn wfm__node--${data.stageType} ${selected ? 'wsn--sel' : ''} ${REQUIRES_DEPT.has(data.stageType) && !data.departmentId ? 'wsn--bad' : ''}`}>
+      <Handle type="target" position={Position.Left} />
+      <div className="wsn__label">{data.label || '(unnamed)'}</div>
+      <div className="wsn__sub">{typeLabel(data.stageType)}{data.deptName ? ` · ${data.deptName}` : REQUIRES_DEPT.has(data.stageType) ? ' · ⚠ no dept' : ''}</div>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  )
+}
+const nodeTypes = { stage: StageNode }
+
 export default function WorkflowStudio() {
   const [versions, setVersions] = useState<WorkflowVersionFull[] | null>(null)
   const [publishedId, setPublishedId] = useState<string | null>(null)
   const [depts, setDepts] = useState<{ id: string; code: string; name: string }[]>([])
   const [selId, setSelId] = useState<string | null>(null)
-  const [edit, setEdit] = useState<EditStage[] | null>(null) // working copy when a DRAFT is selected
+  const [nodes, setNodes] = useState<SNode[]>([])
+  const [edges, setEdges] = useState<Edge[]>([])
+  const [selNode, setSelNode] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
+  const deptName = useCallback((id: string | null) => (id ? depts.find((d) => d.id === id)?.name ?? null : null), [depts])
   const deptByCode = (code?: string) => (code ? depts.find((d) => d.code === code)?.id ?? null : null)
 
-  function selectVersion(v: WorkflowVersionFull) {
-    setSelId(v.id); setErr(null); setMsg(null); setDirty(false)
-    setEdit(v.status === 'draft' ? v.stages.map((s) => ({ key: newKey(), stageType: s.stageType as StageType, departmentId: s.departmentId, label: s.label })) : null)
-  }
+  const buildCanvas = useCallback((v: WorkflowVersionFull): { nodes: SNode[]; edges: Edge[] } => {
+    const g = v.graph
+    const mk = (id: string, x: number, y: number, st: StageType, dep: string | null, label: string): SNode =>
+      ({ id, type: 'stage', position: { x, y }, data: { label, stageType: st, departmentId: dep, deptName: depts.find((d) => d.id === dep)?.name ?? null } })
+    if (g?.nodes?.length) {
+      return {
+        nodes: g.nodes.map((n) => mk(n.id, n.x, n.y, n.stageType, n.departmentId, n.label)),
+        edges: (g.edges ?? []).map((e) => ({ id: e.id, source: e.source, target: e.target })),
+      }
+    }
+    // legacy version with no graph yet → auto-layout the linear stages
+    const ns = v.stages.map((s, i) => mk(s.id || newKey(), i * 240, 90, s.stageType as StageType, s.departmentId, s.label))
+    const es = ns.slice(1).map((n, i) => ({ id: `e-${ns[i].id}-${n.id}`, source: ns[i].id, target: n.id }))
+    return { nodes: ns, edges: es }
+  }, [depts])
+
+  const selectVersion = useCallback((v: WorkflowVersionFull) => {
+    setSelId(v.id); setErr(null); setMsg(null); setDirty(false); setSelNode(null)
+    const c = buildCanvas(v); setNodes(c.nodes); setEdges(c.edges)
+  }, [buildCanvas])
 
   async function load(selectId?: string) {
     const [v, d] = await Promise.all([getWorkflowVersions(), getDepartments()])
     setVersions(v.versions); setPublishedId(v.publishedVersionId); setDepts(d.departments)
-    const pick = v.versions.find((x) => x.id === (selectId ?? selId)) ?? v.versions.find((x) => x.id === v.publishedVersionId) ?? v.versions[0] ?? null
-    if (pick) {
-      setSelId(pick.id); setDirty(false)
-      setEdit(pick.status === 'draft' ? pick.stages.map((s) => ({ key: newKey(), stageType: s.stageType as StageType, departmentId: s.departmentId, label: s.label })) : null)
-    }
+    const pick = v.versions.find((x) => x.id === selectId) ?? v.versions.find((x) => x.id === v.publishedVersionId) ?? v.versions[0] ?? null
+    if (pick) { setSelId(pick.id); setDirty(false); setSelNode(null) } // canvas built by the effect below once depts are in state
+    return pick?.id ?? null
   }
   useEffect(() => { load().catch(() => setVersions([])) /* eslint-disable-next-line */ }, [])
+  // rebuild the canvas whenever the selected version or departments change
+  useEffect(() => {
+    const v = versions?.find((x) => x.id === selId)
+    if (v && !dirty) { const c = buildCanvas(v); setNodes(c.nodes); setEdges(c.edges) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selId, depts, versions])
 
   const selected = versions?.find((x) => x.id === selId) ?? null
   const isDraft = selected?.status === 'draft'
 
-  // editor ops (draft only)
-  const patch = (mut: (s: EditStage[]) => EditStage[]) => { setEdit((cur) => (cur ? mut([...cur]) : cur)); setDirty(true); setMsg(null) }
-  const setStage = (i: number, f: Partial<EditStage>) => patch((s) => { s[i] = { ...s[i], ...f }; return s })
-  const onTypeChange = (i: number, t: StageType) => patch((s) => {
-    const def = deptByCode(DEFAULT_DEPT_CODE[t])
-    s[i] = { ...s[i], stageType: t, departmentId: def, label: s[i].label || STAGE_TYPES.find((x) => x.value === t)!.label }
-    return s
-  })
-  const addStage = () => patch((s) => [...s, { key: newKey(), stageType: 'production', departmentId: deptByCode('PRODUCTION'), label: 'Production' }])
-  const removeStage = (i: number) => patch((s) => s.filter((_, j) => j !== i))
-  const move = (i: number, dir: -1 | 1) => patch((s) => { const j = i + dir; if (j < 0 || j >= s.length) return s; [s[i], s[j]] = [s[j], s[i]]; return s })
+  // ── canvas interaction (draft only) ───────────────────────────────────────
+  const onNodesChange = useCallback((ch: NodeChange<SNode>[]) => {
+    setNodes((nds) => applyNodeChanges(ch, nds))
+    if (isDraft && ch.some((c) => c.type === 'remove' || c.type === 'position')) setDirty(true)
+  }, [isDraft])
+  const onEdgesChange = useCallback((ch: EdgeChange[]) => {
+    setEdges((eds) => applyEdgeChanges(ch, eds))
+    if (isDraft && ch.some((c) => c.type === 'remove')) setDirty(true)
+  }, [isDraft])
+  const onConnect = useCallback((c: Connection) => { setEdges((eds) => addEdge(c, eds)); setDirty(true) }, [])
 
-  const toDraft = (s: EditStage[]): StageDraft[] => s.map((x) => ({ stageType: x.stageType, departmentId: x.departmentId, label: x.label.trim() }))
-  // dept-backed stages become job steps and need an owning department (matches the
-  // backend guard). A stage missing it is flagged inline and blocks save/publish.
-  const stageNeedsDept = (s: EditStage) => REQUIRES_DEPT.has(s.stageType) && !s.departmentId
-  const validEdit = !!edit && edit.length > 0 && edit.every((s) => s.label.trim() && !stageNeedsDept(s))
-  const warnings = edit ? lintStages(edit) : []
+  const patchNode = (id: string, data: Partial<StageData>) => {
+    setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)))
+    setDirty(true); setMsg(null)
+  }
+  const onNodeType = (id: string, t: StageType) => {
+    const dep = deptByCode(DEFAULT_DEPT_CODE[t])
+    const n = nodes.find((x) => x.id === id)
+    patchNode(id, { stageType: t, departmentId: dep, deptName: deptName(dep), label: n?.data.label || typeLabel(t) })
+  }
+  const addStage = () => {
+    const id = newKey()
+    const x = nodes.length ? Math.max(...nodes.map((n) => n.position.x)) + 240 : 40
+    setNodes((nds) => [...nds, { id, type: 'stage', position: { x, y: 90 }, data: { label: 'Production', stageType: 'production', departmentId: deptByCode('PRODUCTION'), deptName: deptName(deptByCode('PRODUCTION')) } }])
+    setSelNode(id); setDirty(true)
+  }
+  const removeNode = (id: string) => {
+    setNodes((nds) => nds.filter((n) => n.id !== id)); setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id))
+    setSelNode(null); setDirty(true)
+  }
+
+  // ── derive routing stages (left→right) + graph for save ───────────────────
+  const orderedTypes = [...nodes].sort((a, b) => a.position.x - b.position.x).map((n) => n.data.stageType)
+  const warnings = isDraft ? lintStages(orderedTypes) : []
+  const badDept = nodes.some((n) => REQUIRES_DEPT.has(n.data.stageType) && !n.data.departmentId)
+  const validEdit = nodes.length > 0 && nodes.every((n) => n.data.label.trim()) && !badDept
+
+  const toStagesGraph = (): { stages: StageDraft[]; graph: WorkflowGraph } => {
+    const ordered = [...nodes].sort((a, b) => a.position.x - b.position.x)
+    return {
+      stages: ordered.map((n) => ({ stageType: n.data.stageType, departmentId: n.data.departmentId, label: n.data.label.trim() })),
+      graph: {
+        nodes: nodes.map((n) => ({ id: n.id, x: Math.round(n.position.x), y: Math.round(n.position.y), stageType: n.data.stageType, departmentId: n.data.departmentId, label: n.data.label })),
+        edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target })),
+      },
+    }
+  }
 
   async function run(fn: () => Promise<unknown>, after?: string) {
     setBusy(true); setErr(null); setMsg(null)
@@ -94,40 +164,48 @@ export default function WorkflowStudio() {
     catch (e) { setErr(e instanceof Error ? e.message : 'failed') }
     finally { setBusy(false) }
   }
-  const saveDraft = () => selId && edit && validEdit && run(async () => { await updateWorkflowDraft(selId, toDraft(edit)); await load(selId) }, 'Draft saved')
+  const saveDraft = () => { if (!selId || !validEdit) return; const { stages, graph } = toStagesGraph(); run(async () => { await updateWorkflowDraft(selId, stages, undefined, graph); await load(selId) }, 'Draft saved') }
   function publish() {
     if (!selId || !selected) return
     const live = versions?.find((x) => x.id === publishedId)
     const liveSeq = live ? live.stages.map((s) => s.label).join('  →  ') : '(none yet)'
-    const newSeq = (edit ?? selected.stages).map((s) => s.label).join('  →  ')
-    const warns = lintStages(edit ?? selected.stages.map((s) => ({ stageType: s.stageType as StageType })))
+    const newSeq = orderedTypes.length ? [...nodes].sort((a, b) => a.position.x - b.position.x).map((n) => n.data.label).join('  →  ') : selected.stages.map((s) => s.label).join('  →  ')
     const ok = window.confirm(
       `Publish v${selected.version} as the LIVE workflow?\n\n` +
       `Currently live${live ? ` (v${live.version})` : ''}:\n  ${liveSeq}\n\n` +
-      `Publishing (v${selected.version}):\n  ${newSeq}\n\n` +
-      (warns.length ? `⚠ Warnings:\n${warns.map((w) => `  • ${w}`).join('\n')}\n\n` : '') +
+      `Publishing (v${selected.version}, routing order):\n  ${newSeq}\n\n` +
+      (warnings.length ? `⚠ Warnings:\n${warnings.map((w) => `  • ${w}`).join('\n')}\n\n` : '') +
       `Future jobs use the new flow. Jobs already on the floor keep their original route.`,
     )
     if (!ok) return
-    run(async () => { if (isDraft && dirty && edit) await updateWorkflowDraft(selId, toDraft(edit)); await publishWorkflowVersion(selId); await load(selId) }, 'Published — now the live workflow')
+    run(async () => { if (isDraft && dirty) { const { stages, graph } = toStagesGraph(); await updateWorkflowDraft(selId, stages, undefined, graph) } await publishWorkflowVersion(selId); await load(selId) }, 'Published — now the live workflow')
   }
   const rollback = (id: string) => run(async () => { await publishWorkflowVersion(id); await load(id) }, 'Rolled back')
   const del = (id: string) => run(async () => { await deleteWorkflowDraft(id); await load() }, 'Draft deleted')
   const newDraft = () => run(async () => {
-    const base = (versions?.find((x) => x.id === publishedId) ?? selected)?.stages ?? []
-    const r = await createWorkflowDraft(base.length ? base.map((s) => ({ stageType: s.stageType as StageType, departmentId: s.departmentId, label: s.label })) : [{ stageType: 'design', departmentId: deptByCode('DESIGN'), label: 'Design' }], 'New draft')
+    const base = versions?.find((x) => x.id === publishedId) ?? selected
+    const c = base ? buildCanvas(base) : { nodes: [] as SNode[], edges: [] as Edge[] }
+    const stages: StageDraft[] = (c.nodes.length ? [...c.nodes].sort((a, b) => a.position.x - b.position.x) : []).map((n) => ({ stageType: n.data.stageType, departmentId: n.data.departmentId, label: n.data.label }))
+    const graph: WorkflowGraph = { nodes: c.nodes.map((n) => ({ id: n.id, x: Math.round(n.position.x), y: Math.round(n.position.y), stageType: n.data.stageType, departmentId: n.data.departmentId, label: n.data.label })), edges: c.edges.map((e) => ({ id: e.id, source: e.source, target: e.target })) }
+    const r = await createWorkflowDraft(stages.length ? stages : [{ stageType: 'design', departmentId: deptByCode('DESIGN'), label: 'Design' }], 'New draft', graph.nodes?.length ? graph : undefined)
     await load(r.version.id)
   }, 'New draft created')
   const cloneToDraft = () => selected && run(async () => {
-    const r = await createWorkflowDraft(selected.stages.map((s) => ({ stageType: s.stageType as StageType, departmentId: s.departmentId, label: s.label })), `Clone of v${selected.version}`)
+    const c = buildCanvas(selected)
+    const stages: StageDraft[] = [...c.nodes].sort((a, b) => a.position.x - b.position.x).map((n) => ({ stageType: n.data.stageType, departmentId: n.data.departmentId, label: n.data.label }))
+    const graph: WorkflowGraph = { nodes: c.nodes.map((n) => ({ id: n.id, x: Math.round(n.position.x), y: Math.round(n.position.y), stageType: n.data.stageType, departmentId: n.data.departmentId, label: n.data.label })), edges: c.edges.map((e) => ({ id: e.id, source: e.source, target: e.target })) }
+    const r = await createWorkflowDraft(stages, `Clone of v${selected.version}`, graph)
     await load(r.version.id)
   }, 'Cloned to a new draft')
+
+  const sel = nodes.find((n) => n.id === selNode) ?? null
+  const liveV = versions?.find((x) => x.id === publishedId)
 
   return (
     <section className="dw__view">
       <div className="dw__toolbar">
         <h1 className="dw__h1">Workflow Studio</h1>
-        <span className="dw__sub">{selected ? `editing v${selected.version} · ${selected.status}${publishedId ? ` · live = v${versions?.find((x) => x.id === publishedId)?.version}` : ''}` : 'loading…'}</span>
+        <span className="dw__sub">{selected ? `editing v${selected.version} · ${selected.status}${liveV ? ` · live = v${liveV.version}` : ''}` : 'loading…'}</span>
         <button className="ord__btn ord__btn--ghost" style={{ marginLeft: 'auto' }} disabled={busy} onClick={newDraft}>＋ New draft</button>
       </div>
       {(msg || err) && <p className="wstu__flash" style={{ color: err ? 'var(--red)' : 'var(--lime-ink)' }}>{err || msg}</p>}
@@ -146,73 +224,67 @@ export default function WorkflowStudio() {
             ))}
           </aside>
 
-          {/* editor / viewer */}
+          {/* canvas */}
           <div className="wstu__canvas">
-            {!selected ? <div className="dw__empty">Pick a version.</div> : isDraft ? (
-              <>
-                <div className="wstu__flow">
-                  {edit!.map((s, i) => (
-                    <div key={s.key} className="wstu__stagewrap">
-                      <div className={`wstu__stage wfm__node--${s.stageType}`}>
-                        <div className="wstu__stage-top">
-                          <span className="wstu__seq">{i + 1}</span>
-                          <div className="wstu__reorder">
-                            <button disabled={i === 0} onClick={() => move(i, -1)} title="Move up">↑</button>
-                            <button disabled={i === edit!.length - 1} onClick={() => move(i, 1)} title="Move down">↓</button>
-                            <button className="wstu__del" onClick={() => removeStage(i)} title="Remove stage">×</button>
-                          </div>
-                        </div>
-                        <input className="wstu__label" value={s.label} placeholder="Stage label" onChange={(e) => setStage(i, { label: e.target.value })} />
-                        <select className="wstu__sel" value={s.stageType} onChange={(e) => onTypeChange(i, e.target.value as StageType)}>
+            <div className="wstu__rf">
+              <ReactFlow
+                nodes={nodes} edges={edges} nodeTypes={nodeTypes}
+                onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={isDraft ? onConnect : undefined}
+                onNodeClick={(_, n) => setSelNode(n.id)} onPaneClick={() => setSelNode(null)}
+                nodesDraggable={isDraft} nodesConnectable={isDraft} elementsSelectable deleteKeyCode={isDraft ? ['Delete'] : null}
+                fitView proOptions={{ hideAttribution: true }}
+              >
+                <Background gap={18} color="#d8cfc0" />
+                <Controls showInteractive={false} />
+                <MiniMap pannable zoomable nodeStrokeWidth={3} />
+              </ReactFlow>
+
+              {/* floating toolbar + selected-node editor (draft only) */}
+              {isDraft && (
+                <>
+                  <button className="wstu__add wstu__add--float" onClick={addStage}>＋ Add stage</button>
+                  {sel && (
+                    <div className="wstu__inspector">
+                      <div className="wstu__insp-head"><b>Edit stage</b><button className="wstu__insp-x" onClick={() => setSelNode(null)}>×</button></div>
+                      <label className="wstu__f"><span>Label</span><input value={sel.data.label} onChange={(e) => patchNode(sel.id, { label: e.target.value })} /></label>
+                      <label className="wstu__f"><span>Type</span>
+                        <select value={sel.data.stageType} onChange={(e) => onNodeType(sel.id, e.target.value as StageType)}>
                           {STAGE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                         </select>
-                        <select className={`wstu__sel ${stageNeedsDept(s) ? 'wstu__sel--bad' : ''}`} value={s.departmentId ?? ''} onChange={(e) => setStage(i, { departmentId: e.target.value || null })}>
-                          <option value="">— no department —</option>
+                      </label>
+                      <label className="wstu__f"><span>Department{REQUIRES_DEPT.has(sel.data.stageType) ? ' *' : ''}</span>
+                        <select className={REQUIRES_DEPT.has(sel.data.stageType) && !sel.data.departmentId ? 'wstu__sel--bad' : ''} value={sel.data.departmentId ?? ''} onChange={(e) => patchNode(sel.id, { departmentId: e.target.value || null, deptName: deptName(e.target.value || null) })}>
+                          <option value="">— none —</option>
                           {depts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
-                        {stageNeedsDept(s) ? <span className="wstu__hint wstu__hint--bad">⚠ needs a department</span> : s.stageType === 'production' && <span className="wstu__hint">free-scan stations</span>}
-                      </div>
-                      {i < edit!.length - 1 && <span className="wstu__arrow">→</span>}
+                      </label>
+                      <button className="ord__btn ord__btn--danger" style={{ width: '100%' }} onClick={() => removeNode(sel.id)}>Remove stage</button>
                     </div>
-                  ))}
-                  <button className="wstu__add" onClick={addStage}>＋ Add stage</button>
-                </div>
-                {warnings.length > 0 && (
-                  <div className="wstu__warns">
-                    {warnings.map((w) => <div key={w} className="wstu__warn">⚠ {w}</div>)}
-                  </div>
-                )}
-                <div className="wstu__actions">
-                  <button className="ord__btn ord__btn--ghost" disabled={busy || !isDraft} onClick={() => del(selId!)}>Delete draft</button>
+                  )}
+                </>
+              )}
+            </div>
+
+            {warnings.length > 0 && <div className="wstu__warns">{warnings.map((w) => <div key={w} className="wstu__warn">⚠ {w}</div>)}</div>}
+
+            <div className="wstu__actions">
+              {isDraft ? (
+                <>
+                  <button className="ord__btn ord__btn--ghost" disabled={busy} onClick={() => del(selId!)}>Delete draft</button>
+                  <span className="wstu__hint">Drag to arrange · drag node edges to connect · routing follows left→right order</span>
                   <div style={{ flex: 1 }} />
                   <button className="ord__btn" disabled={busy || !dirty || !validEdit} onClick={saveDraft}>{dirty ? 'Save draft' : 'Saved'}</button>
                   <button className="ord__btn ord__btn--solid" disabled={busy || !validEdit} onClick={publish}>▲ Publish → live</button>
-                </div>
-                <p className="dwa__legend dw__lbl">Editing a draft is safe — nothing changes on the floor until you publish. Publishing archives the current live version; jobs already created keep their original route.</p>
-              </>
-            ) : (
-              <>
-                <div className="wstu__flow">
-                  {selected.stages.map((s, i) => (
-                    <div key={s.id} className="wstu__stagewrap">
-                      <div className={`wstu__stage wstu__stage--ro wfm__node--${s.stageType}`}>
-                        <span className="wstu__seq">{i + 1}</span>
-                        <span className="wstu__rolabel">{s.label}</span>
-                        <span className="wstu__rotype">{s.stageType.replace(/_/g, ' ')}</span>
-                        {s.department && <span className="wstu__hint">⛭ {s.department.name}</span>}
-                      </div>
-                      {i < selected.stages.length - 1 && <span className="wstu__arrow">→</span>}
-                    </div>
-                  ))}
-                </div>
-                <div className="wstu__actions">
-                  {selected.id !== publishedId && <button className="ord__btn ord__btn--solid" disabled={busy} onClick={() => rollback(selected.id)}>↺ Roll back to v{selected.version}</button>}
+                </>
+              ) : (
+                <>
+                  {selected && selected.id !== publishedId && <button className="ord__btn ord__btn--solid" disabled={busy} onClick={() => rollback(selected.id)}>↺ Roll back to v{selected.version}</button>}
+                  <span className="wstu__hint">{selected?.id === publishedId ? 'Live workflow (read-only). Clone to a draft to edit.' : 'Archived version. Roll back or clone to edit.'}</span>
                   <div style={{ flex: 1 }} />
                   <button className="ord__btn" disabled={busy} onClick={cloneToDraft}>Clone to editable draft</button>
-                </div>
-                <p className="dwa__legend dw__lbl">{selected.id === publishedId ? 'This is the LIVE workflow. Clone it to a draft to make changes, then publish.' : 'An archived version. Roll back to make it live again, or clone it to edit.'}</p>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

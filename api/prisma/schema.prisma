@@ -917,6 +917,7 @@ model WorkflowVersion {
   version      Int
   status       WorkflowStatus      @default(draft)
   note         String?
+  graph        Json                @default("{}") // visual node-graph (React Flow): node positions + edges. Routing still uses the linear `stages` projection (visual-branching-first, docs/11).
   createdById  String
   createdAt    DateTime            @default(now())
   publishedAt  DateTime?

@@ -663,6 +663,11 @@ export const getWorkflow = () => req<WorkflowView>('GET', '/api/v1/workflow')
 
 // ── Workflow Studio (editor rings / modular studio) ─────────────────────────
 export type StageType = 'sales' | 'ppc_requirements' | 'fg_check' | 'design' | 'ppc_final' | 'production' | 'qc' | 'fg_stock' | 'dispatch' | 'maintenance'
+// visual node-graph (React Flow). Routing still uses the linear `stages` projection;
+// the graph carries node data + positions + edges (branches/parallel/loops).
+export interface GraphNode { id: string; x: number; y: number; stageType: StageType; departmentId: string | null; label: string }
+export interface GraphEdge { id: string; source: string; target: string }
+export interface WorkflowGraph { nodes?: GraphNode[]; edges?: GraphEdge[] }
 export interface WorkflowVersionFull {
   id: string
   version: number
@@ -670,14 +675,15 @@ export interface WorkflowVersionFull {
   note: string | null
   publishedAt: string | null
   stages: WorkflowStage[]
+  graph?: WorkflowGraph
 }
 export interface StageDraft { stageType: StageType; departmentId?: string | null; label: string; config?: Record<string, unknown> }
 export const getWorkflowVersions = () =>
   req<{ definitionId: string; publishedVersionId: string | null; versions: WorkflowVersionFull[] }>('GET', '/api/v1/workflow/versions')
-export const createWorkflowDraft = (stages: StageDraft[], note?: string) =>
-  req<{ version: WorkflowVersionFull }>('POST', '/api/v1/workflow/versions', { stages, note })
-export const updateWorkflowDraft = (id: string, stages: StageDraft[], note?: string) =>
-  req<{ version: WorkflowVersionFull }>('PATCH', `/api/v1/workflow/versions/${id}`, { stages, note })
+export const createWorkflowDraft = (stages: StageDraft[], note?: string, graph?: WorkflowGraph) =>
+  req<{ version: WorkflowVersionFull }>('POST', '/api/v1/workflow/versions', { stages, note, graph })
+export const updateWorkflowDraft = (id: string, stages: StageDraft[], note?: string, graph?: WorkflowGraph) =>
+  req<{ version: WorkflowVersionFull }>('PATCH', `/api/v1/workflow/versions/${id}`, { stages, note, graph })
 export const deleteWorkflowDraft = (id: string) =>
   req<{ ok: boolean }>('DELETE', `/api/v1/workflow/versions/${id}`)
 export const publishWorkflowVersion = (id: string) =>

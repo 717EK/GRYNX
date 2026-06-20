@@ -39,7 +39,7 @@ export async function workflowRoutes(app: FastifyInstance) {
     return {
       definition: def ? { id: def.id, name: def.name, publishedVersionId: def.publishedVersionId } : null,
       published: def?.publishedVersion
-        ? { id: def.publishedVersion.id, version: def.publishedVersion.version, stages: def.publishedVersion.stages }
+        ? { id: def.publishedVersion.id, version: def.publishedVersion.version, stages: def.publishedVersion.stages, graph: def.publishedVersion.graph }
         : null,
     }
   })
@@ -79,7 +79,7 @@ export async function workflowRoutes(app: FastifyInstance) {
 
   // create a new DRAFT version (next version number) from an explicit stage list
   app.post('/versions', { preHandler: requireRole('admin') }, async (req, reply) => {
-    const body = z.object({ note: z.string().max(300).optional(), stages: z.array(stageInput).min(1) }).safeParse(req.body)
+    const body = z.object({ note: z.string().max(300).optional(), stages: z.array(stageInput).min(1), graph: z.record(z.unknown()).optional() }).safeParse(req.body)
     if (!body.success) return reply.code(400).send({ error: 'bad_request', detail: body.error.issues })
     const actorId = (req.user as AccessPayload).sub
     const def = await activeDefinition()
@@ -95,6 +95,7 @@ export async function workflowRoutes(app: FastifyInstance) {
         version: nextVersion,
         status: 'draft',
         note: body.data.note ?? null,
+        graph: (body.data.graph ?? {}) as object,
         createdById: actorId,
         stages: { create: resolved.map((s, i) => ({ stageType: s.stageType, departmentId: s.departmentId, label: s.label, sequence: (i + 1) * 10, config: s.config })) },
       },
@@ -109,7 +110,7 @@ export async function workflowRoutes(app: FastifyInstance) {
   // their snapshot). Editing a draft repeatedly avoids version sprawl while designing.
   app.patch('/versions/:id', { preHandler: requireRole('admin') }, async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params)
-    const body = z.object({ note: z.string().max(300).optional(), stages: z.array(stageInput).min(1) }).safeParse(req.body)
+    const body = z.object({ note: z.string().max(300).optional(), stages: z.array(stageInput).min(1), graph: z.record(z.unknown()).optional() }).safeParse(req.body)
     if (!body.success) return reply.code(400).send({ error: 'bad_request', detail: body.error.issues })
     const actorId = (req.user as AccessPayload).sub
     const def = await activeDefinition()
@@ -124,7 +125,7 @@ export async function workflowRoutes(app: FastifyInstance) {
       await tx.workflowStage.deleteMany({ where: { versionId: id } })
       await tx.workflowVersion.update({
         where: { id },
-        data: { note: body.data.note ?? null, stages: { create: resolved.map((s, i) => ({ stageType: s.stageType, departmentId: s.departmentId, label: s.label, sequence: (i + 1) * 10, config: s.config })) } },
+        data: { note: body.data.note ?? null, graph: (body.data.graph ?? {}) as object, stages: { create: resolved.map((s, i) => ({ stageType: s.stageType, departmentId: s.departmentId, label: s.label, sequence: (i + 1) * 10, config: s.config })) } },
       })
       return tx.workflowVersion.findUnique({ where: { id }, include: { stages: { orderBy: { sequence: 'asc' }, select: stageSelect } } })
     })

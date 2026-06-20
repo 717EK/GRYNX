@@ -46,6 +46,19 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.10.0 — Workflow Studio: visual node-graph canvas (editor ring 2)
+- The Workflow Studio is now a **React Flow node-graph canvas**. Stages are
+  draggable nodes; **draw edges** between them for branches / parallel paths /
+  loops. Click a node to edit its label / type / department in the inspector;
+  add / remove stages; pan, zoom, minimap.
+- **Visual-branching-first:** the graph (node positions + edges) is stored
+  alongside the workflow version; job **routing still follows the linear order**
+  (left→right by node position), so editing the graph never re-routes jobs
+  already on the floor (R5). Conditional runtime routing comes in a later pass.
+- Live pipeline lint + department-required validation + publish diff carry over
+  onto the canvas. Legacy versions auto-layout left→right on first open.
+- Schema additive: `WorkflowVersion.graph` (JSON). `@xyflow/react` added.
+
 ### v0.9.11 — Safety & polish: QC escapes, hold escalation, pipeline lint
 - **QC Escapes** — a job that closed with an open QC issue (the soft-flag-and-ship
   path) now surfaces as an *escape* on the QC Oversight board + a Briefing count.
