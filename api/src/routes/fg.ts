@@ -90,20 +90,32 @@ export async function fgRoutes(app: FastifyInstance) {
     if (cjob.status === 'closed' || cjob.status === 'cancelled') return reply.code(409).send({ error: 'job_terminal', status: cjob.status })
     const fgStep = cjob.steps[0]
 
-    // QC soft guard (docs/12 phase 4): cannot serialise/close while a per-station
-    // QC issue is open. Quality is advisory for MOVEMENT but a wall at the door.
-    const openQc = await prisma.stationVisit.findMany({
-      where: { jobId, qcIssue: true, qcResolvedAt: null },
-      select: { qcNote: true, station: { select: { name: true } } },
+    // QC parallel-department guard (docs/12): only an ADMIN-APPROVED HARD HOLD blocks
+    // the close. Plain QC issues (and legacy per-station flags) are SOFT — they don't
+    // stop the close, they just flag it + notify admin. Quality is advisory for
+    // movement; a hard hold is the deliberate, admin-approved wall at the door.
+    const hardHolds = await prisma.qcObservation.findMany({
+      where: { jobId, status: 'open', holdApproved: true },
+      select: { note: true, station: { select: { name: true } } },
     })
-    if (openQc.length > 0) {
+    if (hardHolds.length > 0) {
       return reply.code(409).send({
-        error: 'open_qc_issue',
-        count: openQc.length,
-        issues: openQc.map((v) => ({ station: v.station.name, note: v.qcNote })),
-        hint: 'resolve the open QC issue(s) before closing',
+        error: 'qc_hard_hold',
+        count: hardHolds.length,
+        holds: hardHolds.map((h) => ({ station: h.station?.name ?? null, note: h.note })),
+        hint: 'an admin-approved QC hard hold is active — resolve it before closing',
       })
     }
+    // open SOFT issues → flag the close (still allowed): new QcObservation issues +
+    // any legacy open per-station StationVisit flags.
+    const [softObs, legacyOpen] = await Promise.all([
+      prisma.qcObservation.findMany({ where: { jobId, status: 'open', kind: 'issue', holdApproved: false }, select: { note: true, severity: true, station: { select: { name: true } } } }),
+      prisma.stationVisit.findMany({ where: { jobId, qcIssue: true, qcResolvedAt: null }, select: { qcNote: true, station: { select: { name: true } } } }),
+    ])
+    const softFlags = [
+      ...softObs.map((s) => `${s.station?.name ?? 'QC'}${s.severity ? ` (${s.severity})` : ''}: ${s.note}`),
+      ...legacyOpen.map((v) => `${v.station.name}: ${v.qcNote ?? 'issue'}`),
+    ]
 
     // serials: accept new ones now (one per finished unit). At least one must exist.
     const incoming = [...new Set((cbody.data.serials ?? []).map((s) => s.trim()).filter(Boolean))]
@@ -134,12 +146,13 @@ export async function fgRoutes(app: FastifyInstance) {
         create: { jobId, requestedById: closeActorId, approvedById: closeActorId, approvedAt: new Date(), status: 'approved', receivedQty: cbody.data.receivedQty ?? totalSerials },
       })
       await tx.job.update({ where: { id: jobId }, data: { status: 'closed', completionDate: new Date(), version: { increment: 1 } } })
-      await tx.jobEvent.create({ data: { jobId, type: 'closed', actorId: closeActorId, body: missing.length ? `closed · never scanned at: ${missing.join(', ')}` : 'closed' } })
-      await writeAudit('job', jobId, 'fg_close', { actorId: closeActorId, after: { serials: totalSerials, neverScanned: missing }, tx })
+      const flagNote = [missing.length ? `never scanned at: ${missing.join(', ')}` : '', softFlags.length ? `⚠ closed with ${softFlags.length} open QC issue(s): ${softFlags.join('; ')}` : ''].filter(Boolean).join(' · ')
+      await tx.jobEvent.create({ data: { jobId, type: 'closed', actorId: closeActorId, body: flagNote ? `closed · ${flagNote}` : 'closed' } })
+      await writeAudit('job', jobId, 'fg_close', { actorId: closeActorId, after: { serials: totalSerials, neverScanned: missing, openQcIssues: softFlags }, tx })
       await notifyAdmins(tx, {
         type: 'closure_request',
         jobId,
-        body: `${cjob.displayLabel} closed by FG (${totalSerials} serial${totalSerials > 1 ? 's' : ''})${missing.length ? ` · not scanned at: ${missing.join(', ')}` : ''}`,
+        body: `${cjob.displayLabel} closed by FG (${totalSerials} serial${totalSerials > 1 ? 's' : ''})${missing.length ? ` · not scanned at: ${missing.join(', ')}` : ''}${softFlags.length ? ` · ⚠ ${softFlags.length} open QC issue(s)` : ''}`,
       })
     })
 
@@ -168,7 +181,7 @@ export async function fgRoutes(app: FastifyInstance) {
         })
       }
     }
-    return { ok: true, closed: true, serials: totalSerials, missingCritical: missing }
+    return { ok: true, closed: true, serials: totalSerials, missingCritical: missing, softQcFlags: softFlags }
   })
 
   // request closure → admin approves (closes the job)

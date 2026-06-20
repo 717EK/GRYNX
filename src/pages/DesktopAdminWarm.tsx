@@ -9,6 +9,8 @@ import Notifications from './Notifications'
 import OrdersDesktop from './OrdersDesktop'
 import DispatchDesktop from './DispatchDesktop'
 import BriefingDesktop from './BriefingDesktop'
+import PpcDesktop from './PpcDesktop'
+import QcDesktop from './QcDesktop'
 import CalendarWidget from '../components/CalendarWidget'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark-light.png'
@@ -34,7 +36,7 @@ function linePath(vals: number[], w: number, h: number, pad = 6) {
   return vals.map((v, i) => `${i ? 'L' : 'M'}${(i * step).toFixed(1)},${(h - pad - ((v - min) / range) * (h - 2 * pad)).toFixed(1)}`).join(' ')
 }
 
-type Nav = 'dashboard' | 'jobs' | 'ppc' | 'analytics' | 'workflow' | 'orders' | 'dispatch' | 'briefing'
+type Nav = 'dashboard' | 'jobs' | 'ppc' | 'qc' | 'analytics' | 'workflow' | 'orders' | 'dispatch' | 'briefing'
 type Popup =
   | null
   | { kind: 'create' }
@@ -48,7 +50,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
   const [nav, setNav] = useState<Nav>('dashboard')
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [jobs, setJobs] = useState<JobDTO[] | null>(null)
-  const [ppc, setPpc] = useState<PpcRequest[] | null>(null)
+  const [, setPpc] = useState<PpcRequest[] | null>(null)
   const [statusFilter, setStatusFilter] = useState('active')
   const [q, setQ] = useState('')
   const [popup, setPopup] = useState<Popup>(null)
@@ -103,7 +105,8 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         <button className={`dw__i ${nav === 'dashboard' ? 'is-on' : ''}`} title="Control Centre" onClick={() => setNav('dashboard')}>⌂</button>
         <button className={`dw__i ${nav === 'briefing' ? 'is-on' : ''}`} title="Briefing" onClick={() => setNav('briefing')}>◑</button>
         <button className={`dw__i ${nav === 'jobs' ? 'is-on' : ''}`} title="Job Board" onClick={() => setNav('jobs')}>▤</button>
-        <button className={`dw__i ${nav === 'ppc' ? 'is-on' : ''}`} title="PPC Requests" onClick={() => setNav('ppc')}>◳</button>
+        <button className={`dw__i ${nav === 'ppc' ? 'is-on' : ''}`} title="PPC Hub" onClick={() => setNav('ppc')}>◳</button>
+        <button className={`dw__i ${nav === 'qc' ? 'is-on' : ''}`} title="QC Oversight" onClick={() => setNav('qc')}>❖</button>
         <button className={`dw__i ${nav === 'orders' ? 'is-on' : ''}`} title="Orders" onClick={() => setNav('orders')}>▦</button>
         <button className={`dw__i ${nav === 'dispatch' ? 'is-on' : ''}`} title="Dispatch" onClick={() => setNav('dispatch')}>🚚</button>
         <button className={`dw__i ${nav === 'analytics' ? 'is-on' : ''}`} title="Dwell Analytics" onClick={() => { setAna(null); setNav('analytics') }}>◫</button>
@@ -328,22 +331,9 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
           </section>
         )}
 
-        {nav === 'ppc' && (
-          <section className="dw__view">
-            <div className="dw__toolbar"><h1 className="dw__h1">PPC Requests</h1><span className="dw__sub">{ppc?.length ?? 0} pending review</span></div>
-            <div className="dw__cards">
-              {ppc === null ? <div className="dw__empty">Loading…</div> : ppc.length === 0 ? <div className="dw__empty">No pending PPC requests.</div> : ppc.map((r) => {
-                const qty = r.models.reduce((s, m) => s + m.quantity, 0)
-                return (
-                  <button key={r.id} className="dw__pcard" onClick={() => setPopup({ kind: 'review', req: r })}>
-                    <span className="dw__pcard-no">{r.name || r.requestNo}{r.priority === 'urgent' && <span className="dw__urgent">URGENT</span>}</span>
-                    <span className="dw__pcard-meta">{r.name ? `${r.requestNo} · ` : ''}{r.product.name} · {qty} units · {r.models.length} line{r.models.length > 1 ? 's' : ''}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-        )}
+        {nav === 'ppc' && <PpcDesktop onReviewRequest={(r) => setPopup({ kind: 'review', req: r })} onOpenJob={openJob} onGotoOrders={() => setNav('orders')} />}
+
+        {nav === 'qc' && <QcDesktop onOpenJob={openJob} />}
 
         {nav === 'analytics' && (
           <section className="dw__view">

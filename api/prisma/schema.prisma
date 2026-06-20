@@ -495,6 +495,7 @@ model Job {
   serials          Serial[]
   stationVisits    StationVisit[] // production station scan trail (free / parallel)
   materialRequests MaterialRequest[] // parallel raw-material / purchase needs
+  qcObservations   QcObservation[] // parallel QC reports raised at any station, any time
 }
 
 // Purchase logs the raw material consumed by a job (traceability/genealogy).
@@ -777,8 +778,61 @@ model Station {
   sortOrder    Int            @default(0)
   isCritical   Boolean        @default(false) // FG soft-flags a close if a critical station was never scanned
   departmentId String // the PRODUCTION department
-  department   Department     @relation(fields: [departmentId], references: [id])
+  department   Department      @relation(fields: [departmentId], references: [id])
   visits       StationVisit[]
+  qcObservations QcObservation[]
+}
+
+// docs/12 QC-as-parallel-department: QC sits at every station and may raise a report
+// against ANY active job at ANY time — independent of the pipeline (no gate, no handoff).
+// Reports are auto-tagged to the station the QC inspector is standing at. An `issue`
+// SOFT-flags by default (work continues, FG close is flagged + admin notified); QC may
+// request a HARD HOLD which needs ADMIN APPROVAL to engage and then blocks FG/dispatch.
+// `suggestion` / `note` are purely advisory. Resolved by QC or the Production head.
+enum QcKind {
+  issue
+  suggestion
+  note
+}
+
+enum QcSeverity {
+  minor
+  major
+  critical
+}
+
+enum QcObsStatus {
+  open
+  resolved
+  dismissed
+}
+
+model QcObservation {
+  id             String      @id @default(uuid())
+  jobId          String
+  stationId      String? // the station the QC inspector was at (auto-tagged); null = general
+  kind           QcKind      @default(issue)
+  severity       QcSeverity? // for issues; null for suggestion/note
+  note           String      @db.Text
+  photoUrl       String?     @db.Text // optional compressed JPEG data URL
+  // hold / hard-block (issue only): QC requests, ADMIN approves to engage.
+  holdRequested  Boolean     @default(false)
+  holdApproved   Boolean     @default(false) // true = hard block ACTIVE (FG/dispatch blocked)
+  holdApprovedById String?
+  holdApprovedAt DateTime?
+  // lifecycle
+  status         QcObsStatus @default(open)
+  raisedById     String
+  raisedAt       DateTime    @default(now())
+  resolvedById   String?
+  resolvedAt     DateTime?
+  resolutionNote String?
+  job            Job         @relation(fields: [jobId], references: [id])
+  station        Station?    @relation(fields: [stationId], references: [id])
+
+  @@index([jobId])
+  @@index([stationId, status])
+  @@index([status])
 }
 
 // One scan-in→scan-out at a station. Multiple may be OPEN at once for the same job

@@ -46,6 +46,26 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.8 — QC as a parallel department + PPC Hub on desktop (docs/12)
+- **QC is no longer a gate.** It's an independent department that stands at every
+  station and raises a report against **any active job at any time** — issue,
+  suggestion, or note — auto-tagged to the station the inspector is at.
+- **New QC Desk** (mobile): pick your station → hero **Raise QC Report** → a
+  station-scoped feed of every report + its status, with one-tap resolve.
+- **Soft by default, hard when needed.** A QC *issue* soft-flags (work continues,
+  FG close is flagged + admin notified). QC can **request a hard hold** which an
+  **admin approves** to engage — then it blocks FG close *and* dispatch until
+  resolved. Resolved by QC **or** the Production head.
+- **QC Oversight** desktop tab (❖): the admin's board of open reports + the
+  approve-hold decision. Briefing gained a "QC holds to approve" card.
+- **PPC Hub on the desktop command centre** (◳ was just a request list): now the
+  real planning desk — designs to forward/split → Cutting, requests to approve,
+  orders to plan, with live counts. PPC is the desk that starts the floor.
+- Backend additive only: `QcObservation` table + `/qc/report`, `/qc/reports`,
+  `/qc/reports/:id/approve-hold|resolve|dismiss`, `/qc/stations`,
+  `/qc/reportable-jobs`. FG close + dispatch ship now honour hard holds. The
+  legacy QC gate still works for in-flight jobs until they clear.
+
 ### v0.9.7 — Daily rhythm: Briefing desk (docs/12 phase 7)
 - **Briefing tab** (◑) in the desktop command centre — the owner's twice-a-day glance.
   Morning: *Waiting on you* (6 decision counts — PPC requests, awaiting forward,

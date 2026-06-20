@@ -634,7 +634,7 @@ export interface Agenda {
   overdue: { jobId: string; label: string; station: string; mins: number }[]
   urgentOrders: { id: string; orderNo: string; name: string | null; client: string; status: string }[]
   dueOrders: { id: string; orderNo: string; name: string | null; client: string; targetDate: string | null }[]
-  decisions: { ppcRequests: number; awaitingForward: number; dispatchToApprove: number; closuresToApprove: number; openQcIssues: number; openTickets: number }
+  decisions: { ppcRequests: number; awaitingForward: number; dispatchToApprove: number; closuresToApprove: number; openQcIssues: number; qcHoldsToApprove: number; openTickets: number }
 }
 export interface DaySummary {
   date: string
@@ -813,6 +813,37 @@ export interface QcProductionJob extends QueueJob { stationVisits: StationVisit[
 export const getQcProduction = () => req<{ jobs: QcProductionJob[] }>('GET', '/api/v1/qc/production')
 export const markVisitQc = (visitId: string, input: { checked?: boolean; issue?: boolean; note?: string; resolve?: boolean }) =>
   req<{ ok: boolean }>('POST', `/api/v1/qc/visit/${visitId}`, input)
+
+// ── QC as a PARALLEL department (docs/12): station-scoped reports on any job ──
+export type QcKind = 'issue' | 'suggestion' | 'note'
+export type QcSeverity = 'minor' | 'major' | 'critical'
+export type QcObsStatus = 'open' | 'resolved' | 'dismissed'
+export interface QcReport {
+  id: string; jobId: string; stationId: string | null
+  kind: QcKind; severity: QcSeverity | null; note: string; photoUrl: string | null
+  holdRequested: boolean; holdApproved: boolean; status: QcObsStatus
+  raisedById: string; raisedByName: string; raisedAt: string
+  resolvedById: string | null; resolvedByName: string | null; resolvedAt: string | null; resolutionNote: string | null
+  job: { id: string; jobNo: string; displayLabel: string; status: string; product: { code: string; name: string } }
+  station: { code: string; name: string } | null
+}
+export interface QcReportableJob { id: string; jobNo: string; displayLabel: string; status: string; product: { code: string; name: string }; openReports: number }
+export const getQcStations = () =>
+  DEMO ? Promise.resolve({ stations: [] as Station[] }) : req<{ stations: Station[] }>('GET', '/api/v1/qc/stations')
+export const getQcReportableJobs = () =>
+  DEMO ? Promise.resolve({ jobs: [] as QcReportableJob[] }) : req<{ jobs: QcReportableJob[] }>('GET', '/api/v1/qc/reportable-jobs')
+export const raiseQcReport = (input: { jobId: string; stationId?: string; kind: QcKind; severity?: QcSeverity; note: string; photoUrl?: string; holdRequested?: boolean }) =>
+  req<{ ok: boolean; id: string; holdRequested: boolean }>('POST', '/api/v1/qc/report', input)
+export const getQcReports = (opts?: { stationId?: string; status?: QcObsStatus; scope?: 'station' | 'all' }) => {
+  const qs = new URLSearchParams(Object.entries(opts ?? {}).filter(([, v]) => v) as [string, string][]).toString()
+  return DEMO ? Promise.resolve({ reports: [] as QcReport[] }) : req<{ reports: QcReport[] }>('GET', `/api/v1/qc/reports${qs ? `?${qs}` : ''}`)
+}
+export const approveQcHold = (id: string) =>
+  req<{ ok: boolean; held: boolean }>('POST', `/api/v1/qc/reports/${id}/approve-hold`)
+export const resolveQcReport = (id: string, note?: string) =>
+  req<{ ok: boolean }>('POST', `/api/v1/qc/reports/${id}/resolve`, note ? { note } : {})
+export const dismissQcReport = (id: string) =>
+  req<{ ok: boolean }>('POST', `/api/v1/qc/reports/${id}/dismiss`)
 
 // ── FG Stock ────────────────────────────────────────────────────────────────
 export interface FgJob extends QueueJob {
