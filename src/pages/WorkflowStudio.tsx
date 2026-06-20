@@ -16,6 +16,8 @@ const STAGE_TYPES: { value: StageType; label: string }[] = [
   { value: 'qc', label: 'QC' }, { value: 'fg_stock', label: 'FG Stock' }, { value: 'dispatch', label: 'Dispatch' }, { value: 'maintenance', label: 'Maintenance' },
 ]
 const DEFAULT_DEPT_CODE: Partial<Record<StageType, string>> = { design: 'DESIGN', production: 'PRODUCTION', qc: 'QC', fg_stock: 'FG_STOCK', ppc_requirements: 'PPC', ppc_final: 'PPC', sales: 'SALES', fg_check: 'FG_STOCK', maintenance: 'MAINTENANCE' }
+// stage types that become job steps and need an owning department (mirrors backend)
+const REQUIRES_DEPT = new Set<StageType>(['design', 'production', 'qc', 'fg_stock'])
 
 type EditStage = { key: string; stageType: StageType; departmentId: string | null; label: string }
 const newKey = () => Math.random().toString(36).slice(2)
@@ -65,7 +67,10 @@ export default function WorkflowStudio() {
   const move = (i: number, dir: -1 | 1) => patch((s) => { const j = i + dir; if (j < 0 || j >= s.length) return s; [s[i], s[j]] = [s[j], s[i]]; return s })
 
   const toDraft = (s: EditStage[]): StageDraft[] => s.map((x) => ({ stageType: x.stageType, departmentId: x.departmentId, label: x.label.trim() }))
-  const validEdit = edit && edit.length > 0 && edit.every((s) => s.label.trim())
+  // dept-backed stages become job steps and need an owning department (matches the
+  // backend guard). A stage missing it is flagged inline and blocks save/publish.
+  const stageNeedsDept = (s: EditStage) => REQUIRES_DEPT.has(s.stageType) && !s.departmentId
+  const validEdit = !!edit && edit.length > 0 && edit.every((s) => s.label.trim() && !stageNeedsDept(s))
 
   async function run(fn: () => Promise<unknown>, after?: string) {
     setBusy(true); setErr(null); setMsg(null)
@@ -74,7 +79,20 @@ export default function WorkflowStudio() {
     finally { setBusy(false) }
   }
   const saveDraft = () => selId && edit && validEdit && run(async () => { await updateWorkflowDraft(selId, toDraft(edit)); await load(selId) }, 'Draft saved')
-  const publish = () => selId && run(async () => { if (isDraft && dirty && edit) await updateWorkflowDraft(selId, toDraft(edit)); await publishWorkflowVersion(selId); await load(selId) }, 'Published — now the live workflow')
+  function publish() {
+    if (!selId || !selected) return
+    const live = versions?.find((x) => x.id === publishedId)
+    const liveSeq = live ? live.stages.map((s) => s.label).join('  →  ') : '(none yet)'
+    const newSeq = (edit ?? selected.stages).map((s) => s.label).join('  →  ')
+    const ok = window.confirm(
+      `Publish v${selected.version} as the LIVE workflow?\n\n` +
+      `Currently live${live ? ` (v${live.version})` : ''}:\n  ${liveSeq}\n\n` +
+      `Publishing (v${selected.version}):\n  ${newSeq}\n\n` +
+      `Future jobs use the new flow. Jobs already on the floor keep their original route.`,
+    )
+    if (!ok) return
+    run(async () => { if (isDraft && dirty && edit) await updateWorkflowDraft(selId, toDraft(edit)); await publishWorkflowVersion(selId); await load(selId) }, 'Published — now the live workflow')
+  }
   const rollback = (id: string) => run(async () => { await publishWorkflowVersion(id); await load(id) }, 'Rolled back')
   const del = (id: string) => run(async () => { await deleteWorkflowDraft(id); await load() }, 'Draft deleted')
   const newDraft = () => run(async () => {
@@ -130,11 +148,11 @@ export default function WorkflowStudio() {
                         <select className="wstu__sel" value={s.stageType} onChange={(e) => onTypeChange(i, e.target.value as StageType)}>
                           {STAGE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                         </select>
-                        <select className="wstu__sel" value={s.departmentId ?? ''} onChange={(e) => setStage(i, { departmentId: e.target.value || null })}>
+                        <select className={`wstu__sel ${stageNeedsDept(s) ? 'wstu__sel--bad' : ''}`} value={s.departmentId ?? ''} onChange={(e) => setStage(i, { departmentId: e.target.value || null })}>
                           <option value="">— no department —</option>
                           {depts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
-                        {s.stageType === 'production' && <span className="wstu__hint">free-scan stations</span>}
+                        {stageNeedsDept(s) ? <span className="wstu__hint wstu__hint--bad">⚠ needs a department</span> : s.stageType === 'production' && <span className="wstu__hint">free-scan stations</span>}
                       </div>
                       {i < edit!.length - 1 && <span className="wstu__arrow">→</span>}
                     </div>

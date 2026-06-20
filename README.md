@@ -46,6 +46,19 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.9.10 — Hardening: nav-leak fix + safer FG close + Studio guards
+- **Fix (reported by PPC): floor users could reach the admin home.** The
+  notifications back button — and the QC/FG/Purchase dept-home back buttons — sent
+  non-admins to `home` (AdminHome). They now return to the user's own landing, and
+  a safety net bounces any non-admin off `home` to their landing.
+- **FG close now refuses a job that hasn't entered production** (draft / design-
+  confirmed-awaiting-forward) — it can no longer fabricate finished stock for
+  something never made. Returns 409 `not_in_production`.
+- **Workflow Studio guards:** a department-backed stage (design/production/qc/fg)
+  now requires a department — flagged inline and enforced on the API (400
+  `department_required`). **Publish shows a confirm with the live → new flow diff**
+  before it goes live.
+
 ### v0.9.9 — Workflow Studio: edit the pipeline on the fly (editor ring 1)
 - The read-only **Workflow Map** (⛓) becomes the **Workflow Studio** — a no-code
   canvas to edit the company pipeline as **versioned data**.

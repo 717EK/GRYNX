@@ -43,3 +43,7 @@
 .wstu__rotype { font-family: var(--mono); font-size: 10px; color: var(--ink3); text-transform: uppercase; }
 
 .wstu__actions { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+
+/* validation cues */
+.wstu__sel--bad { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+.wstu__hint--bad { color: var(--red); }

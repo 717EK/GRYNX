@@ -190,15 +190,22 @@ export default function App() {
     setScreen('login')
   }
 
-  // SuperUser (Administrator) returns to the View As panel; everyone else home.
+  // The current user's natural landing — used by every shared/back screen
+  // (Report/Maintenance, Notifications, dept homes) to return correctly. A floor
+  // user must NEVER be sent to 'home' (that renders the admin AdminHome); the
+  // SuperUser returns to View As, everyone else to their own landing.
   const isSuper = (getUser()?.username ?? '').toLowerCase() === 'admin'
-  const deptBack = () => go(isSuper ? 'viewas' : 'home')
-  // The current user's natural landing — used by shared screens (e.g. the
-  // Report/Maintenance screen reachable from any home) to return correctly.
   const myLanding = (): Screen => {
     const u = getUser()
     return isSuper ? 'viewas' : u ? landingFor(u) : 'home'
   }
+  const deptBack = () => go(myLanding())
+  // safety net: a non-admin must never sit on the admin home (e.g. a stray back
+  // button). If we ever land there, bounce straight to their real landing.
+  useEffect(() => {
+    if (user && screen === 'home' && user.role !== 'ADMIN' && user.role !== 'SUPERUSER') go(myLanding())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, user])
 
   if (!user) {
     return (
@@ -371,7 +378,7 @@ export default function App() {
         return (
           <Notifications
             user={user}
-            onBack={() => go(isSuper ? 'viewas' : 'home')}
+            onBack={() => go(myLanding())}
             onLock={handleLock}
             onOpen={(n) => void openNotification(n, user)}
           />

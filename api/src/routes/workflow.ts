@@ -62,6 +62,20 @@ export async function workflowRoutes(app: FastifyInstance) {
     label: z.string().min(1).max(60),
     config: z.record(z.unknown()).optional(),
   })
+  type StageIn = z.infer<typeof stageInput>
+  // stage types that BECOME job steps and need an owning department (jobCreate
+  // snapshots these). Without a department a job would have an ownerless step.
+  const DEPT_REQUIRED = new Set<StageIn['stageType']>(['design', 'production', 'qc', 'fg_stock'])
+
+  // resolve departmentCode→Id for a stage list + assert dept-required stages have one
+  async function resolveStages(stages: StageIn[]) {
+    const codes = stages.map((s) => s.departmentCode).filter((c): c is string => !!c)
+    const depts = codes.length ? await prisma.department.findMany({ where: { code: { in: codes } }, select: { id: true, code: true } }) : []
+    const deptIdOf = (s: StageIn) => s.departmentId ?? (s.departmentCode ? depts.find((d) => d.code === s.departmentCode)?.id ?? null : null)
+    const resolved = stages.map((s) => ({ stageType: s.stageType, departmentId: deptIdOf(s), label: s.label, config: (s.config ?? {}) as object }))
+    const missing = resolved.find((s) => DEPT_REQUIRED.has(s.stageType) && !s.departmentId)
+    return { resolved, missing }
+  }
 
   // create a new DRAFT version (next version number) from an explicit stage list
   app.post('/versions', { preHandler: requireRole('admin') }, async (req, reply) => {
@@ -70,10 +84,8 @@ export async function workflowRoutes(app: FastifyInstance) {
     const actorId = (req.user as AccessPayload).sub
     const def = await activeDefinition()
 
-    // resolve any departmentCode → departmentId
-    const codes = body.data.stages.map((s) => s.departmentCode).filter((c): c is string => !!c)
-    const depts = codes.length ? await prisma.department.findMany({ where: { code: { in: codes } }, select: { id: true, code: true } }) : []
-    const deptIdOf = (s: z.infer<typeof stageInput>) => s.departmentId ?? (s.departmentCode ? depts.find((d) => d.code === s.departmentCode)?.id ?? null : null)
+    const { resolved, missing } = await resolveStages(body.data.stages)
+    if (missing) return reply.code(400).send({ error: 'department_required', stageType: missing.stageType, hint: `a ${missing.stageType} stage needs a department` })
 
     const max = await prisma.workflowVersion.aggregate({ where: { definitionId: def.id }, _max: { version: true } })
     const nextVersion = (max._max.version ?? 0) + 1
@@ -84,7 +96,7 @@ export async function workflowRoutes(app: FastifyInstance) {
         status: 'draft',
         note: body.data.note ?? null,
         createdById: actorId,
-        stages: { create: body.data.stages.map((s, i) => ({ stageType: s.stageType, departmentId: deptIdOf(s), label: s.label, sequence: (i + 1) * 10, config: (s.config ?? {}) as object })) },
+        stages: { create: resolved.map((s, i) => ({ stageType: s.stageType, departmentId: s.departmentId, label: s.label, sequence: (i + 1) * 10, config: s.config })) },
       },
       include: { stages: { orderBy: { sequence: 'asc' }, select: stageSelect } },
     })
@@ -105,15 +117,14 @@ export async function workflowRoutes(app: FastifyInstance) {
     if (!ver) return reply.code(404).send({ error: 'not_found' })
     if (ver.status !== 'draft') return reply.code(409).send({ error: 'not_draft', hint: 'only draft versions can be edited; publish a new version to change a live flow' })
 
-    const codes = body.data.stages.map((s) => s.departmentCode).filter((c): c is string => !!c)
-    const depts = codes.length ? await prisma.department.findMany({ where: { code: { in: codes } }, select: { id: true, code: true } }) : []
-    const deptIdOf = (s: z.infer<typeof stageInput>) => s.departmentId ?? (s.departmentCode ? depts.find((d) => d.code === s.departmentCode)?.id ?? null : null)
+    const { resolved, missing } = await resolveStages(body.data.stages)
+    if (missing) return reply.code(400).send({ error: 'department_required', stageType: missing.stageType, hint: `a ${missing.stageType} stage needs a department` })
 
     const updated = await prisma.$transaction(async (tx) => {
       await tx.workflowStage.deleteMany({ where: { versionId: id } })
       await tx.workflowVersion.update({
         where: { id },
-        data: { note: body.data.note ?? null, stages: { create: body.data.stages.map((s, i) => ({ stageType: s.stageType, departmentId: deptIdOf(s), label: s.label, sequence: (i + 1) * 10, config: (s.config ?? {}) as object })) } },
+        data: { note: body.data.note ?? null, stages: { create: resolved.map((s, i) => ({ stageType: s.stageType, departmentId: s.departmentId, label: s.label, sequence: (i + 1) * 10, config: s.config })) } },
       })
       return tx.workflowVersion.findUnique({ where: { id }, include: { stages: { orderBy: { sequence: 'asc' }, select: stageSelect } } })
     })

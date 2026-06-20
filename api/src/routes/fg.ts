@@ -88,6 +88,12 @@ export async function fgRoutes(app: FastifyInstance) {
     })
     if (!cjob) return reply.code(404).send({ error: 'not_found' })
     if (cjob.status === 'closed' || cjob.status === 'cancelled') return reply.code(409).send({ error: 'job_terminal', status: cjob.status })
+    // a job that hasn't entered production yet (draft, or design-confirmed/awaiting
+    // PPC forward) must NOT be closeable — closing it would fabricate finished stock
+    // for something never made. Only in_production / in_qc / in_fg / close_requested
+    // jobs reach FG legitimately.
+    if (cjob.status === 'draft' || cjob.status === 'approved')
+      return reply.code(409).send({ error: 'not_in_production', status: cjob.status, hint: 'this job has not started production yet — it cannot be closed at FG' })
     const fgStep = cjob.steps[0]
 
     // QC parallel-department guard (docs/12): only an ADMIN-APPROVED HARD HOLD blocks
