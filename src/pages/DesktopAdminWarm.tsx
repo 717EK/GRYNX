@@ -12,6 +12,7 @@ import BriefingDesktop from './BriefingDesktop'
 import PpcDesktop from './PpcDesktop'
 import QcDesktop from './QcDesktop'
 import WorkflowStudio from './WorkflowStudio'
+import DashboardBoard from './DashboardBoard'
 import CalendarWidget from '../components/CalendarWidget'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark-light.png'
@@ -37,7 +38,7 @@ function linePath(vals: number[], w: number, h: number, pad = 6) {
   return vals.map((v, i) => `${i ? 'L' : 'M'}${(i * step).toFixed(1)},${(h - pad - ((v - min) / range) * (h - 2 * pad)).toFixed(1)}`).join(' ')
 }
 
-type Nav = 'dashboard' | 'jobs' | 'ppc' | 'qc' | 'analytics' | 'workflow' | 'orders' | 'dispatch' | 'briefing'
+type Nav = 'dashboard' | 'board' | 'jobs' | 'ppc' | 'qc' | 'analytics' | 'workflow' | 'orders' | 'dispatch' | 'briefing'
 type Popup =
   | null
   | { kind: 'create' }
@@ -100,6 +101,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         <img className="dw__logo" src={grynxWordmark} alt="GRYNX" />
         <button className={`dw__i ${nav === 'dashboard' ? 'is-on' : ''}`} title="Control Centre" onClick={() => setNav('dashboard')}>⌂</button>
         <button className={`dw__i ${nav === 'briefing' ? 'is-on' : ''}`} title="Briefing" onClick={() => setNav('briefing')}>◑</button>
+        <button className={`dw__i ${nav === 'board' ? 'is-on' : ''}`} title="Board" onClick={() => setNav('board')}>⊞</button>
         <button className={`dw__i ${nav === 'jobs' ? 'is-on' : ''}`} title="Job Board" onClick={() => setNav('jobs')}>▤</button>
         <button className={`dw__i ${nav === 'ppc' ? 'is-on' : ''}`} title="PPC Hub" onClick={() => setNav('ppc')}>◳</button>
         <button className={`dw__i ${nav === 'qc' ? 'is-on' : ''}`} title="QC Oversight" onClick={() => setNav('qc')}>❖</button>
@@ -393,6 +395,8 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
         {nav === 'dispatch' && <DispatchDesktop />}
 
         {nav === 'briefing' && <BriefingDesktop onOpenJob={openJob} />}
+
+        {nav === 'board' && <DashboardBoard onOpenJob={openJob} />}
 
         {nav === 'workflow' && <WorkflowStudio />}
       </main>

@@ -46,6 +46,16 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.10.1 — Composable dashboard (Board) — modular studio editor ring 3
+- New **Board** tab (⊞) in the command centre: a **drag-and-resize widget board**
+  you compose yourself. Toggle Edit, add / remove / arrange widgets, Done.
+- 28 widgets bound to live data — **KPI tiles** (orders in production, overdue,
+  QC escapes/holds, jobs closed today, FG on hand, …) and **list widgets**
+  (overdue jobs, orders to plan, open QC reports, escapes, lowest stock). List
+  rows with a job click through to the job.
+- Layout persists locally (per browser); a Reset restores the default board.
+  Frontend-only (`react-grid-layout`); server-synced shared boards come next.
+
 ### v0.10.0 — Workflow Studio: visual node-graph canvas (editor ring 2)
 - The Workflow Studio is now a **React Flow node-graph canvas**. Stages are
   draggable nodes; **draw edges** between them for branches / parallel paths /
