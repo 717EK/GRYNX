@@ -123,8 +123,14 @@ export async function login(username: string, pin: string): Promise<ApiUser> {
   const data = text ? JSON.parse(text) : null
   if (!res.ok) throw new ApiError(res.status, data)
   applySession(data)
+  // one-time nudge flag: user signed in with the default PIN
+  try { if (data?.defaultPin) sessionStorage.setItem('grynx-default-pin', '1') } catch { /* ignore */ }
   return user!
 }
+
+// self-service: change your own PIN (verify current → set new)
+export const changePin = (currentPin: string, newPin: string) =>
+  req<{ ok: boolean }>('POST', '/api/v1/auth/change-pin', { currentPin, newPin })
 
 export function logout() {
   access = refresh = null

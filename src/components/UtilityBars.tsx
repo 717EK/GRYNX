@@ -4,6 +4,7 @@ import { useConnection, type Conn } from '../lib/useConnection'
 import { navTo } from '../lib/nav'
 import { notificationCount, getUser } from '../lib/api'
 import ThemePicker from './ThemePicker'
+import ChangePinModal from './ChangePinModal'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark.png'
 import dlyftWordmarkLight from '../assets/dlyft-wordmark-light.png'
@@ -14,7 +15,7 @@ export interface SessionUser {
   id: string
 }
 
-export const APP_VERSION = 'v0.12.0'
+export const APP_VERSION = 'v0.12.1'
 
 function Brand({ inApp }: { inApp?: boolean }) {
   return (
@@ -52,6 +53,7 @@ export function TopBar({
 }) {
   const time = useClock()
   const [unread, setUnread] = useState(0)
+  const [pinOpen, setPinOpen] = useState(false)
   // keep the bell badge live — poll the unread count while signed in
   useEffect(() => {
     if (!user) return
@@ -65,6 +67,11 @@ export function TopBar({
       clearInterval(h)
       window.removeEventListener('grynx-notif-changed', tick)
     }
+  }, [user])
+  // nudge users off the default PIN: auto-open the change-PIN dialog once after a
+  // default-PIN sign-in (flag set by the login call).
+  useEffect(() => {
+    if (user && sessionStorage.getItem('grynx-default-pin')) { setPinOpen(true); sessionStorage.removeItem('grynx-default-pin') }
   }, [user])
   return (
     <header className="ubar ubar--top">
@@ -92,12 +99,18 @@ export function TopBar({
           </button>
         )}
         {user && (
+          <button className="iconbtn" title="Change PIN" aria-label="Change PIN" onClick={() => setPinOpen(true)}>
+            ⚿
+          </button>
+        )}
+        {user && (
           <button className="iconbtn" title="Lock / sign out" onClick={onLock}>
             ⏻
           </button>
         )}
         {theme && <ThemePicker />}
       </div>
+      <ChangePinModal open={pinOpen} onClose={() => setPinOpen(false)} />
     </header>
   )
 }

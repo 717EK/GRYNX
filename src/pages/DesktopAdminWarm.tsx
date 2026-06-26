@@ -14,6 +14,7 @@ import QcDesktop from './QcDesktop'
 import WorkflowStudio from './WorkflowStudio'
 import AppStudio from './AppStudio'
 import DashboardBoard from './DashboardBoard'
+import ChangePinModal from '../components/ChangePinModal'
 import CalendarWidget from '../components/CalendarWidget'
 import grynxWordmark from '../assets/grynx-wordmark.png'
 import dlyftWordmark from '../assets/dlyft-wordmark-light.png'
@@ -54,6 +55,10 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
   // Admin (factory owner) gets the rest of the command centre.
   const isSuper = user.role === 'SUPERUSER'
   const [nav, setNav] = useState<Nav>('dashboard')
+  const [pinOpen, setPinOpen] = useState(false)
+  // nudge the owner/dev off the default PIN: auto-open the dialog once after a
+  // default-PIN sign-in.
+  useEffect(() => { if (sessionStorage.getItem('grynx-default-pin')) { setPinOpen(true); sessionStorage.removeItem('grynx-default-pin') } }, [])
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [jobs, setJobs] = useState<JobDTO[] | null>(null)
   const [, setPpc] = useState<PpcRequest[] | null>(null)
@@ -134,6 +139,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
             <div className="dw__search">⌕ <input placeholder="Search jobs, products…" value={q} onChange={(e) => { setQ(e.target.value); setNav('jobs') }} /></div>
             <button className="dw__pill" onClick={() => setPopup({ kind: 'create' })}>＋ New Job</button>
             <button className="dw__ic" title="Notifications" onClick={() => setPopup({ kind: 'notifications' })}>🔔{unread > 0 && <span className="bdot" />}</button>
+            <button className="dw__ic" title="Change PIN" onClick={() => setPinOpen(true)}>⚿</button>
             <button className="dw__av" onClick={onLock} title={`${user.name} · sign out`}>{user.name.slice(0, 2).toUpperCase()}</button>
           </div>
         </header>
@@ -422,6 +428,7 @@ export default function DesktopAdminWarm({ user, onLock }: { user: SessionUser; 
           </div>
         </div>
       )}
+      <ChangePinModal open={pinOpen} onClose={() => setPinOpen(false)} />
     </div>
   )
 }

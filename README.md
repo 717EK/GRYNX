@@ -46,6 +46,14 @@ admin user management, and a live control-centre dashboard. Backend on Render + 
 web on Vercel, Android via Capacitor.
 
 ## Changelog
+### v0.12.1 — Self-service Change PIN + default-PIN nudge (go-live hardening)
+- Every user can now **change their own PIN** (verify current → set new) from the
+  ⚿ button in the top bar (mobile) and the command-centre header (desktop) — no
+  admin reset needed. Backend: `POST /auth/change-pin`.
+- **Default-PIN nudge:** signing in with the seeded default PIN (`123456`)
+  auto-opens the Change-PIN dialog once, so the floor moves off defaults at first
+  login. Prep for the go-live (see docs/15).
+
 ### v0.12.0 — App Studio: Data pillar (docs/13 Phase 1)
 - First slice of the **App Studio** — the visual app-builder platform. An app is
   stored as **versioned metadata** (mirrors the workflow engine); a generic runtime

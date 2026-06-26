@@ -119,7 +119,9 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: user.status === 'pending' ? 'account_pending' : 'account_suspended' })
     }
 
-    return reply.send(await issueSession(reply, user, pin ? 'pin' : 'password'))
+    const session = await issueSession(reply, user, pin ? 'pin' : 'password')
+    // nudge: tell the client when the user is still on the seeded default PIN
+    return reply.send({ ...session, defaultPin: pin === '123456' })
   })
 
   app.post('/refresh', async (req, reply) => {
@@ -151,6 +153,21 @@ export async function authRoutes(app: FastifyInstance) {
       select: { id: true, username: true, fullName: true, status: true },
     })
     return { user: { ...user, roles: u.roles } }
+  })
+
+  // Self-service: change your OWN PIN (verify the current one first). Lets every
+  // user move off the default PIN at first login without going through an admin.
+  app.post('/change-pin', { preHandler: authenticate }, async (req, reply) => {
+    const body = z.object({ currentPin: z.string().regex(/^[0-9]{6}$/), newPin: z.string().regex(/^[0-9]{6}$/) }).safeParse(req.body)
+    if (!body.success) return reply.code(400).send({ error: 'bad_request', detail: 'PINs must be 6 digits' })
+    const u = req.user as AccessPayload
+    const user = await prisma.user.findUnique({ where: { id: u.sub }, select: { id: true, pinHash: true } })
+    if (!user?.pinHash) return reply.code(404).send({ error: 'not_found' })
+    if (!(await verifySecret(user.pinHash, body.data.currentPin))) return reply.code(401).send({ error: 'wrong_pin', hint: 'current PIN is incorrect' })
+    if (body.data.newPin === body.data.currentPin) return reply.code(400).send({ error: 'same_pin', hint: 'new PIN must be different' })
+    await prisma.user.update({ where: { id: user.id }, data: { pinHash: await hashSecret(body.data.newPin) } })
+    await writeAudit('user', user.id, 'change_pin', { actorId: user.id })
+    return { ok: true }
   })
 
   // Public department list for the signup form (no auth — only id/code/name).
